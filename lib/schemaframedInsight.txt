@@ -1,0 +1,5198 @@
+-- ============================================
+-- 1. ALL TABLES
+-- ============================================
+SELECT 
+    table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+ORDER BY table_name;
+
+[
+  {
+    "table_name": "ai_predictions"
+  },
+  {
+    "table_name": "alerts"
+  },
+  {
+    "table_name": "breeding_events"
+  },
+  {
+    "table_name": "calves"
+  },
+  {
+    "table_name": "calving_records"
+  },
+  {
+    "table_name": "coffee_activities"
+  },
+  {
+    "table_name": "coffee_calendar_regions"
+  },
+  {
+    "table_name": "coffee_cost_summary"
+  },
+  {
+    "table_name": "coffee_disease_thresholds"
+  },
+  {
+    "table_name": "coffee_financials"
+  },
+  {
+    "table_name": "coffee_harvests"
+  },
+  {
+    "table_name": "coffee_health_records"
+  },
+  {
+    "table_name": "coffee_inputs"
+  },
+  {
+    "table_name": "coffee_pest_library"
+  },
+  {
+    "table_name": "coffee_plants"
+  },
+  {
+    "table_name": "coffee_plots"
+  },
+  {
+    "table_name": "coffee_quality_records"
+  },
+  {
+    "table_name": "coffee_revenue_summary"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log"
+  },
+  {
+    "table_name": "coffee_satellite_indices"
+  },
+  {
+    "table_name": "coffee_scouting_records"
+  },
+  {
+    "table_name": "cooperative_eudr_summary"
+  },
+  {
+    "table_name": "cows"
+  },
+  {
+    "table_name": "farm_managers"
+  },
+  {
+    "table_name": "farm_type_configs"
+  },
+  {
+    "table_name": "farms"
+  },
+  {
+    "table_name": "feed_records"
+  },
+  {
+    "table_name": "financial_records"
+  },
+  {
+    "table_name": "goat_milk_records"
+  },
+  {
+    "table_name": "health_records"
+  },
+  {
+    "table_name": "kidding_lambing_records"
+  },
+  {
+    "table_name": "milk_records"
+  },
+  {
+    "table_name": "phone_otp_codes"
+  },
+  {
+    "table_name": "small_ruminant_breeding"
+  },
+  {
+    "table_name": "small_ruminant_health"
+  },
+  {
+    "table_name": "small_ruminant_sales"
+  },
+  {
+    "table_name": "small_ruminants"
+  },
+  {
+    "table_name": "v_coffee_season_costs"
+  },
+  {
+    "table_name": "v_current_scouting_alerts"
+  },
+  {
+    "table_name": "v_daily_production"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics"
+  },
+  {
+    "table_name": "v_farm_satellite_health"
+  },
+  {
+    "table_name": "v_farm_summary"
+  },
+  {
+    "table_name": "v_plot_latest_satellite"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend"
+  },
+  {
+    "table_name": "vet_visits"
+  },
+  {
+    "table_name": "weight_records"
+  },
+  {
+    "table_name": "whatsapp_messages"
+  }
+]
+
+-- ============================================
+-- 2. ALL COLUMNS (WITH TYPES)
+-- ============================================
+SELECT 
+    table_name,
+    column_name,
+    data_type
+FROM information_schema.columns
+WHERE table_schema = 'public'
+ORDER BY table_name, ordinal_position;
+
+[
+  {
+    "table_name": "ai_predictions",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "prediction_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "cow_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "animal_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "plot_id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "prediction_value",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "prediction_text",
+    "data_type": "text"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "confidence_score",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "prediction_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "valid_until_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "model_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "model_version",
+    "data_type": "text"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "actual_value",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "actual_outcome",
+    "data_type": "text"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "prediction_accurate",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "ai_predictions",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "alert_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "alert_priority",
+    "data_type": "text"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "message",
+    "data_type": "text"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "cow_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "animal_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "plot_id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "alert_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "due_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "delivery_channels",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "sent_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "acknowledged_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "cow_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "heat_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "service_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "service_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "bull_code",
+    "data_type": "text"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "sire_breed",
+    "data_type": "text"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "pregnancy_check_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "pregnancy_result",
+    "data_type": "text"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "expected_calving_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "cow_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "birth_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "sex",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "birth_weight",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "dam_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "sire_code",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "weaning_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "weaning_weight",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "vaccination_records",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "cow_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "breeding_event_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "calving_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "calf_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "calf_sex",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "calf_birth_weight",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "calf_vigor",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "delivery_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "complications",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "plot_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "activity_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "activity_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "weeding_method",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "product_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "quantity",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "quantity_unit",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "cost_inputs",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "fertilizer_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "application_method",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "spray_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "spray_reason",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "dilution_rate",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "litres_water",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "weather_conditions",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "pruning_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "area_covered_ha",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "labour_mode",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "num_workers",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "days_worked",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "rate_per_day",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "cost_labour",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "total_cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "calendar_triggered",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_calendar_regions",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_calendar_regions",
+    "column_name": "region_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_calendar_regions",
+    "column_name": "counties",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "coffee_calendar_regions",
+    "column_name": "month",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_calendar_regions",
+    "column_name": "recommended_activities",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "coffee_calendar_regions",
+    "column_name": "season_context",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_cost_summary",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_cost_summary",
+    "column_name": "activity_year",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_cost_summary",
+    "column_name": "total_activities",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "coffee_cost_summary",
+    "column_name": "total_costs",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_cost_summary",
+    "column_name": "avg_cost_per_activity",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "region_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "disease_pest_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "watch_threshold",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "action_threshold",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "emergency_threshold",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "watch_count",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "action_count",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "emergency_count",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "recommended_product",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "alternative_products",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "application_notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "why_different",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "high_risk_months",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "transaction_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "category",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "description",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "amount",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "payment_method",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "transaction_ref",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "cooperative_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "buyer_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "plot_id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "plot_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "harvest_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "harvest_season",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "harvest_year",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "cherry_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "quality_grade",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "cherry_condition",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "processing_method",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "parchment_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "clean_coffee_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "price_per_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "total_value",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "buyer_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "cooperative_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "payment_status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "payment_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "amount_paid",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "lot_number",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "nce_transaction_id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "plot_id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "inspection_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "coffee_berry_disease_severity",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "coffee_leaf_rust_severity",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "bacterial_blight_present",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "antestia_bugs_severity",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "stem_borers_present",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "berry_borers_present",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "treatment_applied",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "chemical_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "chemical_quantity",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "application_method",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "leaf_photo_url",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "berry_photo_url",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "ai_diagnosis",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "ai_confidence_score",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "input_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "input_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "fertilizer_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "quantity_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "labor_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "labor_hours",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "labor_cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "number_of_workers",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "plot_applied",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "trees_treated",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "unit_cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "total_cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "supplier_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "pest_disease_code",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "common_name_english",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "common_name_swahili",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "scientific_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "category",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "symptoms_description",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "early_stage_symptoms",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "late_stage_symptoms",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "affected_plant_parts",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "photo_urls",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "video_url",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "cultural_control",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "chemical_control",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "registered_products",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "organic_control",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "yield_loss_potential",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "quality_impact",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "prevention_tips",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "high_risk_conditions",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "plant_tag",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "qr_code",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "plot_id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "gps_latitude",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "gps_longitude",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "variety",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "planting_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "age_years",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "plant_spacing_meters",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "plant_status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "deforestation_risk_status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "forest_cover_certification",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "land_ownership_doc_url",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "eudr_compliant",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "updated_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "plot_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "plot_code",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "variety",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "planting_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "age_years",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "total_trees",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "plant_spacing_meters",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "plant_status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "gps_latitude",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "gps_longitude",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "gps_polygon",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "area_hectares",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "eudr_risk_level",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "eudr_risk_assessed_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "eudr_risk_details",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "afa_geo_mapping_id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "land_ownership_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "land_ownership_doc_url",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "region_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "harvest_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "cupping_score",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "acidity_score",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "body_score",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "flavor_notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "aroma_score",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "organic_certified",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "fair_trade_certified",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "rainforest_alliance",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "utz_certified",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "lot_number",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "processing_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "milling_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "export_ready_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "blockchain_hash",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "traceability_url",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "cupper_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "cupping_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "coffee_revenue_summary",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_revenue_summary",
+    "column_name": "harvest_year",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_revenue_summary",
+    "column_name": "total_harvests",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "coffee_revenue_summary",
+    "column_name": "total_revenue",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_revenue_summary",
+    "column_name": "avg_revenue_per_harvest",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "plot_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "fetch_attempted_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "cloud_cover_pct",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "date_range_from",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "date_range_to",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "error_message",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "processing_units_used",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "plot_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "image_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "acquired_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "cloud_cover_pct",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "sentinel_tile",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndvi_mean",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndvi_min",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndvi_max",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndvi_std",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndre_mean",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndre_min",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndre_max",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndwi_mean",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndwi_min",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndwi_max",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "health_score",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "health_label",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "ndvi_change",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "health_score_change",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "weeks_of_decline",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "alert_triggered",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "alert_reason",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "raw_cdse_response",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "plot_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "scouting_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "scouted_by",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "observation_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "severity_level",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "trees_sampled",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "pest_count_total",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "pest_count_per_tree",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "cbd_green_berries_affected",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "cbd_yellow_berries_affected",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "cbd_red_berries_affected",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "clr_leaves_affected",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "clr_defoliation_observed",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "area_affected_ha",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "percentage_plot_affected",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "weather_past_week",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "action_taken",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "spray_activity_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "threshold_breached",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "alert_level",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "symptoms_description",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "photo_urls",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "farm_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "county",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "total_plots",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "total_hectares",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "low_risk_plots",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "medium_risk_plots",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "high_risk_plots",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "plots_with_polygon",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "cooperative_eudr_summary",
+    "column_name": "afa_verified_plots",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "cow_tag",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "qr_code",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "breed",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "birth_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "sex",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "sire_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "dam_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "purpose",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "purchase_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "purchase_price",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "source",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "exit_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "exit_reason",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "exit_value",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "updated_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "farm_managers",
+    "column_name": "user_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "farm_managers",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "farm_managers",
+    "column_name": "role",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farm_managers",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "farm_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "active_modules",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "measurement_units",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "language",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "alerts_enabled",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "alert_channels",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "ai_diagnostics_enabled",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "voice_notes_enabled",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "updated_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "farm_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "owner_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "phone",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "email",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "location",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "county",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "sub_county",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "ward",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "gps_latitude",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "gps_longitude",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "farm_types",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "primary_enterprise",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "land_size_acres",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "is_active",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "subscription_tier",
+    "data_type": "text"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "subscription_start_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "subscription_end_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "updated_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "record_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "feed_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "quantity_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "animal_group",
+    "data_type": "text"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "number_of_animals",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "transaction_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "enterprise_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "category",
+    "data_type": "text"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "subcategory",
+    "data_type": "text"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "description",
+    "data_type": "text"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "amount",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "payment_method",
+    "data_type": "text"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "transaction_ref",
+    "data_type": "text"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "cow_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "animal_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "plot_id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "receipt_url",
+    "data_type": "text"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "animal_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "record_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "morning_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "evening_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "total_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "lactation_number",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "days_in_milk",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "milk_quality",
+    "data_type": "text"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "midday_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "cow_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "treatment_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "disease",
+    "data_type": "text"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "symptoms",
+    "data_type": "text"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "treatment",
+    "data_type": "text"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "drug_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "dosage",
+    "data_type": "text"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "vet_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "vet_contact",
+    "data_type": "text"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "withdrawal_days",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "safe_milk_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "safe_meat_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "dam_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "breeding_event_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "delivery_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "delivery_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "kid_lamb_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "sex",
+    "data_type": "text"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "birth_weight",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "vigor_score",
+    "data_type": "text"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "colostrum_given",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "colostrum_time",
+    "data_type": "text"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "complications",
+    "data_type": "text"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "dam_condition_post_delivery",
+    "data_type": "text"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "cow_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "record_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "morning_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "evening_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "total_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "lactation_number",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "days_in_milk",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "milk_quality",
+    "data_type": "text"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "midday_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "phone_otp_codes",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "phone_otp_codes",
+    "column_name": "phone_number",
+    "data_type": "text"
+  },
+  {
+    "table_name": "phone_otp_codes",
+    "column_name": "otp_code",
+    "data_type": "text"
+  },
+  {
+    "table_name": "phone_otp_codes",
+    "column_name": "expires_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "phone_otp_codes",
+    "column_name": "metadata",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "phone_otp_codes",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "dam_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "heat_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "service_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "service_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "sire_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "sire_breed",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "sire_tag",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "pregnancy_check_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "pregnancy_result",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "expected_delivery_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "actual_delivery_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "number_of_offspring",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "offspring_ids",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "delivery_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "complications",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "animal_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "event_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "event_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "vaccine_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "vaccine_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "vaccine_batch_number",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "next_vaccination_due",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "disease",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "symptoms",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "treatment",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "drug_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "dosage",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "vet_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "vet_contact",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "withdrawal_days",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "safe_consumption_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "animal_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "sale_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "sale_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "buyer_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "buyer_contact",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "live_weight_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "dressed_weight_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "price_per_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "total_price",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "milk_quantity_liters",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "milk_price_per_liter",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "payment_method",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "payment_status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "market_location",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "animal_tag",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "qr_code",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "ear_notch_pattern",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "species",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "breed",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "upgrade_level",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "sex",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "birth_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "birth_weight",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "sire_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "dam_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "breeding_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "purpose",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "source",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "purchase_price",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "purchase_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "exit_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "exit_reason",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "exit_value",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "coat_color",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "distinguishing_marks",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "updated_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "v_coffee_season_costs",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_coffee_season_costs",
+    "column_name": "plot_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_coffee_season_costs",
+    "column_name": "plot_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_coffee_season_costs",
+    "column_name": "year",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_coffee_season_costs",
+    "column_name": "activity_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_coffee_season_costs",
+    "column_name": "activity_count",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_coffee_season_costs",
+    "column_name": "total_input_cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_coffee_season_costs",
+    "column_name": "total_labour_cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_coffee_season_costs",
+    "column_name": "total_cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "scouting_record_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "farm_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "plot_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "plot_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "region_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "scouting_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "observation_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "severity_level",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "pest_count_per_tree",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "threshold_breached",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "alert_level",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "action_taken",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "action_threshold",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "action_count",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "recommended_product",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "application_notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "days_since_detection",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "v_current_scouting_alerts",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "record_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "cows_milked",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "total_morning_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "total_midday_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "total_evening_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "total_milk_liters",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "goats_milked",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "goat_morning_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "goat_midday_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "goat_evening_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "total_goat_milk_liters",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_daily_production",
+    "column_name": "grand_total_milk",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "region_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "month",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "year",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "observation_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "detection_count",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "threshold_breaches",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "emergency_alerts",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "avg_pest_count",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "light_severity_count",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "moderate_severity_count",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "severe_severity_count",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_disease_pressure_analytics",
+    "column_name": "avg_days_to_spray",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "total_plots_monitored",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "plots_good",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "plots_watch",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "plots_stress",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "plots_critical",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "plots_with_alerts",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "avg_health_score",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "avg_ndvi",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "most_recent_image",
+    "data_type": "date"
+  },
+  {
+    "table_name": "v_farm_satellite_health",
+    "column_name": "stale_plots",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "farm_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "owner_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "phone",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "subscription_tier",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "land_size_acres",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "farm_types",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "total_cows",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "producing_cows",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "today_milk_liters",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "avg_daily_milk_7d",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "active_milking_cows_30d",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "total_coffee_plots",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "total_coffee_plants",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "mature_coffee_plants",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "productive_coffee_plants",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "eudr_compliant_plants",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "season_cherry_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "season_coffee_revenue_kes",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "last_harvest_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "total_small_ruminants",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "total_goats",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "total_sheep",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "female_ruminants",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "ruminants_added_this_month",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "pending_alerts",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "high_priority_alerts",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "has_dairy",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "has_coffee",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "has_small_ruminants",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "effective_tier",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_farm_summary",
+    "column_name": "enterprise_count",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "plot_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "image_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "cloud_cover_pct",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "ndvi_mean",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "ndre_mean",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "ndwi_mean",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "ndvi_std",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "health_score",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "health_label",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "ndvi_change",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "health_score_change",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "weeks_of_decline",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "alert_triggered",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "alert_reason",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "days_since_image",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "data_freshness",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "plot_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "area_hectares",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_latest_satellite",
+    "column_name": "region_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "plot_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "image_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "ndvi_mean",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "ndre_mean",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "ndwi_mean",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "health_score",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "health_label",
+    "data_type": "text"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "ndvi_change",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "alert_triggered",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "v_plot_ndvi_trend",
+    "column_name": "reading_number",
+    "data_type": "bigint"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "cow_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "visit_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "vet_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "vet_contact",
+    "data_type": "text"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "visit_reason",
+    "data_type": "text"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "diagnosis",
+    "data_type": "text"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "prescription",
+    "data_type": "text"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "cost",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "next_visit_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "animal_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "record_date",
+    "data_type": "date"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "weight_kg",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "age_days",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "average_daily_gain",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "body_condition_score",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "measurement_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "notes",
+    "data_type": "text"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "farm_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "sender_phone",
+    "data_type": "text"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "message_text",
+    "data_type": "text"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "message_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "media_url",
+    "data_type": "text"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "media_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "intent",
+    "data_type": "text"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "intent_confidence",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "entities_extracted",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "response_text",
+    "data_type": "text"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "response_sent_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "session_id",
+    "data_type": "text"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "conversation_context",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  }
+]
+
+
+-- ============================================
+-- 3. PRIMARY KEYS
+-- ============================================
+SELECT
+    tc.table_name,
+    kcu.column_name
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu 
+    ON tc.constraint_name = kcu.constraint_name
+WHERE tc.constraint_type = 'PRIMARY KEY'
+AND tc.table_schema = 'public'
+ORDER BY tc.table_name;
+
+[
+  {
+    "table_name": "ai_predictions",
+    "column_name": "id"
+  },
+  {
+    "table_name": "alerts",
+    "column_name": "id"
+  },
+  {
+    "table_name": "breeding_events",
+    "column_name": "id"
+  },
+  {
+    "table_name": "calves",
+    "column_name": "id"
+  },
+  {
+    "table_name": "calving_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_activities",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_calendar_regions",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_disease_thresholds",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_financials",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_harvests",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_health_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_inputs",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_pest_library",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_plants",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_plots",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_quality_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_satellite_fetch_log",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_satellite_indices",
+    "column_name": "id"
+  },
+  {
+    "table_name": "coffee_scouting_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "cows",
+    "column_name": "id"
+  },
+  {
+    "table_name": "farm_managers",
+    "column_name": "farm_id"
+  },
+  {
+    "table_name": "farm_managers",
+    "column_name": "user_id"
+  },
+  {
+    "table_name": "farm_type_configs",
+    "column_name": "id"
+  },
+  {
+    "table_name": "farms",
+    "column_name": "id"
+  },
+  {
+    "table_name": "feed_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "financial_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "goat_milk_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "health_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "kidding_lambing_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "milk_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "phone_otp_codes",
+    "column_name": "id"
+  },
+  {
+    "table_name": "small_ruminant_breeding",
+    "column_name": "id"
+  },
+  {
+    "table_name": "small_ruminant_health",
+    "column_name": "id"
+  },
+  {
+    "table_name": "small_ruminant_sales",
+    "column_name": "id"
+  },
+  {
+    "table_name": "small_ruminants",
+    "column_name": "id"
+  },
+  {
+    "table_name": "vet_visits",
+    "column_name": "id"
+  },
+  {
+    "table_name": "weight_records",
+    "column_name": "id"
+  },
+  {
+    "table_name": "whatsapp_messages",
+    "column_name": "id"
+  }
+]
+
+
+-- ============================================
+-- 4. FOREIGN KEYS (VERY IMPORTANT)
+-- ============================================
+SELECT
+    tc.table_name AS source_table,
+    kcu.column_name AS source_column,
+    ccu.table_name AS target_table,
+    ccu.column_name AS target_column
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu
+    ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.constraint_column_usage ccu
+    ON ccu.constraint_name = tc.constraint_name
+WHERE tc.constraint_type = 'FOREIGN KEY'
+AND tc.table_schema = 'public'
+ORDER BY tc.table_name;
+
+[
+  {
+    "source_table": "ai_predictions",
+    "source_column": "animal_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "ai_predictions",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "ai_predictions",
+    "source_column": "cow_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "alerts",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "alerts",
+    "source_column": "animal_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "alerts",
+    "source_column": "cow_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "breeding_events",
+    "source_column": "cow_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "calves",
+    "source_column": "cow_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "calves",
+    "source_column": "dam_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "calving_records",
+    "source_column": "cow_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "calving_records",
+    "source_column": "breeding_event_id",
+    "target_table": "breeding_events",
+    "target_column": "id"
+  },
+  {
+    "source_table": "calving_records",
+    "source_column": "calf_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_activities",
+    "source_column": "plot_id",
+    "target_table": "coffee_plots",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_activities",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_financials",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_harvests",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_health_records",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_inputs",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_plants",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_plots",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_quality_records",
+    "source_column": "harvest_id",
+    "target_table": "coffee_harvests",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_satellite_fetch_log",
+    "source_column": "plot_id",
+    "target_table": "coffee_plots",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_satellite_indices",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_satellite_indices",
+    "source_column": "plot_id",
+    "target_table": "coffee_plots",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_scouting_records",
+    "source_column": "plot_id",
+    "target_table": "coffee_plots",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_scouting_records",
+    "source_column": "spray_activity_id",
+    "target_table": "coffee_activities",
+    "target_column": "id"
+  },
+  {
+    "source_table": "coffee_scouting_records",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "cows",
+    "source_column": "dam_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "cows",
+    "source_column": "sire_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "cows",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "farm_type_configs",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "feed_records",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "financial_records",
+    "source_column": "cow_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "financial_records",
+    "source_column": "animal_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "financial_records",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "goat_milk_records",
+    "source_column": "animal_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "health_records",
+    "source_column": "cow_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "kidding_lambing_records",
+    "source_column": "kid_lamb_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "kidding_lambing_records",
+    "source_column": "breeding_event_id",
+    "target_table": "small_ruminant_breeding",
+    "target_column": "id"
+  },
+  {
+    "source_table": "kidding_lambing_records",
+    "source_column": "dam_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "milk_records",
+    "source_column": "cow_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "small_ruminant_breeding",
+    "source_column": "sire_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "small_ruminant_breeding",
+    "source_column": "dam_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "small_ruminant_health",
+    "source_column": "animal_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "small_ruminant_sales",
+    "source_column": "animal_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "small_ruminant_sales",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "small_ruminants",
+    "source_column": "dam_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "small_ruminants",
+    "source_column": "sire_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "small_ruminants",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "vet_visits",
+    "source_column": "cow_id",
+    "target_table": "cows",
+    "target_column": "id"
+  },
+  {
+    "source_table": "vet_visits",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  },
+  {
+    "source_table": "weight_records",
+    "source_column": "animal_id",
+    "target_table": "small_ruminants",
+    "target_column": "id"
+  },
+  {
+    "source_table": "whatsapp_messages",
+    "source_column": "farm_id",
+    "target_table": "farms",
+    "target_column": "id"
+  }
+]
+
+
+-- ============================================
+-- 5. INDEXES (OPTIONAL BUT USEFUL)
+-- ============================================
+SELECT
+    tablename,
+    indexname,
+    indexdef
+FROM pg_indexes
+WHERE schemaname = 'public'
+ORDER BY tablename;
+
+[
+  {
+    "tablename": "ai_predictions",
+    "indexname": "idx_ai_predictions_farm_id",
+    "indexdef": "CREATE INDEX idx_ai_predictions_farm_id ON public.ai_predictions USING btree (farm_id)"
+  },
+  {
+    "tablename": "ai_predictions",
+    "indexname": "ai_predictions_pkey",
+    "indexdef": "CREATE UNIQUE INDEX ai_predictions_pkey ON public.ai_predictions USING btree (id)"
+  },
+  {
+    "tablename": "alerts",
+    "indexname": "idx_alerts_farm_id",
+    "indexdef": "CREATE INDEX idx_alerts_farm_id ON public.alerts USING btree (farm_id)"
+  },
+  {
+    "tablename": "alerts",
+    "indexname": "alerts_pkey",
+    "indexdef": "CREATE UNIQUE INDEX alerts_pkey ON public.alerts USING btree (id)"
+  },
+  {
+    "tablename": "alerts",
+    "indexname": "idx_alerts_farm",
+    "indexdef": "CREATE INDEX idx_alerts_farm ON public.alerts USING btree (farm_id)"
+  },
+  {
+    "tablename": "alerts",
+    "indexname": "idx_alerts_status",
+    "indexdef": "CREATE INDEX idx_alerts_status ON public.alerts USING btree (status)"
+  },
+  {
+    "tablename": "alerts",
+    "indexname": "idx_alerts_date",
+    "indexdef": "CREATE INDEX idx_alerts_date ON public.alerts USING btree (alert_date)"
+  },
+  {
+    "tablename": "breeding_events",
+    "indexname": "breeding_events_pkey",
+    "indexdef": "CREATE UNIQUE INDEX breeding_events_pkey ON public.breeding_events USING btree (id)"
+  },
+  {
+    "tablename": "breeding_events",
+    "indexname": "idx_breeding_cow",
+    "indexdef": "CREATE INDEX idx_breeding_cow ON public.breeding_events USING btree (cow_id)"
+  },
+  {
+    "tablename": "breeding_events",
+    "indexname": "idx_breeding_events_cow_id",
+    "indexdef": "CREATE INDEX idx_breeding_events_cow_id ON public.breeding_events USING btree (cow_id)"
+  },
+  {
+    "tablename": "calves",
+    "indexname": "idx_calves_cow_id",
+    "indexdef": "CREATE INDEX idx_calves_cow_id ON public.calves USING btree (cow_id)"
+  },
+  {
+    "tablename": "calves",
+    "indexname": "calves_pkey",
+    "indexdef": "CREATE UNIQUE INDEX calves_pkey ON public.calves USING btree (id)"
+  },
+  {
+    "tablename": "calving_records",
+    "indexname": "idx_calving_records_cow_id",
+    "indexdef": "CREATE INDEX idx_calving_records_cow_id ON public.calving_records USING btree (cow_id)"
+  },
+  {
+    "tablename": "calving_records",
+    "indexname": "calving_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX calving_records_pkey ON public.calving_records USING btree (id)"
+  },
+  {
+    "tablename": "coffee_activities",
+    "indexname": "idx_coffee_activities_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_activities_farm_id ON public.coffee_activities USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_activities",
+    "indexname": "idx_coffee_activities_type",
+    "indexdef": "CREATE INDEX idx_coffee_activities_type ON public.coffee_activities USING btree (activity_type)"
+  },
+  {
+    "tablename": "coffee_activities",
+    "indexname": "idx_coffee_activities_date",
+    "indexdef": "CREATE INDEX idx_coffee_activities_date ON public.coffee_activities USING btree (activity_date DESC)"
+  },
+  {
+    "tablename": "coffee_activities",
+    "indexname": "coffee_activities_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_activities_pkey ON public.coffee_activities USING btree (id)"
+  },
+  {
+    "tablename": "coffee_activities",
+    "indexname": "idx_coffee_activities_plot_id",
+    "indexdef": "CREATE INDEX idx_coffee_activities_plot_id ON public.coffee_activities USING btree (plot_id)"
+  },
+  {
+    "tablename": "coffee_calendar_regions",
+    "indexname": "coffee_calendar_regions_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_calendar_regions_pkey ON public.coffee_calendar_regions USING btree (id)"
+  },
+  {
+    "tablename": "coffee_calendar_regions",
+    "indexname": "idx_calendar_month",
+    "indexdef": "CREATE INDEX idx_calendar_month ON public.coffee_calendar_regions USING btree (month)"
+  },
+  {
+    "tablename": "coffee_calendar_regions",
+    "indexname": "idx_calendar_region",
+    "indexdef": "CREATE INDEX idx_calendar_region ON public.coffee_calendar_regions USING btree (region_name)"
+  },
+  {
+    "tablename": "coffee_disease_thresholds",
+    "indexname": "coffee_disease_thresholds_region_name_disease_pest_type_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_disease_thresholds_region_name_disease_pest_type_key ON public.coffee_disease_thresholds USING btree (region_name, disease_pest_type)"
+  },
+  {
+    "tablename": "coffee_disease_thresholds",
+    "indexname": "idx_thresholds_pest",
+    "indexdef": "CREATE INDEX idx_thresholds_pest ON public.coffee_disease_thresholds USING btree (disease_pest_type)"
+  },
+  {
+    "tablename": "coffee_disease_thresholds",
+    "indexname": "coffee_disease_thresholds_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_disease_thresholds_pkey ON public.coffee_disease_thresholds USING btree (id)"
+  },
+  {
+    "tablename": "coffee_disease_thresholds",
+    "indexname": "idx_thresholds_region",
+    "indexdef": "CREATE INDEX idx_thresholds_region ON public.coffee_disease_thresholds USING btree (region_name)"
+  },
+  {
+    "tablename": "coffee_financials",
+    "indexname": "coffee_financials_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_financials_pkey ON public.coffee_financials USING btree (id)"
+  },
+  {
+    "tablename": "coffee_financials",
+    "indexname": "idx_coffee_financials_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_financials_farm_id ON public.coffee_financials USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_harvests",
+    "indexname": "idx_coffee_harvests_plot",
+    "indexdef": "CREATE INDEX idx_coffee_harvests_plot ON public.coffee_harvests USING btree (plot_name)"
+  },
+  {
+    "tablename": "coffee_harvests",
+    "indexname": "coffee_harvests_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_harvests_pkey ON public.coffee_harvests USING btree (id)"
+  },
+  {
+    "tablename": "coffee_harvests",
+    "indexname": "idx_coffee_harvests_farm",
+    "indexdef": "CREATE INDEX idx_coffee_harvests_farm ON public.coffee_harvests USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_harvests",
+    "indexname": "idx_coffee_harvests_date",
+    "indexdef": "CREATE INDEX idx_coffee_harvests_date ON public.coffee_harvests USING btree (harvest_date)"
+  },
+  {
+    "tablename": "coffee_harvests",
+    "indexname": "idx_coffee_harvests_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_harvests_farm_id ON public.coffee_harvests USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_health_records",
+    "indexname": "idx_coffee_health_plot",
+    "indexdef": "CREATE INDEX idx_coffee_health_plot ON public.coffee_health_records USING btree (plot_id)"
+  },
+  {
+    "tablename": "coffee_health_records",
+    "indexname": "coffee_health_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_health_records_pkey ON public.coffee_health_records USING btree (id)"
+  },
+  {
+    "tablename": "coffee_health_records",
+    "indexname": "idx_coffee_health_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_health_farm_id ON public.coffee_health_records USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_inputs",
+    "indexname": "coffee_inputs_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_inputs_pkey ON public.coffee_inputs USING btree (id)"
+  },
+  {
+    "tablename": "coffee_inputs",
+    "indexname": "idx_coffee_inputs_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_inputs_farm_id ON public.coffee_inputs USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_pest_library",
+    "indexname": "idx_pest_library_code",
+    "indexdef": "CREATE INDEX idx_pest_library_code ON public.coffee_pest_library USING btree (pest_disease_code)"
+  },
+  {
+    "tablename": "coffee_pest_library",
+    "indexname": "idx_pest_library_category",
+    "indexdef": "CREATE INDEX idx_pest_library_category ON public.coffee_pest_library USING btree (category)"
+  },
+  {
+    "tablename": "coffee_pest_library",
+    "indexname": "coffee_pest_library_pest_disease_code_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_pest_library_pest_disease_code_key ON public.coffee_pest_library USING btree (pest_disease_code)"
+  },
+  {
+    "tablename": "coffee_pest_library",
+    "indexname": "coffee_pest_library_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_pest_library_pkey ON public.coffee_pest_library USING btree (id)"
+  },
+  {
+    "tablename": "coffee_plants",
+    "indexname": "idx_coffee_plants_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_plants_farm_id ON public.coffee_plants USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_plants",
+    "indexname": "coffee_plants_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_plants_pkey ON public.coffee_plants USING btree (id)"
+  },
+  {
+    "tablename": "coffee_plants",
+    "indexname": "coffee_plants_qr_code_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_plants_qr_code_key ON public.coffee_plants USING btree (qr_code)"
+  },
+  {
+    "tablename": "coffee_plants",
+    "indexname": "idx_coffee_plants_plot",
+    "indexdef": "CREATE INDEX idx_coffee_plants_plot ON public.coffee_plants USING btree (plot_id)"
+  },
+  {
+    "tablename": "coffee_plants",
+    "indexname": "idx_coffee_plants_farm",
+    "indexdef": "CREATE INDEX idx_coffee_plants_farm ON public.coffee_plants USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_polygon",
+    "indexdef": "CREATE INDEX idx_coffee_plots_polygon ON public.coffee_plots USING gin (gps_polygon)"
+  },
+  {
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_afa_id",
+    "indexdef": "CREATE INDEX idx_coffee_plots_afa_id ON public.coffee_plots USING btree (afa_geo_mapping_id) WHERE (afa_geo_mapping_id IS NOT NULL)"
+  },
+  {
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_eudr_risk",
+    "indexdef": "CREATE INDEX idx_coffee_plots_eudr_risk ON public.coffee_plots USING btree (eudr_risk_level)"
+  },
+  {
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_plots_farm_id ON public.coffee_plots USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_plots",
+    "indexname": "coffee_plots_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_plots_pkey ON public.coffee_plots USING btree (id)"
+  },
+  {
+    "tablename": "coffee_plots",
+    "indexname": "idx_plots_region",
+    "indexdef": "CREATE INDEX idx_plots_region ON public.coffee_plots USING btree (region_name)"
+  },
+  {
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_region",
+    "indexdef": "CREATE INDEX idx_coffee_plots_region ON public.coffee_plots USING btree (region_name)"
+  },
+  {
+    "tablename": "coffee_quality_records",
+    "indexname": "idx_coffee_quality_harvest_id",
+    "indexdef": "CREATE INDEX idx_coffee_quality_harvest_id ON public.coffee_quality_records USING btree (harvest_id)"
+  },
+  {
+    "tablename": "coffee_quality_records",
+    "indexname": "coffee_quality_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_quality_records_pkey ON public.coffee_quality_records USING btree (id)"
+  },
+  {
+    "tablename": "coffee_satellite_fetch_log",
+    "indexname": "coffee_satellite_fetch_log_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_satellite_fetch_log_pkey ON public.coffee_satellite_fetch_log USING btree (id)"
+  },
+  {
+    "tablename": "coffee_satellite_fetch_log",
+    "indexname": "idx_fetch_log_time",
+    "indexdef": "CREATE INDEX idx_fetch_log_time ON public.coffee_satellite_fetch_log USING btree (fetch_attempted_at DESC)"
+  },
+  {
+    "tablename": "coffee_satellite_fetch_log",
+    "indexname": "idx_fetch_log_plot",
+    "indexdef": "CREATE INDEX idx_fetch_log_plot ON public.coffee_satellite_fetch_log USING btree (plot_id)"
+  },
+  {
+    "tablename": "coffee_satellite_indices",
+    "indexname": "idx_sat_date",
+    "indexdef": "CREATE INDEX idx_sat_date ON public.coffee_satellite_indices USING btree (image_date DESC)"
+  },
+  {
+    "tablename": "coffee_satellite_indices",
+    "indexname": "idx_sat_alert",
+    "indexdef": "CREATE INDEX idx_sat_alert ON public.coffee_satellite_indices USING btree (alert_triggered) WHERE (alert_triggered = true)"
+  },
+  {
+    "tablename": "coffee_satellite_indices",
+    "indexname": "idx_sat_health",
+    "indexdef": "CREATE INDEX idx_sat_health ON public.coffee_satellite_indices USING btree (health_label)"
+  },
+  {
+    "tablename": "coffee_satellite_indices",
+    "indexname": "coffee_satellite_indices_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_satellite_indices_pkey ON public.coffee_satellite_indices USING btree (id)"
+  },
+  {
+    "tablename": "coffee_satellite_indices",
+    "indexname": "coffee_satellite_indices_plot_id_image_date_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_satellite_indices_plot_id_image_date_key ON public.coffee_satellite_indices USING btree (plot_id, image_date)"
+  },
+  {
+    "tablename": "coffee_satellite_indices",
+    "indexname": "idx_sat_plot_id",
+    "indexdef": "CREATE INDEX idx_sat_plot_id ON public.coffee_satellite_indices USING btree (plot_id)"
+  },
+  {
+    "tablename": "coffee_satellite_indices",
+    "indexname": "idx_sat_farm_id",
+    "indexdef": "CREATE INDEX idx_sat_farm_id ON public.coffee_satellite_indices USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_scouting_records",
+    "indexname": "idx_scouting_threshold",
+    "indexdef": "CREATE INDEX idx_scouting_threshold ON public.coffee_scouting_records USING btree (threshold_breached)"
+  },
+  {
+    "tablename": "coffee_scouting_records",
+    "indexname": "coffee_scouting_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_scouting_records_pkey ON public.coffee_scouting_records USING btree (id)"
+  },
+  {
+    "tablename": "coffee_scouting_records",
+    "indexname": "idx_scouting_farm_id",
+    "indexdef": "CREATE INDEX idx_scouting_farm_id ON public.coffee_scouting_records USING btree (farm_id)"
+  },
+  {
+    "tablename": "coffee_scouting_records",
+    "indexname": "idx_scouting_plot_id",
+    "indexdef": "CREATE INDEX idx_scouting_plot_id ON public.coffee_scouting_records USING btree (plot_id)"
+  },
+  {
+    "tablename": "coffee_scouting_records",
+    "indexname": "idx_scouting_date",
+    "indexdef": "CREATE INDEX idx_scouting_date ON public.coffee_scouting_records USING btree (scouting_date DESC)"
+  },
+  {
+    "tablename": "coffee_scouting_records",
+    "indexname": "idx_scouting_type",
+    "indexdef": "CREATE INDEX idx_scouting_type ON public.coffee_scouting_records USING btree (observation_type)"
+  },
+  {
+    "tablename": "cows",
+    "indexname": "cows_pkey",
+    "indexdef": "CREATE UNIQUE INDEX cows_pkey ON public.cows USING btree (id)"
+  },
+  {
+    "tablename": "cows",
+    "indexname": "cows_cow_tag_key",
+    "indexdef": "CREATE UNIQUE INDEX cows_cow_tag_key ON public.cows USING btree (cow_tag)"
+  },
+  {
+    "tablename": "cows",
+    "indexname": "cows_qr_code_key",
+    "indexdef": "CREATE UNIQUE INDEX cows_qr_code_key ON public.cows USING btree (qr_code)"
+  },
+  {
+    "tablename": "cows",
+    "indexname": "idx_cows_farm",
+    "indexdef": "CREATE INDEX idx_cows_farm ON public.cows USING btree (farm_id)"
+  },
+  {
+    "tablename": "cows",
+    "indexname": "idx_cows_status",
+    "indexdef": "CREATE INDEX idx_cows_status ON public.cows USING btree (status)"
+  },
+  {
+    "tablename": "cows",
+    "indexname": "idx_cows_farm_id",
+    "indexdef": "CREATE INDEX idx_cows_farm_id ON public.cows USING btree (farm_id)"
+  },
+  {
+    "tablename": "farm_managers",
+    "indexname": "idx_farm_managers_user_id",
+    "indexdef": "CREATE INDEX idx_farm_managers_user_id ON public.farm_managers USING btree (user_id)"
+  },
+  {
+    "tablename": "farm_managers",
+    "indexname": "idx_farm_managers_user_farm",
+    "indexdef": "CREATE INDEX idx_farm_managers_user_farm ON public.farm_managers USING btree (user_id, farm_id)"
+  },
+  {
+    "tablename": "farm_managers",
+    "indexname": "farm_managers_pkey",
+    "indexdef": "CREATE UNIQUE INDEX farm_managers_pkey ON public.farm_managers USING btree (user_id, farm_id)"
+  },
+  {
+    "tablename": "farm_managers",
+    "indexname": "idx_farm_managers_farm_id",
+    "indexdef": "CREATE INDEX idx_farm_managers_farm_id ON public.farm_managers USING btree (farm_id)"
+  },
+  {
+    "tablename": "farm_type_configs",
+    "indexname": "idx_farm_type_configs_farm_id",
+    "indexdef": "CREATE INDEX idx_farm_type_configs_farm_id ON public.farm_type_configs USING btree (farm_id)"
+  },
+  {
+    "tablename": "farm_type_configs",
+    "indexname": "farm_type_configs_farm_id_farm_type_key",
+    "indexdef": "CREATE UNIQUE INDEX farm_type_configs_farm_id_farm_type_key ON public.farm_type_configs USING btree (farm_id, farm_type)"
+  },
+  {
+    "tablename": "farm_type_configs",
+    "indexname": "farm_type_configs_pkey",
+    "indexdef": "CREATE UNIQUE INDEX farm_type_configs_pkey ON public.farm_type_configs USING btree (id)"
+  },
+  {
+    "tablename": "farms",
+    "indexname": "farms_pkey",
+    "indexdef": "CREATE UNIQUE INDEX farms_pkey ON public.farms USING btree (id)"
+  },
+  {
+    "tablename": "farms",
+    "indexname": "idx_farms_subscription_tier",
+    "indexdef": "CREATE INDEX idx_farms_subscription_tier ON public.farms USING btree (subscription_tier)"
+  },
+  {
+    "tablename": "farms",
+    "indexname": "idx_farms_phone",
+    "indexdef": "CREATE INDEX idx_farms_phone ON public.farms USING btree (phone)"
+  },
+  {
+    "tablename": "farms",
+    "indexname": "farms_phone_key",
+    "indexdef": "CREATE UNIQUE INDEX farms_phone_key ON public.farms USING btree (phone)"
+  },
+  {
+    "tablename": "feed_records",
+    "indexname": "feed_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX feed_records_pkey ON public.feed_records USING btree (id)"
+  },
+  {
+    "tablename": "feed_records",
+    "indexname": "idx_feed_records_farm_id",
+    "indexdef": "CREATE INDEX idx_feed_records_farm_id ON public.feed_records USING btree (farm_id)"
+  },
+  {
+    "tablename": "financial_records",
+    "indexname": "idx_financial_records_farm_id",
+    "indexdef": "CREATE INDEX idx_financial_records_farm_id ON public.financial_records USING btree (farm_id)"
+  },
+  {
+    "tablename": "financial_records",
+    "indexname": "idx_financial_farm",
+    "indexdef": "CREATE INDEX idx_financial_farm ON public.financial_records USING btree (farm_id)"
+  },
+  {
+    "tablename": "financial_records",
+    "indexname": "idx_financial_date",
+    "indexdef": "CREATE INDEX idx_financial_date ON public.financial_records USING btree (transaction_date)"
+  },
+  {
+    "tablename": "financial_records",
+    "indexname": "financial_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX financial_records_pkey ON public.financial_records USING btree (id)"
+  },
+  {
+    "tablename": "goat_milk_records",
+    "indexname": "idx_goat_milk_records_record_date",
+    "indexdef": "CREATE INDEX idx_goat_milk_records_record_date ON public.goat_milk_records USING btree (record_date)"
+  },
+  {
+    "tablename": "goat_milk_records",
+    "indexname": "idx_goat_milk_records_animal_record_date",
+    "indexdef": "CREATE INDEX idx_goat_milk_records_animal_record_date ON public.goat_milk_records USING btree (animal_id, record_date)"
+  },
+  {
+    "tablename": "goat_milk_records",
+    "indexname": "idx_goat_milk_animal_date",
+    "indexdef": "CREATE INDEX idx_goat_milk_animal_date ON public.goat_milk_records USING btree (animal_id, record_date)"
+  },
+  {
+    "tablename": "goat_milk_records",
+    "indexname": "goat_milk_records_animal_id_record_date_key",
+    "indexdef": "CREATE UNIQUE INDEX goat_milk_records_animal_id_record_date_key ON public.goat_milk_records USING btree (animal_id, record_date)"
+  },
+  {
+    "tablename": "goat_milk_records",
+    "indexname": "goat_milk_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX goat_milk_records_pkey ON public.goat_milk_records USING btree (id)"
+  },
+  {
+    "tablename": "goat_milk_records",
+    "indexname": "idx_goat_milk_records_animal_id",
+    "indexdef": "CREATE INDEX idx_goat_milk_records_animal_id ON public.goat_milk_records USING btree (animal_id)"
+  },
+  {
+    "tablename": "health_records",
+    "indexname": "health_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX health_records_pkey ON public.health_records USING btree (id)"
+  },
+  {
+    "tablename": "health_records",
+    "indexname": "idx_health_records_cow_id",
+    "indexdef": "CREATE INDEX idx_health_records_cow_id ON public.health_records USING btree (cow_id)"
+  },
+  {
+    "tablename": "health_records",
+    "indexname": "idx_health_cow",
+    "indexdef": "CREATE INDEX idx_health_cow ON public.health_records USING btree (cow_id)"
+  },
+  {
+    "tablename": "kidding_lambing_records",
+    "indexname": "idx_kidding_lambing_dam_id",
+    "indexdef": "CREATE INDEX idx_kidding_lambing_dam_id ON public.kidding_lambing_records USING btree (dam_id)"
+  },
+  {
+    "tablename": "kidding_lambing_records",
+    "indexname": "kidding_lambing_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX kidding_lambing_records_pkey ON public.kidding_lambing_records USING btree (id)"
+  },
+  {
+    "tablename": "milk_records",
+    "indexname": "idx_milk_cow_date",
+    "indexdef": "CREATE INDEX idx_milk_cow_date ON public.milk_records USING btree (cow_id, record_date)"
+  },
+  {
+    "tablename": "milk_records",
+    "indexname": "idx_milk_records_cow_id",
+    "indexdef": "CREATE INDEX idx_milk_records_cow_id ON public.milk_records USING btree (cow_id)"
+  },
+  {
+    "tablename": "milk_records",
+    "indexname": "milk_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX milk_records_pkey ON public.milk_records USING btree (id)"
+  },
+  {
+    "tablename": "milk_records",
+    "indexname": "idx_milk_records_cow_record_date",
+    "indexdef": "CREATE INDEX idx_milk_records_cow_record_date ON public.milk_records USING btree (cow_id, record_date)"
+  },
+  {
+    "tablename": "milk_records",
+    "indexname": "idx_milk_records_record_date",
+    "indexdef": "CREATE INDEX idx_milk_records_record_date ON public.milk_records USING btree (record_date)"
+  },
+  {
+    "tablename": "milk_records",
+    "indexname": "milk_records_cow_id_record_date_key",
+    "indexdef": "CREATE UNIQUE INDEX milk_records_cow_id_record_date_key ON public.milk_records USING btree (cow_id, record_date)"
+  },
+  {
+    "tablename": "phone_otp_codes",
+    "indexname": "idx_phone_otp_expires",
+    "indexdef": "CREATE INDEX idx_phone_otp_expires ON public.phone_otp_codes USING btree (expires_at)"
+  },
+  {
+    "tablename": "phone_otp_codes",
+    "indexname": "phone_otp_codes_phone_number_key",
+    "indexdef": "CREATE UNIQUE INDEX phone_otp_codes_phone_number_key ON public.phone_otp_codes USING btree (phone_number)"
+  },
+  {
+    "tablename": "phone_otp_codes",
+    "indexname": "phone_otp_codes_pkey",
+    "indexdef": "CREATE UNIQUE INDEX phone_otp_codes_pkey ON public.phone_otp_codes USING btree (id)"
+  },
+  {
+    "tablename": "phone_otp_codes",
+    "indexname": "idx_phone_otp_phone",
+    "indexdef": "CREATE INDEX idx_phone_otp_phone ON public.phone_otp_codes USING btree (phone_number)"
+  },
+  {
+    "tablename": "small_ruminant_breeding",
+    "indexname": "idx_small_ruminant_breeding_dam",
+    "indexdef": "CREATE INDEX idx_small_ruminant_breeding_dam ON public.small_ruminant_breeding USING btree (dam_id)"
+  },
+  {
+    "tablename": "small_ruminant_breeding",
+    "indexname": "small_ruminant_breeding_pkey",
+    "indexdef": "CREATE UNIQUE INDEX small_ruminant_breeding_pkey ON public.small_ruminant_breeding USING btree (id)"
+  },
+  {
+    "tablename": "small_ruminant_breeding",
+    "indexname": "idx_small_ruminant_breeding_dam_id",
+    "indexdef": "CREATE INDEX idx_small_ruminant_breeding_dam_id ON public.small_ruminant_breeding USING btree (dam_id)"
+  },
+  {
+    "tablename": "small_ruminant_health",
+    "indexname": "idx_small_ruminant_health_animal_id",
+    "indexdef": "CREATE INDEX idx_small_ruminant_health_animal_id ON public.small_ruminant_health USING btree (animal_id)"
+  },
+  {
+    "tablename": "small_ruminant_health",
+    "indexname": "idx_small_ruminant_health_animal",
+    "indexdef": "CREATE INDEX idx_small_ruminant_health_animal ON public.small_ruminant_health USING btree (animal_id)"
+  },
+  {
+    "tablename": "small_ruminant_health",
+    "indexname": "small_ruminant_health_pkey",
+    "indexdef": "CREATE UNIQUE INDEX small_ruminant_health_pkey ON public.small_ruminant_health USING btree (id)"
+  },
+  {
+    "tablename": "small_ruminant_sales",
+    "indexname": "small_ruminant_sales_pkey",
+    "indexdef": "CREATE UNIQUE INDEX small_ruminant_sales_pkey ON public.small_ruminant_sales USING btree (id)"
+  },
+  {
+    "tablename": "small_ruminant_sales",
+    "indexname": "idx_small_ruminant_sales_farm_id",
+    "indexdef": "CREATE INDEX idx_small_ruminant_sales_farm_id ON public.small_ruminant_sales USING btree (farm_id)"
+  },
+  {
+    "tablename": "small_ruminants",
+    "indexname": "small_ruminants_animal_tag_key",
+    "indexdef": "CREATE UNIQUE INDEX small_ruminants_animal_tag_key ON public.small_ruminants USING btree (animal_tag)"
+  },
+  {
+    "tablename": "small_ruminants",
+    "indexname": "small_ruminants_qr_code_key",
+    "indexdef": "CREATE UNIQUE INDEX small_ruminants_qr_code_key ON public.small_ruminants USING btree (qr_code)"
+  },
+  {
+    "tablename": "small_ruminants",
+    "indexname": "idx_small_ruminants_farm",
+    "indexdef": "CREATE INDEX idx_small_ruminants_farm ON public.small_ruminants USING btree (farm_id)"
+  },
+  {
+    "tablename": "small_ruminants",
+    "indexname": "idx_small_ruminants_status",
+    "indexdef": "CREATE INDEX idx_small_ruminants_status ON public.small_ruminants USING btree (status)"
+  },
+  {
+    "tablename": "small_ruminants",
+    "indexname": "idx_small_ruminants_farm_id",
+    "indexdef": "CREATE INDEX idx_small_ruminants_farm_id ON public.small_ruminants USING btree (farm_id)"
+  },
+  {
+    "tablename": "small_ruminants",
+    "indexname": "small_ruminants_pkey",
+    "indexdef": "CREATE UNIQUE INDEX small_ruminants_pkey ON public.small_ruminants USING btree (id)"
+  },
+  {
+    "tablename": "vet_visits",
+    "indexname": "vet_visits_pkey",
+    "indexdef": "CREATE UNIQUE INDEX vet_visits_pkey ON public.vet_visits USING btree (id)"
+  },
+  {
+    "tablename": "vet_visits",
+    "indexname": "idx_vet_visits_farm_id",
+    "indexdef": "CREATE INDEX idx_vet_visits_farm_id ON public.vet_visits USING btree (farm_id)"
+  },
+  {
+    "tablename": "weight_records",
+    "indexname": "weight_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX weight_records_pkey ON public.weight_records USING btree (id)"
+  },
+  {
+    "tablename": "weight_records",
+    "indexname": "idx_weight_records_animal_id",
+    "indexdef": "CREATE INDEX idx_weight_records_animal_id ON public.weight_records USING btree (animal_id)"
+  },
+  {
+    "tablename": "whatsapp_messages",
+    "indexname": "idx_whatsapp_messages_farm_id",
+    "indexdef": "CREATE INDEX idx_whatsapp_messages_farm_id ON public.whatsapp_messages USING btree (farm_id)"
+  },
+  {
+    "tablename": "whatsapp_messages",
+    "indexname": "whatsapp_messages_pkey",
+    "indexdef": "CREATE UNIQUE INDEX whatsapp_messages_pkey ON public.whatsapp_messages USING btree (id)"
+  },
+  {
+    "tablename": "whatsapp_messages",
+    "indexname": "idx_whatsapp_farm",
+    "indexdef": "CREATE INDEX idx_whatsapp_farm ON public.whatsapp_messages USING btree (farm_id)"
+  },
+  {
+    "tablename": "whatsapp_messages",
+    "indexname": "idx_whatsapp_phone",
+    "indexdef": "CREATE INDEX idx_whatsapp_phone ON public.whatsapp_messages USING btree (sender_phone)"
+  },
+  {
+    "tablename": "whatsapp_messages",
+    "indexname": "idx_whatsapp_created",
+    "indexdef": "CREATE INDEX idx_whatsapp_created ON public.whatsapp_messages USING btree (created_at)"
+  }
+]
+
+
+-- ============================================
+-- 6. SAMPLE DATA (CRITICAL FOR SEMANTICS)
+-- (LIMITED TO KEY TABLES - EDIT IF NEEDED)
+-- ============================================
+
+-- Farms
+SELECT * FROM public.farms LIMIT 5;
+
+-- Coffee Plots
+SELECT * FROM public.coffee_plots LIMIT 5;
+
+-- Activities
+SELECT * FROM public.coffee_activities LIMIT 5;
+
+-- Harvests
+SELECT * FROM public.coffee_harvests LIMIT 5;
+
+-- Revenue (if exists)
+SELECT * FROM public.coffee_revenue_summary LIMIT 5;
+
+[
+  {
+    "farm_id": "d2db4dd9-4da0-49ed-bae8-dd86fc42f688",
+    "harvest_year": "2024",
+    "total_harvests": 3,
+    "total_revenue": "193800",
+    "avg_revenue_per_harvest": "64600.000000000000"
+  }
+]

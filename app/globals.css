@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+  /* Obsidian Theme Palette */
+  --color-obsidian: #0A0C10;
+  --color-deep-slate: #161B22;
+  --color-emerald-glow: #10B981;
+  --color-gold-harvest: #FBBF24;
+  --color-crimson-alert: #EF4444;
+  
+  /* Brand Colors */
+  --color-primary-50: #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-500: #10B981;
+  --color-primary-600: #059669;
+  --color-primary-700: #047857;
+  
+  --color-coffee-500: #8B4513;
+  --color-coffee-600: #723A10;
+  --color-coffee-700: #5D2F0D;
+}
+
+:root {
+  --background: #0A0C10;
+  --foreground: #F0F6FC;
+  --card: #161B22;
+  --border: rgba(255, 255, 255, 0.1);
+  --ring: #10B981;
+}
+
+body {
+  color: var(--foreground);
+  background-color: var(--background);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .glass-card {
+    background: rgba(22, 27, 34, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .glow-emerald {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+  }
+
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .premium-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Custom Scrollbar for Obsidian Theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: #30363D;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #484F58;
+}

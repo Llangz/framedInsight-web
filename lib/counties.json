@@ -1,0 +1,190 @@
+[
+  {
+    "id": "county_isiolo",
+    "name": "Isiolo"
+  },
+  {
+    "id": "county_migori",
+    "name": "Migori"
+  },
+  {
+    "id": "county_machakos",
+    "name": "Machakos"
+  },
+  {
+    "id": "county_homa-bay",
+    "name": "Homa Bay"
+  },
+  {
+    "id": "county_vihiga",
+    "name": "Vihiga"
+  },
+  {
+    "id": "county_bungoma",
+    "name": "Bungoma"
+  },
+  {
+    "id": "county_kakamega",
+    "name": "Kakamega"
+  },
+  {
+    "id": "county_mombasa",
+    "name": "Mombasa"
+  },
+  {
+    "id": "county_kericho",
+    "name": "Kericho"
+  },
+  {
+    "id": "county_tana-river",
+    "name": "Tana River"
+  },
+  {
+    "id": "county_lamu",
+    "name": "Lamu"
+  },
+  {
+    "id": "county_taita-taveta",
+    "name": "Taita Taveta"
+  },
+  {
+    "id": "county_garissa",
+    "name": "Garissa"
+  },
+  {
+    "id": "county_wajir",
+    "name": "Wajir"
+  },
+  {
+    "id": "county_busia",
+    "name": "Busia"
+  },
+  {
+    "id": "county_mandera",
+    "name": "Mandera"
+  },
+  {
+    "id": "county_marsabit",
+    "name": "Marsabit"
+  },
+  {
+    "id": "county_meru",
+    "name": "Meru"
+  },
+  {
+    "id": "county_tharaka-nithi",
+    "name": "Tharaka-Nithi"
+  },
+  {
+    "id": "county_nyandarua",
+    "name": "Nyandarua"
+  },
+  {
+    "id": "county_kitui",
+    "name": "Kitui"
+  },
+  {
+    "id": "county_nyeri",
+    "name": "Nyeri"
+  },
+  {
+    "id": "county_turkana",
+    "name": "Turkana"
+  },
+  {
+    "id": "county_west-pokot",
+    "name": "West Pokot"
+  },
+  {
+    "id": "county_samburu",
+    "name": "Samburu"
+  },
+  {
+    "id": "county_kilifi",
+    "name": "Kilifi"
+  },
+  {
+    "id": "county_makueni",
+    "name": "Makueni"
+  },
+  {
+    "id": "county_kirinyaga",
+    "name": "Kirinyaga"
+  },
+  {
+    "id": "county_muranga",
+    "name": "Muranga"
+  },
+  {
+    "id": "county_nakuru",
+    "name": "Nakuru"
+  },
+  {
+    "id": "county_uasin-gishu",
+    "name": "Uasin Gishu"
+  },
+  {
+    "id": "county_nairobi",
+    "name": "Nairobi"
+  },
+  {
+    "id": "county_narok",
+    "name": "Narok"
+  },
+  {
+    "id": "county_trans-nzoia",
+    "name": "Trans Nzoia"
+  },
+  {
+    "id": "county_kiambu",
+    "name": "Kiambu"
+  },
+  {
+    "id": "county_siaya",
+    "name": "Siaya"
+  },
+  {
+    "id": "county_kwale",
+    "name": "Kwale"
+  },
+  {
+    "id": "county_elgeyo-marakwet",
+    "name": "Elgeyo-Marakwet"
+  },
+  {
+    "id": "county_bomet",
+    "name": "Bomet"
+  },
+  {
+    "id": "county_kisii",
+    "name": "Kisii"
+  },
+  {
+    "id": "county_nandi",
+    "name": "Nandi"
+  },
+  {
+    "id": "county_embu",
+    "name": "Embu"
+  },
+  {
+    "id": "county_baringo",
+    "name": "Baringo"
+  },
+  {
+    "id": "county_laikipia",
+    "name": "Laikipia"
+  },
+  {
+    "id": "county_kajiado",
+    "name": "Kajiado"
+  },
+  {
+    "id": "county_kisumu",
+    "name": "Kisumu"
+  },
+  {
+    "id": "county_nyamira",
+    "name": "Nyamira"
+  }
+]

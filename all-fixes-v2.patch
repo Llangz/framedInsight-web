@@ -1,0 +1,359 @@
+diff --git a/app/api/ai/livestock-warnings/dairy/route.ts b/app/api/ai/livestock-warnings/dairy/route.ts
+index 90da618..fa91878 100644
+--- a/app/api/ai/livestock-warnings/dairy/route.ts
++++ b/app/api/ai/livestock-warnings/dairy/route.ts
+@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
+     // Fetch cows
+     const { data: cows } = await supabase
+       .from('cows')
+-      .select('id, cow_tag, name, status, dry_off_date, expected_calving_date, last_calving_date')
++      .select('id, cow_tag, name, status, birth_date, purpose')
+       .eq('farm_id', fm.farm_id)
+       .eq('status', 'active')
+     if (!cows?.length) return NextResponse.json({ warnings: [] })
+@@ -105,10 +105,10 @@ export async function POST(req: NextRequest) {
+         cowId: cow.id,
+         cowTag: cow.cow_tag || cow.name || 'Unknown',
+         cowName: cow.name,
+-        dryOffDate: cow.dry_off_date,
+-        expectedCalvingDate: cow.expected_calving_date,
+-        lastCalvingDate: cow.last_calving_date,
+-        isInDryPeriod: cow.dry_off_date && cow.dry_off_date <= today,
++        dryOffDate: lastBreeding?.expected_calving_date || null,
++        expectedCalvingDate: lastBreeding?.expected_calving_date || null,
++        lastCalvingDate: lastBreeding?.service_date || null,
++        isInDryPeriod: false,
+         last7DayAvgMilk: avg7 ? parseFloat(avg7.toFixed(2)) : null,
+         prev7DayAvgMilk: avg7prev ? parseFloat(avg7prev.toFixed(2)) : null,
+         milkChangePct: avg7 && avg7prev ? parseFloat((((avg7 - avg7prev) / avg7prev) * 100).toFixed(1)) : null,
+diff --git a/app/api/ai/livestock-warnings/small-ruminants/route.ts b/app/api/ai/livestock-warnings/small-ruminants/route.ts
+index 6a92fd1..c6345dc 100644
+--- a/app/api/ai/livestock-warnings/small-ruminants/route.ts
++++ b/app/api/ai/livestock-warnings/small-ruminants/route.ts
+@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
+ 
+     const { data: animals } = await supabase
+       .from('small_ruminants')
+-      .select('id, animal_tag, name, species, sex, date_of_birth, status')
++      .select('id, animal_tag, name, species, sex, birth_date, status')
+       .eq('farm_id', fm.farm_id)
+       .eq('status', 'active')
+     if (!animals?.length) return NextResponse.json({ warnings: [] })
+@@ -67,17 +67,17 @@ export async function POST(req: NextRequest) {
+     // Weight records (last 90 days)
+     const { data: weightRecords } = await supabase
+       .from('weight_records')
+-      .select('animal_id, weight_date, weight_kg')
++      .select('animal_id, record_date, weight_kg')
+       .in('animal_id', allIds)
+-      .gte('weight_date', ninetyDaysAgo)
+-      .order('weight_date', { ascending: false })
++      .gte('record_date', ninetyDaysAgo)
++      .order('record_date', { ascending: false })
+ 
+     // Breeding/kidding records
+     const { data: breedingRecords } = await supabase
+       .from('kidding_lambing_records')
+-      .select('dam_id, event_date, num_born, expected_date')
++      .select('dam_id, delivery_date, number_of_offspring')
+       .in('dam_id', femaleIds)
+-      .order('event_date', { ascending: false })
++      .order('delivery_date', { ascending: false })
+ 
+     // Health events
+     const { data: healthEvents } = await supabase
+@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
+ 
+       // Estrus cycle: goats 17-21 days, sheep 16-17 days
+       const cycleDays = animal.species === 'sheep' ? 17 : 19
+-      const lastMatingDate = lastBreeding?.event_date || null
++      const lastMatingDate = lastBreeding?.delivery_date || null
+       const predictedHeatDate = lastMatingDate
+         ? new Date(new Date(lastMatingDate).getTime() + cycleDays * 86400000).toISOString().split('T')[0]
+         : null
+@@ -122,13 +122,13 @@ export async function POST(req: NextRequest) {
+         animalName: animal.name,
+         species: animal.species,
+         sex: animal.sex,
+-        ageMonths: animal.date_of_birth
+-          ? Math.floor((Date.now() - new Date(animal.date_of_birth).getTime()) / (30.44 * 86400000))
++        ageMonths: animal.birth_date
++          ? Math.floor((Date.now() - new Date(animal.birth_date).getTime()) / (30.44 * 86400000))
+           : null,
+         latestWeightKg: latestWeight,
+         weightChangePct90Days: weightChangePct,
+-        lastKiddingDate: lastBreeding?.event_date || null,
+-        expectedKiddingDate: lastBreeding?.expected_date || null,
++        lastKiddingDate: lastBreeding?.delivery_date || null,
++        expectedKiddingDate: null,
+         lastMatingDate,
+         predictedNextHeatDate: predictedHeatDate,
+         daysSinceLastHealth: lastHealth?.event_date
+diff --git a/app/api/coffee/diseases/route.ts b/app/api/coffee/diseases/route.ts
+index 73c9335..5685323 100644
+--- a/app/api/coffee/diseases/route.ts
++++ b/app/api/coffee/diseases/route.ts
+@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
+       return NextResponse.json({ error: 'No farm found' }, { status: 404 });
+     }
+ 
+-    // Insert disease record
++    // Insert disease record - mapped to actual schema columns
+     const { data: disease, error } = await supabase
+       .from('coffee_diseases')
+       .insert([
+@@ -122,17 +122,14 @@ export async function POST(req: NextRequest) {
+           farm_id: farmManager.farm_id,
+           plot_id: plotId,
+           detection_date: detectionDate,
+-          disease_type: diseaseType,
+-          severity,
+-          affected_area_percent: parseFloat(affectedArea),
+-          ai_diagnosis: aiDiagnosis,
+-          diagnosis_confidence: parseFloat(diagnosisConfidence),
+-          treatment,
+-          treatment_date: treatmentDate,
+-          chemical,
+-          dose_per_liter: dosePerLiter,
+-          notes,
+-          photo_url: photoUrl,
++          disease_name: diseaseType,
++          severity_level: severity,
++          affected_percentage: affectedArea ? parseFloat(affectedArea) : null,
++          ai_diagnosis: aiDiagnosis || null,
++          treatment_applied: treatment || null,
++          treatment_date: treatmentDate || null,
++          notes: [notes, chemical ? `Chemical: ${chemical}` : null, dosePerLiter ? `Dose: ${dosePerLiter}/L` : null].filter(Boolean).join('. ') || null,
++          photo_url: photoUrl || null,
+           created_at: new Date().toISOString(),
+         },
+       ])
+diff --git a/app/api/coffee/eudr/route.ts b/app/api/coffee/eudr/route.ts
+index 9a31e34..e2c81a5 100644
+--- a/app/api/coffee/eudr/route.ts
++++ b/app/api/coffee/eudr/route.ts
+@@ -42,18 +42,18 @@ export async function GET(req: NextRequest) {
+     // Get all plots with EUDR status
+     const { data: plots, error } = await supabase
+       .from('coffee_plots')
+-      .select('id, plot_name, area_hectares, eudr_compliant, eudr_documents_submitted, eudr_deforestation_risk')
++      .select('id, plot_name, area_hectares, eudr_risk_level, eudr_risk_details, eudr_risk_assessed_at')
+       .eq('farm_id', farmManager.farm_id);
+ 
+     if (error) throw error;
+ 
+     const totalPlots = plots?.length || 0;
+-    const compliantPlots = plots?.filter(p => p.eudr_compliant).length || 0;
++    const compliantPlots = plots?.filter(p => p.eudr_risk_level === "low").length || 0;
+     const compliancePercentage = totalPlots > 0 ? ((compliantPlots / totalPlots) * 100).toFixed(1) : 0;
+ 
+     const requiredDocuments = ['GPS_Coordinates', 'Forest_Cover_Map', 'Land_Title_Deed', 'Proof_of_Origin'];
+     const missingDocuments = plots?.flatMap(plot =>
+-      requiredDocuments.filter(doc => !(plot.eudr_documents_submitted?.includes(doc) || false))
++      requiredDocuments.filter(doc => !(plot.eudr_risk_details?.includes(doc) || false))
+     ) || [];
+ 
+     return NextResponse.json({
+@@ -129,13 +129,10 @@ export async function POST(req: NextRequest) {
+     const { data: updated, error } = await supabase
+       .from('coffee_plots')
+       .update({
+-        eudr_documents_submitted: updatedDocs,
+-        eudr_document_urls: {
+-          ...(plot?.eudr_document_urls || {}),
+-          [documentType]: documentUrl,
+-        },
+-        eudr_deforestation_risk: deforestationRisk,
+-        eudr_compliant: updatedDocs.length === 4, // All 4 required docs
++        eudr_risk_level: deforestationRisk || null,
++        eudr_risk_details: JSON.stringify({ documents: updatedDocs, [documentType]: documentUrl }),
++        land_ownership_doc_url: documentType === 'land_ownership' ? documentUrl : undefined,
++        eudr_risk_assessed_at: new Date().toISOString(),
+       })
+       .eq('id', plotId)
+       .select()
+diff --git a/app/api/coffee/plots/route.ts b/app/api/coffee/plots/route.ts
+index 2514d2a..83092f5 100644
+--- a/app/api/coffee/plots/route.ts
++++ b/app/api/coffee/plots/route.ts
+@@ -101,21 +101,20 @@ export async function POST(req: NextRequest) {
+       return NextResponse.json({ error: 'No farm found' }, { status: 404 });
+     }
+ 
+-    // Insert new plot
++    // Insert new plot - only schema-valid columns
+     const { data: plot, error } = await supabase
+       .from('coffee_plots')
+       .insert([
+         {
+           farm_id: farmManager.farm_id,
+           plot_name: plotName,
+-          area_hectares: parseFloat(areaHectares),
+-          variety,
+-          ownership_type: ownershipType,
+-          latitude,
+-          longitude,
+-          gps_coordinates: gpsCoordinates,
+-          eudr_compliant: false,
+-          eudr_documents_submitted: [],
++          area_hectares: areaHectares ? parseFloat(areaHectares) : null,
++          variety: variety || null,
++          land_ownership_type: ownershipType || null,
++          gps_latitude: latitude || null,
++          gps_longitude: longitude || null,
++          gps_polygon: gpsCoordinates || null,
++          plant_status: 'active',
+           created_at: new Date().toISOString(),
+         },
+       ])
+diff --git a/app/dashboard/coffee/activities/record/page.tsx b/app/dashboard/coffee/activities/record/page.tsx
+index f27b67c..a645eaa 100644
+--- a/app/dashboard/coffee/activities/record/page.tsx
++++ b/app/dashboard/coffee/activities/record/page.tsx
+@@ -410,7 +410,7 @@ function RecordActivityForm() {
+         }
+       })
+ 
+-      const { error } = await supabase.from('coffee_activities').insert(records)
++      const { error } = await supabase.from('coffee_activities').insert(records as any)
+       if (error) throw error
+ 
+       setSubmitSuccess(true)
+diff --git a/app/dashboard/coffee/add-plot/page.tsx b/app/dashboard/coffee/add-plot/page.tsx
+index 08d89a0..f0401a8 100644
+--- a/app/dashboard/coffee/add-plot/page.tsx
++++ b/app/dashboard/coffee/add-plot/page.tsx
+@@ -70,30 +70,29 @@ export default function AddCoffeePlotPage() {
+ 
+       if (!farmManager) throw new Error('No farm found')
+ 
+-      // Insert coffee plot
++      // Insert coffee plot - only schema-valid columns
+       const { data, error: insertError } = await supabase
+         .from('coffee_plots')
+         .insert([{
+           farm_id: farmManager.farm_id,
+           plot_name: formData.plotName,
+-          variety: formData.variety,
+-          plot_size_acres: parseFloat(formData.plotSize),
+-          num_plants: parseInt(formData.numPlants),
+-          altitude_m: formData.altitude ? parseInt(formData.altitude) : null,
+-          shade_tree_percentage: parseFloat(formData.shadePercentage),
+-          last_pruning_date: formData.lastPruningDate || null,
+-          coordinates: {
+-            lat: null,
+-            lng: null
+-          },
+-          status: 'active',
++          variety: formData.variety || null,
++          area_hectares: formData.plotSize
++            ? parseFloat(formData.plotSize) * 0.404686
++            : null,
++          total_trees: formData.numPlants ? parseInt(formData.numPlants) : undefined,
++          region_name: formData.ward || formData.constituency || formData.county || null,
++          plant_status: 'active',
++          notes: [
++            formData.altitude ? `Altitude: ${formData.altitude}m` : null,
++            formData.shadePercentage ? `Shade: ${formData.shadePercentage}%` : null,
++            formData.lastPruningDate ? `Last pruning: ${formData.lastPruningDate}` : null,
++          ].filter(Boolean).join(', ') || null,
+         }])
+         .select()
+ 
+       if (insertError) throw insertError
+ 
+-      // TODO: Also create associated blank EUDR compliance record
+-
+       router.push('/dashboard/coffee')
+       router.refresh()
+     } catch (err) {
+diff --git a/app/dashboard/coffee/record-harvest/page.tsx b/app/dashboard/coffee/record-harvest/page.tsx
+index e992594..bf164e4 100644
+--- a/app/dashboard/coffee/record-harvest/page.tsx
++++ b/app/dashboard/coffee/record-harvest/page.tsx
+@@ -62,7 +62,7 @@ export default function RecordHarvestPage() {
+         .from('coffee_plots')
+         .select('id, plot_name, variety')
+         .eq('farm_id', farmManager.farm_id)
+-        .eq('status', 'active')
++        .eq('plant_status', 'active')
+ 
+       if (cpError) throw cpError
+ 
+diff --git a/app/dashboard/coffee/report-disease/page.tsx b/app/dashboard/coffee/report-disease/page.tsx
+index 7611318..0c356ea 100644
+--- a/app/dashboard/coffee/report-disease/page.tsx
++++ b/app/dashboard/coffee/report-disease/page.tsx
+@@ -65,7 +65,7 @@ export default function ReportDiseasePage() {
+         .from('coffee_plots')
+         .select('id, plot_name, variety')
+         .eq('farm_id', farmManager.farm_id)
+-        .eq('status', 'active')
++        .eq('plant_status', 'active')
+ 
+       if (cpError) throw cpError
+ 
+diff --git a/app/dashboard/coffee/satellite/page.tsx b/app/dashboard/coffee/satellite/page.tsx
+index f17ee6b..39b81c2 100644
+--- a/app/dashboard/coffee/satellite/page.tsx
++++ b/app/dashboard/coffee/satellite/page.tsx
+@@ -455,12 +455,13 @@ export default function CoffeeSatellitePage() {
+       const validPlots = (plotData ?? []).filter(plot => plot.plot_id !== null) as PlotSatelliteHealth[];
+       setPlots(validPlots);
+ 
+-      // NDVI trends for sparklines
+-      const { data: trendData } = await supabase
++      // NDVI trends for sparklines (v_plot_ndvi_trend has no farm_id - filter by plot_ids)
++      const plotIds = validPlots.map(p => p.plot_id).filter(Boolean) as string[];
++      const { data: trendData } = plotIds.length > 0 ? await supabase
+         .from("v_plot_ndvi_trend")
+         .select("*")
+-        .eq("farm_id", fId)
+-        .order("image_date", { ascending: true });
++        .in("plot_id", plotIds)
++        .order("image_date", { ascending: true }) : { data: [] };
+ 
+       const trendMap: Record<string, TrendPoint[]> = {};
+       ((trendData ?? []).filter(t => t.plot_id !== null) as TrendPoint[]).forEach((t: TrendPoint) => {
+diff --git a/lib/event-sourcing.ts b/lib/event-sourcing.ts
+index d6ba2ae..fa8179a 100644
+--- a/lib/event-sourcing.ts
++++ b/lib/event-sourcing.ts
+@@ -197,16 +197,17 @@ export class EventStore {
+    * Idempotent event recording (prevent duplicates on sync retry)
+    */
+   async recordEventIdempotent(event: FarmEvent & { idempotency_key: string }) {
+-    // Check if already recorded
++    // Use idempotency_key as event id for deduplication (farm_events has no separate idempotency_key column)
++    const eventId = event.idempotency_key
+     const { data: existing } = await supabase
+       .from('farm_events')
+       .select('id')
+-      .eq('idempotency_key', event.idempotency_key)
++      .eq('id', eventId)
+       .maybeSingle()
+ 
+     if (existing) return existing // already recorded, skip
+ 
+-    return this.recordEvent(event)
++    return this.recordEvent({ ...event, id: eventId } as any)
+   }
+ }
+ 
+diff --git a/lib/offline-sync-crdt.ts b/lib/offline-sync-crdt.ts
+index 24de772..e84c326 100644
+--- a/lib/offline-sync-crdt.ts
++++ b/lib/offline-sync-crdt.ts
+@@ -132,10 +132,8 @@ export class OfflineSyncManager {
+ 
+       if (resolved) {
+         // Auto-resolved using CRDT
+-        await supabase
+-          .from('farm_operations')
+-          .update({ [conflict.field]: resolved.merged_value })
+-          .eq('id', conflict.entity_id)
++        // farm_operations table does not exist in schema; skip auto-apply or handle per entity_type
++        console.warn('CRDT auto-resolve: table farm_operations not in schema. Conflict skipped:', conflict.entity_id)
+       } else {
+         // Needs human decision
+         unresolved.push(conflict)

@@ -1,0 +1,1512 @@
+[
+  {
+    "id": "const_isiolo-sub-county",
+    "name": "Isiolo Sub County",
+    "county_id": "county_isiolo"
+  },
+  {
+    "id": "const_rongo-sub-county",
+    "name": "Rongo Sub County",
+    "county_id": "county_migori"
+  },
+  {
+    "id": "const_awendo-sub-county",
+    "name": "Awendo Sub County",
+    "county_id": "county_migori"
+  },
+  {
+    "id": "const_suna-east-sub-county",
+    "name": "Suna East Sub County",
+    "county_id": "county_migori"
+  },
+  {
+    "id": "const_suna-west-sub-county",
+    "name": "Suna West Sub County",
+    "county_id": "county_migori"
+  },
+  {
+    "id": "const_uriri-sub-county",
+    "name": "Uriri Sub County",
+    "county_id": "county_migori"
+  },
+  {
+    "id": "const_nyatike-sub-county",
+    "name": "Nyatike Sub County",
+    "county_id": "county_migori"
+  },
+  {
+    "id": "const_kuria-west-sub-county",
+    "name": "Kuria West Sub County",
+    "county_id": "county_migori"
+  },
+  {
+    "id": "const_kuria-east-sub-county",
+    "name": "Kuria East Sub County",
+    "county_id": "county_migori"
+  },
+  {
+    "id": "const_athi-river-sub-county",
+    "name": "Athi River Sub County",
+    "county_id": "county_machakos"
+  },
+  {
+    "id": "const_machakos-sub-county",
+    "name": "Machakos Sub County",
+    "county_id": "county_machakos"
+  },
+  {
+    "id": "const_mwala-sub-county",
+    "name": "Mwala Sub County",
+    "county_id": "county_machakos"
+  },
+  {
+    "id": "const_kasipul-sub-county",
+    "name": "Kasipul Sub County",
+    "county_id": "county_homa-bay"
+  },
+  {
+    "id": "const_kabondo-kasipul-sub-county",
+    "name": "Kabondo Kasipul Sub County",
+    "county_id": "county_homa-bay"
+  },
+  {
+    "id": "const_karachuonyo-sub-county",
+    "name": "Karachuonyo Sub County",
+    "county_id": "county_homa-bay"
+  },
+  {
+    "id": "const_rangwe-sub-county",
+    "name": "Rangwe Sub County",
+    "county_id": "county_homa-bay"
+  },
+  {
+    "id": "const_homa-bay-town-sub-county",
+    "name": "Homa Bay Town Sub County",
+    "county_id": "county_homa-bay"
+  },
+  {
+    "id": "const_ndhiwa-sub-county",
+    "name": "Ndhiwa Sub County",
+    "county_id": "county_homa-bay"
+  },
+  {
+    "id": "const_mbita-sub-county",
+    "name": "Mbita Sub County",
+    "county_id": "county_homa-bay"
+  },
+  {
+    "id": "const_sabatia-sub-county",
+    "name": "Sabatia Sub County",
+    "county_id": "county_vihiga"
+  },
+  {
+    "id": "const_hamisi-sub-county",
+    "name": "Hamisi Sub County",
+    "county_id": "county_vihiga"
+  },
+  {
+    "id": "const_luanda-sub-county",
+    "name": "Luanda Sub County",
+    "county_id": "county_vihiga"
+  },
+  {
+    "id": "const_emuhaya-sub-county",
+    "name": "Emuhaya Sub County",
+    "county_id": "county_vihiga"
+  },
+  {
+    "id": "const_vihiga-sub-county",
+    "name": "Vihiga Sub County",
+    "county_id": "county_vihiga"
+  },
+  {
+    "id": "const_cheptais-sub-county",
+    "name": "Cheptais Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_mt-elgon-sub-county",
+    "name": "Mt Elgon Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_sirisia-sub-county",
+    "name": "Sirisia Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_kabuchai-sub-county",
+    "name": "Kabuchai Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_bumula-sub-county",
+    "name": "Bumula Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_kanduyi-sub-county",
+    "name": "Kanduyi Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_webuye-west-sub-county",
+    "name": "Webuye West Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_kimilili-sub-county",
+    "name": "Kimilili Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_tongaren-sub-county",
+    "name": "Tongaren Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_lugari-sub-county",
+    "name": "Lugari Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_likuyani-sub-county",
+    "name": "Likuyani Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_malava-sub-county",
+    "name": "Malava Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_lurambi-sub-county",
+    "name": "Lurambi Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_navakholo-sub-county",
+    "name": "Navakholo Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_mumias-west-sub-county",
+    "name": "Mumias West Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_changamwe-sub-county",
+    "name": "Changamwe Sub County",
+    "county_id": "county_mombasa"
+  },
+  {
+    "id": "const_ainamoi",
+    "name": "Ainamoi",
+    "county_id": "county_kericho"
+  },
+  {
+    "id": "const_galole-sub-county",
+    "name": "Galole Sub County",
+    "county_id": "county_tana-river"
+  },
+  {
+    "id": "const_lamu-east",
+    "name": "Lamu East",
+    "county_id": "county_lamu"
+  },
+  {
+    "id": "const_lamu-west",
+    "name": "Lamu West",
+    "county_id": "county_lamu"
+  },
+  {
+    "id": "const_bura-sub-county",
+    "name": "Bura Sub County",
+    "county_id": "county_tana-river"
+  },
+  {
+    "id": "const_mumias-east-sub-county",
+    "name": "Mumias East Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_matungu-sub-county",
+    "name": "Matungu Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_taveta-sub-county",
+    "name": "Taveta Sub County",
+    "county_id": "county_taita-taveta"
+  },
+  {
+    "id": "const_wundanyi-sub-county",
+    "name": "Wundanyi Sub County",
+    "county_id": "county_taita-taveta"
+  },
+  {
+    "id": "const_masinga-sub-county",
+    "name": "Masinga Sub County",
+    "county_id": "county_machakos"
+  },
+  {
+    "id": "const_yatta-sub-county",
+    "name": "Yatta Sub County",
+    "county_id": "county_machakos"
+  },
+  {
+    "id": "const_kangundo-sub-county",
+    "name": "Kangundo Sub County",
+    "county_id": "county_machakos"
+  },
+  {
+    "id": "const_matungulu-sub-county",
+    "name": "Matungulu Sub County",
+    "county_id": "county_machakos"
+  },
+  {
+    "id": "const_kathiani-sub-county",
+    "name": "Kathiani Sub County",
+    "county_id": "county_machakos"
+  },
+  {
+    "id": "const_garissa-sub-county",
+    "name": "Garissa Sub County",
+    "county_id": "county_garissa"
+  },
+  {
+    "id": "const_suba-sub-county",
+    "name": "Suba Sub County",
+    "county_id": "county_homa-bay"
+  },
+  {
+    "id": "const_balambala-sub-county",
+    "name": "Balambala Sub County",
+    "county_id": "county_garissa"
+  },
+  {
+    "id": "const_lagdera-sub-county",
+    "name": "Lagdera Sub County",
+    "county_id": "county_garissa"
+  },
+  {
+    "id": "const_fafi-sub-county",
+    "name": "Fafi Sub County",
+    "county_id": "county_garissa"
+  },
+  {
+    "id": "const_hulugho-sub-county",
+    "name": "Hulugho Sub County",
+    "county_id": "county_garissa"
+  },
+  {
+    "id": "const_wajir-north-sub-county",
+    "name": "Wajir North Sub County",
+    "county_id": "county_wajir"
+  },
+  {
+    "id": "const_wajir-east-sub-county",
+    "name": "Wajir East Sub County",
+    "county_id": "county_wajir"
+  },
+  {
+    "id": "const_tarbaj-sub-county",
+    "name": "Tarbaj Sub County",
+    "county_id": "county_wajir"
+  },
+  {
+    "id": "const_mwatate-sub-county",
+    "name": "Mwatate Sub County",
+    "county_id": "county_taita-taveta"
+  },
+  {
+    "id": "const_wajir-west-sub-county",
+    "name": "Wajir West Sub County",
+    "county_id": "county_wajir"
+  },
+  {
+    "id": "const_jomvu-sub-county",
+    "name": "Jomvu Sub County",
+    "county_id": "county_mombasa"
+  },
+  {
+    "id": "const_khwisero-sub-county",
+    "name": "Khwisero Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_nambale-sub-county",
+    "name": "Nambale Sub County",
+    "county_id": "county_busia"
+  },
+  {
+    "id": "const_matayos-sub-county",
+    "name": "Matayos Sub County",
+    "county_id": "county_busia"
+  },
+  {
+    "id": "const_mandera-north",
+    "name": "Mandera North",
+    "county_id": "county_mandera"
+  },
+  {
+    "id": "const_mandera-south",
+    "name": "Mandera South",
+    "county_id": "county_mandera"
+  },
+  {
+    "id": "const_mandera-east",
+    "name": "Mandera East",
+    "county_id": "county_mandera"
+  },
+  {
+    "id": "const_moyale",
+    "name": "Moyale",
+    "county_id": "county_marsabit"
+  },
+  {
+    "id": "const_north-horr",
+    "name": "North Horr",
+    "county_id": "county_marsabit"
+  },
+  {
+    "id": "const_saku",
+    "name": "Saku",
+    "county_id": "county_marsabit"
+  },
+  {
+    "id": "const_laisamis",
+    "name": "Laisamis",
+    "county_id": "county_marsabit"
+  },
+  {
+    "id": "const_igembe-south-sub-county",
+    "name": "Igembe South Sub County",
+    "county_id": "county_meru"
+  },
+  {
+    "id": "const_igembe-central-sub-county",
+    "name": "Igembe Central Sub County",
+    "county_id": "county_meru"
+  },
+  {
+    "id": "const_igembe-north-sub-county",
+    "name": "Igembe North Sub County",
+    "county_id": "county_meru"
+  },
+  {
+    "id": "const_tigania-west-sub-county",
+    "name": "Tigania West Sub County",
+    "county_id": "county_meru"
+  },
+  {
+    "id": "const_tigania-east-sub-county",
+    "name": "Tigania East Sub County",
+    "county_id": "county_meru"
+  },
+  {
+    "id": "const_imenti-north-sub-county",
+    "name": "Imenti North Sub County",
+    "county_id": "county_meru"
+  },
+  {
+    "id": "const_buuri-sub-county",
+    "name": "Buuri Sub County",
+    "county_id": "county_meru"
+  },
+  {
+    "id": "const_imenti-central-sub-county",
+    "name": "Imenti Central Sub County",
+    "county_id": "county_meru"
+  },
+  {
+    "id": "const_imenti-south-sub-county",
+    "name": "Imenti South Sub County",
+    "county_id": "county_meru"
+  },
+  {
+    "id": "const_muthambi-sub-county",
+    "name": "Muthambi Sub County",
+    "county_id": "county_tharaka-nithi"
+  },
+  {
+    "id": "const_mwimbi-sub-county",
+    "name": "Mwimbi Sub County",
+    "county_id": "county_tharaka-nithi"
+  },
+  {
+    "id": "const_oljoroorok-sub-county",
+    "name": "Oljoroorok Sub County",
+    "county_id": "county_nyandarua"
+  },
+  {
+    "id": "const_mwingi-north-sub-county",
+    "name": "Mwingi North Sub County",
+    "county_id": "county_kitui"
+  },
+  {
+    "id": "const_mwingi-west-sub-county",
+    "name": "Mwingi West Sub County",
+    "county_id": "county_kitui"
+  },
+  {
+    "id": "const_mwingi-central-sub--county",
+    "name": "Mwingi Central Sub- County",
+    "county_id": "county_kitui"
+  },
+  {
+    "id": "const_nyeri-south-sub-county",
+    "name": "Nyeri South Sub County",
+    "county_id": "county_nyeri"
+  },
+  {
+    "id": "const_turkana-west-sub-county",
+    "name": "Turkana West Sub County",
+    "county_id": "county_turkana"
+  },
+  {
+    "id": "const_kitui-rural-sub-county",
+    "name": "Kitui Rural Sub County",
+    "county_id": "county_kitui"
+  },
+  {
+    "id": "const_kitui-central-sub-county",
+    "name": "Kitui Central Sub County",
+    "county_id": "county_kitui"
+  },
+  {
+    "id": "const_west-pokot-sub-county",
+    "name": "West Pokot Sub County",
+    "county_id": "county_west-pokot"
+  },
+  {
+    "id": "const_pokot-north-sub-county",
+    "name": "Pokot North Sub County",
+    "county_id": "county_west-pokot"
+  },
+  {
+    "id": "const_belgut-sub-county",
+    "name": "Belgut Sub County",
+    "county_id": "county_kericho"
+  },
+  {
+    "id": "const_samburu-central-sub-county",
+    "name": "Samburu Central Sub County",
+    "county_id": "county_samburu"
+  },
+  {
+    "id": "const_kitui-east-sub-county",
+    "name": "Kitui East Sub County",
+    "county_id": "county_kitui"
+  },
+  {
+    "id": "const_webuye-east-sub-county",
+    "name": "Webuye East Sub County",
+    "county_id": "county_bungoma"
+  },
+  {
+    "id": "const_kilifi-north-sub-county",
+    "name": "Kilifi North Sub County",
+    "county_id": "county_kilifi"
+  },
+  {
+    "id": "const_kitui-south-sub-county",
+    "name": "Kitui South Sub County",
+    "county_id": "county_kitui"
+  },
+  {
+    "id": "const_mbooni-sub-county",
+    "name": "Mbooni Sub County",
+    "county_id": "county_makueni"
+  },
+  {
+    "id": "const_kilome-sub-county",
+    "name": "Kilome Sub County",
+    "county_id": "county_makueni"
+  },
+  {
+    "id": "const_kaiti-sub-county",
+    "name": "Kaiti Sub County",
+    "county_id": "county_makueni"
+  },
+  {
+    "id": "const_makueni-sub-county",
+    "name": "Makueni Sub County",
+    "county_id": "county_makueni"
+  },
+  {
+    "id": "const_kibwezi-west-sub-county",
+    "name": "Kibwezi West Sub County",
+    "county_id": "county_makueni"
+  },
+  {
+    "id": "const_voi-sub-county",
+    "name": "Voi Sub County",
+    "county_id": "county_taita-taveta"
+  },
+  {
+    "id": "const_eldas-sub-county",
+    "name": "Eldas Sub County",
+    "county_id": "county_wajir"
+  },
+  {
+    "id": "const_mandera-west",
+    "name": "Mandera West",
+    "county_id": "county_mandera"
+  },
+  {
+    "id": "const_wajir-south-sub-county",
+    "name": "Wajir South Sub County",
+    "county_id": "county_wajir"
+  },
+  {
+    "id": "const_kilifi-south-sub-county",
+    "name": "Kilifi South Sub County",
+    "county_id": "county_kilifi"
+  },
+  {
+    "id": "const_butere-sub-county",
+    "name": "Butere Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_shinyalu-sub-county",
+    "name": "Shinyalu Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_ikolomani-sub-county",
+    "name": "Ikolomani Sub County",
+    "county_id": "county_kakamega"
+  },
+  {
+    "id": "const_teso-north-sub-county",
+    "name": "Teso North Sub County",
+    "county_id": "county_busia"
+  },
+  {
+    "id": "const_teso-south-sub-county",
+    "name": "Teso South Sub County",
+    "county_id": "county_busia"
+  },
+  {
+    "id": "const_kipipiri-sub-county",
+    "name": "Kipipiri Sub County",
+    "county_id": "county_nyandarua"
+  },
+  {
+    "id": "const_olkalou-sub-county",
+    "name": "Olkalou Sub County",
+    "county_id": "county_nyandarua"
+  },
+  {
+    "id": "const_butula-sub-county",
+    "name": "Butula Sub County",
+    "county_id": "county_busia"
+  },
+  {
+    "id": "const_mukurweini-sub-county",
+    "name": "Mukurweini Sub County",
+    "county_id": "county_nyeri"
+  },
+  {
+    "id": "const_nyeri-central-sub-county",
+    "name": "Nyeri Central Sub County",
+    "county_id": "county_nyeri"
+  },
+  {
+    "id": "const_kirinyaga-northmwea-west-sub-county",
+    "name": "Kirinyaga Northmwea West Sub County",
+    "county_id": "county_kirinyaga"
+  },
+  {
+    "id": "const_kirinyaga-south-sub-county",
+    "name": "Kirinyaga South Sub County",
+    "county_id": "county_kirinyaga"
+  },
+  {
+    "id": "const_kirinyaga-east-sub-county",
+    "name": "Kirinyaga East Sub County",
+    "county_id": "county_kirinyaga"
+  },
+  {
+    "id": "const_kirinyaga-west-sub-county",
+    "name": "Kirinyaga West Sub County",
+    "county_id": "county_kirinyaga"
+  },
+  {
+    "id": "const_samia-sub-county",
+    "name": "Samia Sub County",
+    "county_id": "county_busia"
+  },
+  {
+    "id": "const_mathioya-sub-county",
+    "name": "Mathioya Sub County",
+    "county_id": "county_muranga"
+  },
+  {
+    "id": "const_kiharu-sub-county",
+    "name": "Kiharu Sub County",
+    "county_id": "county_muranga"
+  },
+  {
+    "id": "const_molo-sub-county",
+    "name": "Molo Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_njoro-sub-county",
+    "name": "Njoro Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_naivasha-sub-county",
+    "name": "Naivasha Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_kigumo-sub-county",
+    "name": "Kigumo Sub County",
+    "county_id": "county_muranga"
+  },
+  {
+    "id": "const_kuresoi-south-sub-county",
+    "name": "Kuresoi South Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_turkana-north-sub-county",
+    "name": "Turkana North Sub County",
+    "county_id": "county_turkana"
+  },
+  {
+    "id": "const_kibish-sub-county",
+    "name": "Kibish Sub County",
+    "county_id": "county_turkana"
+  },
+  {
+    "id": "const_muranga-south-sub-county",
+    "name": "Muranga South Sub County",
+    "county_id": "county_muranga"
+  },
+  {
+    "id": "const_kandara-sub-county",
+    "name": "Kandara Sub County",
+    "county_id": "county_muranga"
+  },
+  {
+    "id": "const_gatanga-sub-county",
+    "name": "Gatanga Sub County",
+    "county_id": "county_muranga"
+  },
+  {
+    "id": "const_ndaragwa-sub-county",
+    "name": "Ndaragwa Sub County",
+    "county_id": "county_nyandarua"
+  },
+  {
+    "id": "const_soy-sub-county",
+    "name": "Soy Sub County",
+    "county_id": "county_uasin-gishu"
+  },
+  {
+    "id": "const_ijara-sub-county",
+    "name": "Ijara Sub County",
+    "county_id": "county_garissa"
+  },
+  {
+    "id": "const_turbo-sub-county",
+    "name": "Turbo Sub County",
+    "county_id": "county_uasin-gishu"
+  },
+  {
+    "id": "const_kitui-west-sub-county",
+    "name": "Kitui West Sub County",
+    "county_id": "county_kitui"
+  },
+  {
+    "id": "const_mathira-east-sub-county",
+    "name": "Mathira East Sub County",
+    "county_id": "county_nyeri"
+  },
+  {
+    "id": "const_kibwezi-east-sub-county",
+    "name": "Kibwezi East Sub County",
+    "county_id": "county_makueni"
+  },
+  {
+    "id": "const_kinangop-sub-county",
+    "name": "Kinangop Sub County",
+    "county_id": "county_nyandarua"
+  },
+  {
+    "id": "const_kirinyaga-central-sub-county",
+    "name": "Kirinyaga Central Sub County",
+    "county_id": "county_kirinyaga"
+  },
+  {
+    "id": "const_turkana-central-sub-county",
+    "name": "Turkana Central Sub County",
+    "county_id": "county_turkana"
+  },
+  {
+    "id": "const_ruaraka-sub-county",
+    "name": "Ruaraka Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_bunyala-sub-county",
+    "name": "Bunyala Sub County",
+    "county_id": "county_busia"
+  },
+  {
+    "id": "const_embakasi-south-sub-county",
+    "name": "Embakasi South Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_moiben-sub-county",
+    "name": "Moiben Sub County",
+    "county_id": "county_uasin-gishu"
+  },
+  {
+    "id": "const_ainabkoi-sub-county",
+    "name": "Ainabkoi Sub County",
+    "county_id": "county_uasin-gishu"
+  },
+  {
+    "id": "const_kapseret-sub-county",
+    "name": "Kapseret Sub County",
+    "county_id": "county_uasin-gishu"
+  },
+  {
+    "id": "const_transmara-west-sub-county",
+    "name": "Transmara West Sub County",
+    "county_id": "county_narok"
+  },
+  {
+    "id": "const_gilgil-sub-county",
+    "name": "Gilgil Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_loima-sub-county",
+    "name": "Loima Sub County",
+    "county_id": "county_turkana"
+  },
+  {
+    "id": "const_turkana-south-sub-county",
+    "name": "Turkana South Sub County",
+    "county_id": "county_turkana"
+  },
+  {
+    "id": "const_pokot-central-sub-county",
+    "name": "Pokot Central Sub County",
+    "county_id": "county_west-pokot"
+  },
+  {
+    "id": "const_narok-north-sub-county",
+    "name": "Narok North Sub County",
+    "county_id": "county_narok"
+  },
+  {
+    "id": "const_narok-east-sub-county",
+    "name": "Narok East Sub County",
+    "county_id": "county_narok"
+  },
+  {
+    "id": "const_narok-south-sub-county",
+    "name": "Narok South Sub County",
+    "county_id": "county_narok"
+  },
+  {
+    "id": "const_narok-west-sub-county",
+    "name": "Narok West Sub County",
+    "county_id": "county_narok"
+  },
+  {
+    "id": "const_samburu-north-sub-county",
+    "name": "Samburu North Sub County",
+    "county_id": "county_samburu"
+  },
+  {
+    "id": "const_samburu-east-sub-county",
+    "name": "Samburu East Sub County",
+    "county_id": "county_samburu"
+  },
+  {
+    "id": "const_kwanza-sub-county",
+    "name": "Kwanza Sub County",
+    "county_id": "county_trans-nzoia"
+  },
+  {
+    "id": "const_rabai-sub-county",
+    "name": "Rabai Sub County",
+    "county_id": "county_kilifi"
+  },
+  {
+    "id": "const_endebess-sub-county",
+    "name": "Endebess Sub County",
+    "county_id": "county_trans-nzoia"
+  },
+  {
+    "id": "const_saboti-sub-county",
+    "name": "Saboti Sub County",
+    "county_id": "county_trans-nzoia"
+  },
+  {
+    "id": "const_kisauni-sub-county",
+    "name": "Kisauni Sub County",
+    "county_id": "county_mombasa"
+  },
+  {
+    "id": "const_githunguri-sub-county",
+    "name": "Githunguri Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_kiambu-town-sub-county",
+    "name": "Kiambu Town Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_kiambaa-sub-county",
+    "name": "Kiambaa Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_kuresoi-north-sub-county",
+    "name": "Kuresoi North Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_kabete-sub-county",
+    "name": "Kabete Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_kiminini-sub-county",
+    "name": "Kiminini Sub County",
+    "county_id": "county_trans-nzoia"
+  },
+  {
+    "id": "const_subukia-sub-county",
+    "name": "Subukia Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_rongai-sub-county",
+    "name": "Rongai Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_lari-sub-county",
+    "name": "Lari Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_gatundu-south-sub-county",
+    "name": "Gatundu South Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_gatundu-north-sub-county",
+    "name": "Gatundu North Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_juja-sub-county",
+    "name": "Juja Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_thika-town-sub-county",
+    "name": "Thika Town Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_nakuru-north-sub-county",
+    "name": "Nakuru North Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_cherangany-sub-county",
+    "name": "Cherangany Sub County",
+    "county_id": "county_trans-nzoia"
+  },
+  {
+    "id": "const_rarieda-sub-county",
+    "name": "Rarieda Sub County",
+    "county_id": "county_siaya"
+  },
+  {
+    "id": "const_msambweni-sub-county",
+    "name": "Msambweni Sub County",
+    "county_id": "county_kwale"
+  },
+  {
+    "id": "const_lunga-lunga-sub-county",
+    "name": "Lunga Lunga Sub County",
+    "county_id": "county_kwale"
+  },
+  {
+    "id": "const_matuga-sub-county",
+    "name": "Matuga Sub County",
+    "county_id": "county_kwale"
+  },
+  {
+    "id": "const_marakwet-east-sub-county",
+    "name": "Marakwet East Sub-County",
+    "county_id": "county_elgeyo-marakwet"
+  },
+  {
+    "id": "const_kinango-sub-county",
+    "name": "Kinango Sub County",
+    "county_id": "county_kwale"
+  },
+  {
+    "id": "const_ruiru-sub-county",
+    "name": "Ruiru Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_konoin-sub-county",
+    "name": "Konoin Sub County",
+    "county_id": "county_bomet"
+  },
+  {
+    "id": "const_bomachoge-borabu-sub-county",
+    "name": "Bomachoge Borabu Sub County",
+    "county_id": "county_kisii"
+  },
+  {
+    "id": "const_aldai-sub-county",
+    "name": "Aldai Sub County",
+    "county_id": "county_nandi"
+  },
+  {
+    "id": "const_nandi-east-sub-county",
+    "name": "Nandi East Sub County",
+    "county_id": "county_nandi"
+  },
+  {
+    "id": "const_igambangombe-sub-county",
+    "name": "Igambangombe Sub County",
+    "county_id": "county_tharaka-nithi"
+  },
+  {
+    "id": "const_chesumei-sub-county",
+    "name": "Chesumei Sub County",
+    "county_id": "county_nandi"
+  },
+  {
+    "id": "const_mbeere-north-sub-county",
+    "name": "Mbeere North Sub County",
+    "county_id": "county_embu"
+  },
+  {
+    "id": "const_emgwen-sub-county",
+    "name": "Emgwen Sub County",
+    "county_id": "county_nandi"
+  },
+  {
+    "id": "const_nakuru-west-sub-county",
+    "name": "Nakuru West Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_nyali-sub-county",
+    "name": "Nyali Sub County",
+    "county_id": "county_mombasa"
+  },
+  {
+    "id": "const_mathira-west-sub-county",
+    "name": "Mathira West Sub County",
+    "county_id": "county_nyeri"
+  },
+  {
+    "id": "const_keiyo-south-sub-county",
+    "name": "Keiyo South Sub County",
+    "county_id": "county_elgeyo-marakwet"
+  },
+  {
+    "id": "const_nakuru-east-sub-county",
+    "name": "Nakuru East Sub County",
+    "county_id": "county_nakuru"
+  },
+  {
+    "id": "const_mosop-sub-county",
+    "name": "Mosop Sub County",
+    "county_id": "county_nandi"
+  },
+  {
+    "id": "const_tiaty-sub-county",
+    "name": "Tiaty Sub County",
+    "county_id": "county_baringo"
+  },
+  {
+    "id": "const_laikipia-west-sub-county",
+    "name": "Laikipia West Sub County",
+    "county_id": "county_laikipia"
+  },
+  {
+    "id": "const_laikipia-east-sub-county",
+    "name": "Laikipia East Sub County",
+    "county_id": "county_laikipia"
+  },
+  {
+    "id": "const_mvita-sub-county",
+    "name": "Mvita Sub County",
+    "county_id": "county_mombasa"
+  },
+  {
+    "id": "const_kajiado-north-sub-county",
+    "name": "Kajiado North Sub County",
+    "county_id": "county_kajiado"
+  },
+  {
+    "id": "const_kajiado-central-sub-county",
+    "name": "Kajiado Central Sub County",
+    "county_id": "county_kajiado"
+  },
+  {
+    "id": "const_kajiado-east-sub-county",
+    "name": "Kajiado East Sub County",
+    "county_id": "county_kajiado"
+  },
+  {
+    "id": "const_kajiado-west-sub-county",
+    "name": "Kajiado West Sub County",
+    "county_id": "county_kajiado"
+  },
+  {
+    "id": "const_kisumu-east-sub-county",
+    "name": "Kisumu East Sub County",
+    "county_id": "county_kisumu"
+  },
+  {
+    "id": "const_kipkelion-west-sub-county",
+    "name": "Kipkelion West Sub County",
+    "county_id": "county_kericho"
+  },
+  {
+    "id": "const_ainamoi-sub-county",
+    "name": "Ainamoi Sub County",
+    "county_id": "county_kericho"
+  },
+  {
+    "id": "const_bureti-sub-county",
+    "name": "Bureti Sub County",
+    "county_id": "county_kericho"
+  },
+  {
+    "id": "const_sigowetsoin-sub-county",
+    "name": "Sigowetsoin Sub County",
+    "county_id": "county_kericho"
+  },
+  {
+    "id": "const_likoni-sub-county",
+    "name": "Likoni Sub County",
+    "county_id": "county_mombasa"
+  },
+  {
+    "id": "const_kaloleni-sub-county",
+    "name": "Kaloleni Sub County",
+    "county_id": "county_kilifi"
+  },
+  {
+    "id": "const_kisumu-central-sub-county",
+    "name": "Kisumu Central Sub County",
+    "county_id": "county_kisumu"
+  },
+  {
+    "id": "const_ganze-sub-county",
+    "name": "Ganze Sub County",
+    "county_id": "county_kilifi"
+  },
+  {
+    "id": "const_malindi-sub-county",
+    "name": "Malindi Sub County",
+    "county_id": "county_kilifi"
+  },
+  {
+    "id": "const_magarini-sub-county",
+    "name": "Magarini Sub County",
+    "county_id": "county_kilifi"
+  },
+  {
+    "id": "const_ugenya-sub-county",
+    "name": "Ugenya Sub County",
+    "county_id": "county_siaya"
+  },
+  {
+    "id": "const_ugunja-sub-county",
+    "name": "Ugunja Sub County",
+    "county_id": "county_siaya"
+  },
+  {
+    "id": "const_alego-usonga-sub-county",
+    "name": "Alego Usonga Sub County",
+    "county_id": "county_siaya"
+  },
+  {
+    "id": "const_kisumu-west-sub-county",
+    "name": "Kisumu West Sub County",
+    "county_id": "county_kisumu"
+  },
+  {
+    "id": "const_kitutu-chache-south-sub-county",
+    "name": "Kitutu Chache South Sub County",
+    "county_id": "county_kisii"
+  },
+  {
+    "id": "const_westlands-sub-county",
+    "name": "Westlands Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_dagoretti-north-sub-county",
+    "name": "Dagoretti North Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_mogotio-sub-county",
+    "name": "Mogotio Sub County",
+    "county_id": "county_baringo"
+  },
+  {
+    "id": "const_koibatek-sub-county",
+    "name": "Koibatek Sub County",
+    "county_id": "county_baringo"
+  },
+  {
+    "id": "const_kibra-sub-county",
+    "name": "Kibra Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_kipkelion-east-sub-county",
+    "name": "Kipkelion East Sub County",
+    "county_id": "county_kericho"
+  },
+  {
+    "id": "const_roysambu-sub-county",
+    "name": "Roysambu Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_kasarani-sub-county",
+    "name": "Kasarani Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_seme-sub-county",
+    "name": "Seme Sub County",
+    "county_id": "county_kisumu"
+  },
+  {
+    "id": "const_nyando-sub-county",
+    "name": "Nyando Sub County",
+    "county_id": "county_kisumu"
+  },
+  {
+    "id": "const_muhoroni-sub-county",
+    "name": "Muhoroni Sub County",
+    "county_id": "county_kisumu"
+  },
+  {
+    "id": "const_nyakach-sub-county",
+    "name": "Nyakach Sub County",
+    "county_id": "county_kisumu"
+  },
+  {
+    "id": "const_masaba-north-sub-county",
+    "name": "Masaba North Sub County",
+    "county_id": "county_nyamira"
+  },
+  {
+    "id": "const_manga-sub-county",
+    "name": "Manga Sub County",
+    "county_id": "county_nyamira"
+  },
+  {
+    "id": "const_nyamira-sub-county",
+    "name": "Nyamira Sub County",
+    "county_id": "county_nyamira"
+  },
+  {
+    "id": "const_nyamira-north-sub-county",
+    "name": "Nyamira North Sub County",
+    "county_id": "county_nyamira"
+  },
+  {
+    "id": "const_borabu-sub-county",
+    "name": "Borabu Sub County",
+    "county_id": "county_nyamira"
+  },
+  {
+    "id": "const_bonchari-sub-county",
+    "name": "Bonchari Sub County",
+    "county_id": "county_kisii"
+  },
+  {
+    "id": "const_south-mugirango-sub-county",
+    "name": "South Mugirango Sub County",
+    "county_id": "county_kisii"
+  },
+  {
+    "id": "const_bobasi-sub-county",
+    "name": "Bobasi Sub County",
+    "county_id": "county_kisii"
+  },
+  {
+    "id": "const_bomachoge-chache-sub-county",
+    "name": "Bomachoge Chache Sub County",
+    "county_id": "county_kisii"
+  },
+  {
+    "id": "const_nyaribari-masaba-sub-county",
+    "name": "Nyaribari Masaba Sub County",
+    "county_id": "county_kisii"
+  },
+  {
+    "id": "const_nyaribari-chache-sub-county",
+    "name": "Nyaribari Chache Sub County",
+    "county_id": "county_kisii"
+  },
+  {
+    "id": "const_embakasi-east-sub-county",
+    "name": "Embakasi East Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_kitutu-chache-north-sub-county",
+    "name": "Kitutu Chache North Sub County",
+    "county_id": "county_kisii"
+  },
+  {
+    "id": "const_makadara-sub-county",
+    "name": "Makadara Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_kamukunji-sub-county",
+    "name": "Kamukunji Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_starehe-sub-county",
+    "name": "Starehe Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_mathare-sub-county",
+    "name": "Mathare Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_transmara-east-sub-county",
+    "name": "Transmara East Sub County",
+    "county_id": "county_narok"
+  },
+  {
+    "id": "const_tharaka-north-sub-county",
+    "name": "Tharaka North Sub County",
+    "county_id": "county_tharaka-nithi"
+  },
+  {
+    "id": "const_garsen-sub-county",
+    "name": "Garsen Sub County",
+    "county_id": "county_tana-river"
+  },
+  {
+    "id": "const_banissa",
+    "name": "Banissa",
+    "county_id": "county_mandera"
+  },
+  {
+    "id": "const_merti-sub-county",
+    "name": "Merti Sub County",
+    "county_id": "county_isiolo"
+  },
+  {
+    "id": "const_garbatulla-sub-county",
+    "name": "Garbatulla Sub County",
+    "county_id": "county_isiolo"
+  },
+  {
+    "id": "const_lafey",
+    "name": "Lafey",
+    "county_id": "county_mandera"
+  },
+  {
+    "id": "const_turkana-east-sub-county",
+    "name": "Turkana East Sub County",
+    "county_id": "county_turkana"
+  },
+  {
+    "id": "const_marakwet-west-sub-county",
+    "name": "Marakwet West Sub County",
+    "county_id": "county_elgeyo-marakwet"
+  },
+  {
+    "id": "const_dagoretti-south-sub-county",
+    "name": "Dagoretti South Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_langata-sub-county",
+    "name": "Langata Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_baringo-central-sub-county",
+    "name": "Baringo Central Sub County",
+    "county_id": "county_baringo"
+  },
+  {
+    "id": "const_marigat-sub-county",
+    "name": "Marigat Sub County",
+    "county_id": "county_baringo"
+  },
+  {
+    "id": "const_loitokitok-sub-county",
+    "name": "Loitokitok Sub County",
+    "county_id": "county_kajiado"
+  },
+  {
+    "id": "const_laikipia-north-sub-county",
+    "name": "Laikipia North Sub County",
+    "county_id": "county_laikipia"
+  },
+  {
+    "id": "const_gem-sub-county",
+    "name": "Gem Sub County",
+    "county_id": "county_siaya"
+  },
+  {
+    "id": "const_bondo-sub-county",
+    "name": "Bondo Sub County",
+    "county_id": "county_siaya"
+  },
+  {
+    "id": "const_baringo-north-sub-county",
+    "name": "Baringo North Sub County",
+    "county_id": "county_baringo"
+  },
+  {
+    "id": "const_embakasi-north-sub-county",
+    "name": "Embakasi North Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_embakasi-west-sub-county",
+    "name": "Embakasi West Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_embakasi-central-sub-county",
+    "name": "Embakasi Central Sub County",
+    "county_id": "county_nairobi"
+  },
+  {
+    "id": "const_dadaab-sub-county",
+    "name": "Dadaab Sub County",
+    "county_id": "county_garissa"
+  },
+  {
+    "id": "const_kangema-sub-county",
+    "name": "Kangema Sub County",
+    "county_id": "county_muranga"
+  },
+  {
+    "id": "const_kesses-sub-county",
+    "name": "Kesses Sub County",
+    "county_id": "county_uasin-gishu"
+  },
+  {
+    "id": "const_kikuyu-sub-county",
+    "name": "Kikuyu Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_limuru-sub-county",
+    "name": "Limuru Sub County",
+    "county_id": "county_kiambu"
+  },
+  {
+    "id": "const_tharaka-south-sub-county",
+    "name": "Tharaka South Sub County",
+    "county_id": "county_tharaka-nithi"
+  },
+  {
+    "id": "const_manyatta-sub-county",
+    "name": "Manyatta Sub County",
+    "county_id": "county_embu"
+  },
+  {
+    "id": "const_runyenjes-sub-county",
+    "name": "Runyenjes Sub County",
+    "county_id": "county_embu"
+  },
+  {
+    "id": "const_sotik-sub-county",
+    "name": "Sotik Sub County",
+    "county_id": "county_bomet"
+  },
+  {
+    "id": "const_chepalungu-sub-county",
+    "name": "Chepalungu Sub County",
+    "county_id": "county_bomet"
+  },
+  {
+    "id": "const_bomet-east-sub-county",
+    "name": "Bomet East Sub County",
+    "county_id": "county_bomet"
+  },
+  {
+    "id": "const_bomet-central-sub-county",
+    "name": "Bomet Central Sub County",
+    "county_id": "county_bomet"
+  },
+  {
+    "id": "const_chuka-sub-county",
+    "name": "Chuka Sub County",
+    "county_id": "county_tharaka-nithi"
+  },
+  {
+    "id": "const_mbeere-south-sub-county",
+    "name": "Mbeere South Sub County",
+    "county_id": "county_embu"
+  },
+  {
+    "id": "const_tetu-sub-county",
+    "name": "Tetu Sub County",
+    "county_id": "county_nyeri"
+  },
+  {
+    "id": "const_kieni-west-sub-county",
+    "name": "Kieni West Sub County",
+    "county_id": "county_nyeri"
+  },
+  {
+    "id": "const_kieni-east-sub-county",
+    "name": "Kieni East Sub County",
+    "county_id": "county_nyeri"
+  },
+  {
+    "id": "const_pokot-south-sub-county",
+    "name": "Pokot South Sub County",
+    "county_id": "county_west-pokot"
+  },
+  {
+    "id": "const_keiyo-north-sub-county",
+    "name": "Keiyo North Sub County",
+    "county_id": "county_elgeyo-marakwet"
+  },
+  {
+    "id": "const_tinderet-sub-county",
+    "name": "Tinderet Sub County",
+    "county_id": "county_nandi"
+  }
+]
