@@ -9,7 +9,7 @@ import { PhoneInput } from '@/components/auth/PhoneInput'
 import { ConsentCheckboxes } from '@/components/auth/ConsentCheckboxes'
 import { LanguageToggle, useTranslation, translations, type Language } from '@/components/auth/LanguageToggle'
 import { validateKenyanPhone, validateEmail, validateName, validateFarmName, validateCounty, KENYAN_COUNTIES } from '@/lib/validation'
-import { sendPhoneOTP } from '@/lib/auth-africas-talking'
+import { sendPhoneOTP } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
 export default function SignupPage() {

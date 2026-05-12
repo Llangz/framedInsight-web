@@ -2,8 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { Database } from "@/lib/database.types";
 
-export async function recordHealth(records: any[]) {
+type SmallRuminantHealthInsert = Database['public']['Tables']['small_ruminant_health']['Insert'];
+
+export async function recordHealth(records: SmallRuminantHealthInsert[]) {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();

@@ -2,8 +2,19 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { Database } from "@/lib/database.types";
 
-export async function recordHarvest(payload: any) {
+type CoffeeHarvestInsert = Database['public']['Tables']['coffee_harvests']['Insert'];
+
+interface HarvestPayload extends CoffeeHarvestInsert {
+  farm_id: string;
+  plot_name: string;
+  harvest_date: string;
+  cherry_kg: number;
+  produce_kg: number;
+}
+
+export async function recordHarvest(payload: HarvestPayload) {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();

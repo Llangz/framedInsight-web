@@ -2,8 +2,18 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { Database } from "@/lib/database.types";
 
-export async function recordSale(saleData: any) {
+type SmallRuminantSalesInsert = Database['public']['Tables']['small_ruminant_sales']['Insert'];
+
+interface SaleData extends SmallRuminantSalesInsert {
+  farm_id: string;
+  sale_date: string;
+  sale_type: string;
+  total_price: number;
+}
+
+export async function recordSale(saleData: SaleData) {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();

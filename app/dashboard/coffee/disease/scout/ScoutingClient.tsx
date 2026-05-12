@@ -190,15 +190,33 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[], farmId: string }) {
   async function handleSubmit() {
     setSubmitting(true);
     const { level, breached } = alertPreview ?? { level: "none", breached: false };
+    
+    // Convert numeric fields from strings to numbers
     const payload = {
-      ...form,
+      farm_id: form.farm_id,
+      plot_id: form.plot_id,
+      scouting_date: form.scouting_date,
+      scouted_by: form.scouted_by,
+      observation_type: form.observation_type,
+      severity_level: form.severity_level,
+      trees_sampled: form.trees_sampled ? parseInt(form.trees_sampled) : null,
       pest_count_total: form.pest_count_total ? parseInt(form.pest_count_total) : null,
       pest_count_per_tree: bugsPerTree,
+      cbd_green_berries_affected: form.cbd_green_berries_affected ? parseInt(form.cbd_green_berries_affected) : null,
+      cbd_yellow_berries_affected: form.cbd_yellow_berries_affected ? parseInt(form.cbd_yellow_berries_affected) : null,
+      cbd_red_berries_affected: form.cbd_red_berries_affected ? parseInt(form.cbd_red_berries_affected) : null,
+      clr_leaves_affected: form.clr_leaves_affected ? parseInt(form.clr_leaves_affected) : null,
+      clr_defoliation_observed: form.clr_defoliation_observed,
+      percentage_plot_affected: form.percentage_plot_affected ? parseFloat(form.percentage_plot_affected) : null,
+      weather_past_week: form.weather_past_week,
+      action_taken: form.action_taken,
+      symptoms_description: form.symptoms_description,
       alert_level: level,
       threshold_breached: breached,
-    }
+      notes: form.notes,
+    };
     try {
-      await recordScouting(payload);
+      await recordScouting(payload as any);
       router.push("/dashboard/coffee/disease?saved=1");
     } catch (e: any) {
       setError(e.message);

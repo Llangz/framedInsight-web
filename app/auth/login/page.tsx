@@ -7,7 +7,7 @@ import { Footer } from '@/components/ui/Footer'
 import { PhoneInput } from '@/components/auth/PhoneInput'
 import { validateKenyanPhone } from '@/lib/validation'
 import { supabase } from '@/lib/supabase'
-import { sendPhoneOTP } from '@/lib/auth-africas-talking'
+import { sendPhoneOTP } from '@/lib/auth'
 
 export default function LoginPage() {
   const router = useRouter()

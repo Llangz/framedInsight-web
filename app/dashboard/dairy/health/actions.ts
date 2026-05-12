@@ -2,42 +2,66 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { Database } from "@/lib/database.types";
 
-export async function recordHealthEvent(formData: any) {
+type HealthRecordInsert = Database['public']['Tables']['health_records']['Insert'];
+
+interface VaccinationForm {
+  record_type: 'vaccination';
+  animal_id: string;
+  treatment_date: string;
+  health_issue: string;
+  veterinarian?: string | null;
+  notes?: string | null;
+}
+
+interface TreatmentForm {
+  record_type: 'treatment';
+  animal_id: string;
+  treatment_date: string;
+  health_issue: string;
+  medication?: string | null;
+  dosage?: string | null;
+  dosage_unit?: string | null;
+  veterinarian?: string | null;
+  cost?: string | number | null;
+  withdrawal_period_days?: string | number | null;
+  notes?: string | null;
+}
+
+type HealthEventFormData = VaccinationForm | TreatmentForm;
+
+export async function recordHealthEvent(formData: HealthEventFormData) {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { record_type, ...rest } = formData;
+  let insertData: HealthRecordInsert;
 
-  let insertData: any = {};
-
-  if (record_type === 'vaccination') {
+  if (formData.record_type === 'vaccination') {
     insertData = {
-      cow_id: rest.animal_id,
-      treatment_date: rest.treatment_date,
-      disease: `Vaccination: ${rest.health_issue}`,
-      drug_name: rest.health_issue,
-      vet_name: rest.veterinarian || null,
+      cow_id: formData.animal_id,
+      treatment_date: formData.treatment_date,
+      disease: `Vaccination: ${formData.health_issue}`,
+      drug_name: formData.health_issue,
+      vet_name: formData.veterinarian,
       treatment: 'Vaccination',
-      notes: rest.notes || null,
-      record_type: 'vaccination'
+      notes: formData.notes,
     };
   } else {
     insertData = {
-      cow_id: rest.animal_id,
-      treatment_date: rest.treatment_date,
-      disease: rest.health_issue,
-      drug_name: rest.medication || null,
-      dosage: rest.dosage ? `${rest.dosage} ${rest.dosage_unit}` : null,
+      cow_id: formData.animal_id,
+      treatment_date: formData.treatment_date,
+      disease: formData.health_issue,
+      drug_name: formData.medication,
+      dosage: formData.dosage && formData.dosage_unit ? `${formData.dosage} ${formData.dosage_unit}` : formData.dosage,
       treatment: 'Treatment',
-      vet_name: rest.veterinarian || null,
-      cost: rest.cost ? parseFloat(rest.cost) : null,
-      withdrawal_days: parseInt(rest.withdrawal_period_days) || 0,
-      symptoms: rest.notes || null,
-      notes: rest.notes || null,
-      record_type: record_type
+      vet_name: formData.veterinarian,
+      cost: formData.cost ? parseFloat(String(formData.cost)) : null,
+      withdrawal_days: formData.withdrawal_period_days ? parseInt(String(formData.withdrawal_period_days)) : null,
+      symptoms: formData.notes,
+      notes: formData.notes,
     };
   }
 

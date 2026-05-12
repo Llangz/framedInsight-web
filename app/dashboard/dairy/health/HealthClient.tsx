@@ -18,7 +18,7 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
 
   const [formData, setFormData] = useState({
     animal_id: '',
-    record_type: 'treatment',
+    record_type: 'treatment' as 'treatment' | 'vaccination',
     health_issue: '',
     medication: '',
     dosage: '',
@@ -70,7 +70,7 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
       setSuccess(`${formData.record_type === 'vaccination' ? 'Vaccination' : 'Health'} record added successfully!`)
       setFormData({
         animal_id: '',
-        record_type: 'treatment',
+        record_type: 'treatment' as 'treatment' | 'vaccination',
         health_issue: '',
         medication: '',
         dosage: '',
@@ -156,7 +156,7 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Record Type *</label>
                 <select
                   value={formData.record_type}
-                  onChange={(e) => setFormData({ ...formData, record_type: e.target.value, health_issue: '' })}
+                  onChange={(e) => setFormData({ ...formData, record_type: e.target.value as 'treatment' | 'vaccination', health_issue: '' })}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
                 >
                   {recordTypes.map((type) => (

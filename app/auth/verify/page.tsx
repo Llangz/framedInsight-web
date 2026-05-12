@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createFarmOnVerifyAction } from './actions'
-import { verifyPhoneOTP } from '@/lib/auth-africas-talking'
+import { verifyPhoneOTP } from '@/lib/auth'
 
 function VerifyContent() {
   const router = useRouter()
