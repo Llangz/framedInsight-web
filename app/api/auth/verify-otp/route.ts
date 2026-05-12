@@ -29,9 +29,15 @@ export async function POST(req: NextRequest) {
     const { data: attempts, error: attemptsError } = await supabaseAdmin
       .rpc('increment_otp_attempts', { p_phone: phone })
 
+    const phonePartial = phone.substring(0, 6) + '***'
+    
     if (attemptsError) {
-      console.error('Attempts increment failed:', attemptsError)
+      console.error('Attempts increment failed:', {
+        phone: phonePartial,
+        error: attemptsError.message,
+      })
     } else if (attempts >= 5) {
+      console.warn('Brute force protection triggered:', { phone: phonePartial })
       return NextResponse.json({ error: 'Too many failed attempts. Please request a new OTP.' }, { status: 429 })
     }
 
@@ -44,11 +50,17 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (fetchError || !otpRecord) {
+      console.warn('Invalid OTP attempt:', {
+        phone: phonePartial,
+        hasRecord: !!otpRecord,
+        error: fetchError?.message,
+      })
       return NextResponse.json({ error: 'Invalid OTP code' }, { status: 401 })
     }
 
     // Step 3: Check expiry
     if (new Date(otpRecord.expires_at) < new Date()) {
+      console.warn('Expired OTP used:', { phone: phonePartial })
       await supabaseAdmin.from('phone_otp_codes').delete().eq('phone_number', phone)
       return NextResponse.json({ error: 'OTP has expired. Please request a new one.' }, { status: 401 })
     }
@@ -113,15 +125,27 @@ export async function POST(req: NextRequest) {
     // Step 6: Delete used OTP
     await supabaseAdmin.from('phone_otp_codes').delete().eq('phone_number', phone)
 
+    // Log successful verification (with partial phone number)
+    console.log('OTP verification successful:', {
+      phone: phonePartial,
+      userId,
+      timestamp: new Date().toISOString(),
+    })
+
     return NextResponse.json({
       success: true,
-      user: { id: userId, phone },
+      user: { id: userId, phone: phonePartial },
       session: signInData.session,
     })
 
   } catch (error: any) {
-    console.error('OTP Verification Error:', error)
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
+    const phonePartial = phone ? phone.substring(0, 6) + '***' : 'unknown'
+    console.error('OTP Verification Error:', {
+      phone: phonePartial,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    })
+    return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
   }
 }
 

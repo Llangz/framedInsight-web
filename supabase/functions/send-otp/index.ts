@@ -24,6 +24,119 @@ function normalisePhone(phone: string): string {
   return digits
 }
 
+/**
+ * Send SMS via Tiara Connect with retry logic and comprehensive error handling
+ */
+async function sendSmsWithRetry(
+  normalisedPhone: string,
+  message: string,
+  refId: string,
+  maxRetries: number = 3
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  let lastError: any
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const smsResponse = await fetch('https://api2.tiaraconnect.io/api/messaging/sendsms', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${TIARA_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: TIARA_SENDER_ID,
+          to: normalisedPhone,
+          message,
+          refId,
+        }),
+      })
+
+      const smsData = await smsResponse.json()
+
+      // Log attempt (privacy-aware: only log partial phone number)
+      const phonePartial = normalisedPhone.substring(0, 6) + '***'
+      console.log(`[SMS Attempt ${attempt}/${maxRetries}]`, {
+        phone: phonePartial,
+        statusCode: smsResponse.status,
+        tiaraStatus: smsData.status || smsData.statusCode,
+        msgId: smsData.msgId,
+        timestamp: new Date().toISOString(),
+      })
+
+      // Check for API-level errors
+      if (!smsResponse.ok) {
+        lastError = new Error(
+          `Tiara API Error ${smsResponse.status}: ${smsData.desc || smsData.error || 'Unknown error'}`
+        )
+        
+        // Don't retry on 4xx client errors (except rate limit)
+        if (smsResponse.status >= 400 && smsResponse.status < 500 && smsResponse.status !== 429) {
+          throw lastError
+        }
+
+        // Wait before retry (exponential backoff: 1s, 2s, 4s)
+        if (attempt < maxRetries) {
+          const delayMs = 1000 * Math.pow(2, attempt - 1)
+          console.log(`Retrying in ${delayMs}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delayMs))
+          continue
+        }
+        throw lastError
+      }
+
+      // Check Tiara response status (statusCode: 0 = SUCCESS, otherwise check status field)
+      const isSuccess = smsData.statusCode === '0' || smsData.statusCode === 0 || smsData.status === 'SUCCESS'
+      if (!isSuccess) {
+        lastError = new Error(
+          `Tiara indicates failure: ${smsData.desc || smsData.status} (statusCode: ${smsData.statusCode})`
+        )
+        
+        // Don't retry on validation errors
+        if (smsData.statusCode === '1001' || smsData.statusCode === 1001) {
+          throw lastError
+        }
+
+        // Retry on other failures
+        if (attempt < maxRetries) {
+          const delayMs = 1000 * Math.pow(2, attempt - 1)
+          await new Promise(resolve => setTimeout(resolve, delayMs))
+          continue
+        }
+        throw lastError
+      }
+
+      // Success! Extract messageId from Tiara response
+      const messageId = smsData.msgId || smsData.id || refId
+      console.log(`SMS sent successfully (attempt ${attempt}):`, {
+        phone: phonePartial,
+        msgId: messageId,
+        balance: smsData.balance,
+        cost: smsData.cost,
+      })
+
+      return { success: true, messageId }
+
+    } catch (error: any) {
+      lastError = error
+      console.error(`SMS attempt ${attempt} failed:`, {
+        phone: normalisedPhone.substring(0, 6) + '***',
+        attempt,
+        maxRetries,
+        error: error.message,
+      })
+
+      if (attempt === maxRetries) {
+        break // Stop retrying after max attempts
+      }
+    }
+  }
+
+  return {
+    success: false,
+    error: lastError?.message || 'Failed to send SMS after multiple attempts',
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -44,48 +157,47 @@ serve(async (req) => {
     }
 
     const normalisedPhone = normalisePhone(phone)
+    if (!normalisedPhone || normalisedPhone.length < 10) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid phone number format' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        }
+      )
+    }
+
     const refId = crypto.randomUUID()
     const message = `Your framedInsight verification code is: ${otp}. Valid for 15 minutes. Do not share this code.`
 
-    // Send SMS via Tiara Connect (Meliora Technologies)
-    const smsResponse = await fetch('https://api.tiaraconnect.io/api/messaging/sendbatch', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${TIARA_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify([
+    // Send SMS via Tiara Connect with retry logic
+    const result = await sendSmsWithRetry(normalisedPhone, message, refId)
+
+    if (!result.success) {
+      return new Response(
+        JSON.stringify({ error: result.error || 'Failed to send SMS' }),
         {
-          from: TIARA_SENDER_ID,
-          to: normalisedPhone,
-          message,
-          refId,
-        },
-      ]),
-    })
-
-    const smsData = await smsResponse.json()
-    console.log('Tiara Connect response:', JSON.stringify(smsData))
-
-    if (!smsResponse.ok) {
-      throw new Error(`Tiara Connect API error (${smsResponse.status}): ${JSON.stringify(smsData)}`)
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        }
+      )
     }
 
-    // Tiara returns an array of results — check the first item
-    const result = Array.isArray(smsData) ? smsData[0] : smsData
-    const messageId = result?.messageId || result?.id || refId
-
     return new Response(
-      JSON.stringify({ success: true, messageId }),
+      JSON.stringify({ success: true, messageId: result.messageId }),
       {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
       }
     )
   } catch (error: any) {
-    console.error('SMS sending error:', error)
+    console.error('Unexpected error in send-otp function:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+    })
     return new Response(
-      JSON.stringify({ error: error.message || 'Failed to send SMS' }),
+      JSON.stringify({ error: 'SMS service temporarily unavailable. Please try again.' }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },

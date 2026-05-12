@@ -87,13 +87,34 @@ export async function sendPhoneOTP(
     const data = await response.json()
 
     if (!response.ok) {
-      console.error('Error sending SMS:', data)
+      // Privacy-aware logging: mask phone number
+      const phonePartial = phone.substring(0, 6) + '***'
+      console.error('Error sending SMS:', {
+        status: response.status,
+        error: data.error,
+        phone: phonePartial,
+        timestamp: new Date().toISOString(),
+      })
+      
       // Clean up OTP record if SMS failed
       await supabase
         .from('phone_otp_codes')
         .delete()
         .eq('phone_number', phone)
-      return { success: false, error: data.error || 'Failed to send SMS' }
+      
+      // Return more specific error messages based on response status
+      let errorMessage = 'Failed to send verification code'
+      if (response.status === 429) {
+        errorMessage = 'SMS service rate limit reached. Please try again in a few moments.'
+      } else if (response.status >= 500) {
+        errorMessage = 'SMS service temporarily unavailable. Please try again shortly.'
+      } else if (data.error?.includes('Invalid phone')) {
+        errorMessage = 'Invalid phone number format. Please check and try again.'
+      } else if (data.error) {
+        errorMessage = data.error
+      }
+      
+      return { success: false, error: errorMessage }
     }
 
     return { success: true }
