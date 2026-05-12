@@ -66,6 +66,44 @@ body {
   }
 }
 
+/* ─── Input Reset ───────────────────────────────────────────────────────────
+   The Obsidian body sets color: #F0F6FC (near-white). Without an explicit
+   override, every <input>, <select>, and <textarea> on a white/light
+   background inherits that near-white text and becomes unreadable.
+   This block resets them to always render dark text on a white background,
+   which is correct for all the light-card pages (auth, onboarding, etc.).
+   Dashboard components that intentionally want dark inputs can still override
+   with their own Tailwind classes.                                           */
+input,
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+select,
+textarea {
+  color: #111827;           /* gray-900 */
+  background-color: #ffffff;
+  -webkit-text-fill-color: #111827; /* overrides Safari autofill colour */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;           /* gray-400 — visible but clearly secondary */
+  -webkit-text-fill-color: #9ca3af;
+}
+
+/* Autofill (Chrome/Safari override) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #111827;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+  box-shadow: 0 0 0px 1000px #ffffff inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* Custom Scrollbar for Obsidian Theme */
 ::-webkit-scrollbar {
   width: 8px;
