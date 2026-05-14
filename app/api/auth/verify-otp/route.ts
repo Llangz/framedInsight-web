@@ -4,10 +4,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 
 /**
- * Normalize phone numbers to consistent Kenya format:
- * 0712345678  -> 254712345678
- * +254712345678 -> 254712345678
- * 254712345678  -> 254712345678
+ * Normalise to E.164 format WITH the leading + to match what lib/auth.ts stores.
+ * RLS policy on phone_otp_codes requires: phone_number ~ '^\+[0-9]+$'
+ *
+ *   0712345678    → +254712345678
+ *   254712345678  → +254712345678
+ *  +254712345678  → +254712345678
  */
 function normalisePhone(phone: string): string {
   let digits = phone.replace(/\D/g, '')
@@ -17,7 +19,7 @@ function normalisePhone(phone: string): string {
   if (!digits.startsWith('254')) {
     throw new Error('Invalid Kenyan phone number')
   }
-  return digits
+  return '+' + digits
 }
 
 export async function POST(req: NextRequest) {
@@ -25,23 +27,17 @@ export async function POST(req: NextRequest) {
   const { phone, otp } = await req.json()
 
   if (!phone || !otp) {
-    return NextResponse.json(
-      { error: 'Phone and OTP are required' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Phone and OTP are required' }, { status: 400 })
   }
 
   let normalisedPhone: string
   try {
     normalisedPhone = normalisePhone(phone)
   } catch {
-    return NextResponse.json(
-      { error: 'Invalid phone number format' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Invalid phone number format' }, { status: 400 })
   }
 
-  const phonePartial = normalisedPhone.substring(0, 6) + '***'
+  const phonePartial = normalisedPhone.substring(0, 7) + '***'
 
   const supabaseAdmin = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -57,12 +53,9 @@ export async function POST(req: NextRequest) {
 
   try {
     // ─────────────────────────────────────────────────────────────────────────
-    // Step 1: Look up the OTP record FIRST.
-    //
-    // BUG FIX: The original code incremented attempt count BEFORE checking the
-    // OTP, which meant even a correct code consumed an attempt. After 5 tries
-    // (correct or not) the trigger deleted the record, causing "Invalid OTP"
-    // for legitimate users.  We now only increment on a FAILED lookup.
+    // Step 1: Look up OTP record FIRST — only increment attempt counter on failure.
+    // This prevents legitimate users from being locked out by the brute-force
+    // trigger when submitting the correct code.
     // ─────────────────────────────────────────────────────────────────────────
     const { data: otpRecord } = await supabaseAdmin
       .from('phone_otp_codes')
@@ -72,15 +65,13 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (!otpRecord) {
-      // Wrong code — increment the failure counter for brute-force protection.
+      // Wrong code — increment failure counter
       const { data: attempts, error: attemptsError } = await supabaseAdmin.rpc(
         'increment_otp_attempts',
         { p_phone: normalisedPhone }
       )
 
-      if (attemptsError) {
-        console.error('Attempts increment failed:', { phone: phonePartial, error: attemptsError.message })
-      } else if (attempts >= 5) {
+      if (!attemptsError && attempts >= 5) {
         console.warn('Brute force protection triggered:', { phone: phonePartial })
         return NextResponse.json(
           { error: 'Too many failed attempts. Please request a new OTP.' },
@@ -97,7 +88,6 @@ export async function POST(req: NextRequest) {
 
     // Step 2: Check expiry
     if (new Date(otpRecord.expires_at) < new Date()) {
-      console.warn('Expired OTP used:', { phone: phonePartial })
       await supabaseAdmin.from('phone_otp_codes').delete().eq('phone_number', normalisedPhone)
       return NextResponse.json(
         { error: 'OTP has expired. Please request a new one.' },
@@ -105,9 +95,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Step 3: Auth mapping — resolve or create Supabase user
+    // Step 3: Resolve or create Supabase auth user
     const metadata = otpRecord.metadata || {}
-    const ghostEmail = metadata.email || `user-${normalisedPhone}@framedinsight.app`
+    const ghostEmail = metadata.email || `user-${normalisedPhone.replace('+', '')}@framedinsight.app`
     const randomPassword = crypto.randomBytes(32).toString('hex')
 
     let userId: string
@@ -175,10 +165,7 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('OTP Verification Error:', { phone: phonePartial, error: error.message, timestamp: new Date().toISOString() })
-    return NextResponse.json(
-      { error: 'Verification failed. Please try again.' },
-      { status: 500 }
-    )
+    console.error('OTP Verification Error:', { phone: phonePartial, error: error.message })
+    return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
   }
 }
