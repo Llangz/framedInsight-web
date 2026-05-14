@@ -25,6 +25,14 @@ export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
   const { phone, metadata } = await req.json()
 
+  // ADD THIS DEBUG BLOCK
+  console.log('🔧 Environment Check:', {
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
+    serviceKeyPrefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) || 'MISSING'
+  })
+
   if (!phone) {
     return NextResponse.json({ error: 'Phone is required' }, { status: 400 })
   }
