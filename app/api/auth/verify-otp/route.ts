@@ -117,7 +117,6 @@ export async function POST(req: NextRequest) {
         error: fetchError.message,
         code: fetchError.code,
         details: fetchError.details,
-        status: fetchError.status,
       })
     }
 
