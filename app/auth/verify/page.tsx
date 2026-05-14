@@ -7,13 +7,47 @@ import { verifyPhoneOTP } from '@/lib/auth'
 function VerifyContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const phone = searchParams.get('phone') || ''
+  const [phone, setPhone] = useState('')
+  const [displayPhone, setDisplayPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // ✅ Get phone from sessionStorage (safer than URL param)
+  useEffect(() => {
+    const signupDataStr = sessionStorage.getItem('signupData')
+    if (signupDataStr) {
+      try {
+        const signupData = JSON.parse(signupDataStr)
+        setPhone(signupData.phone)
+        // Mask phone for display: +254712***678
+        const masked = signupData.phone.replace(/(\d{6})(\d{4})$/, '$1***')
+        setDisplayPhone(masked)
+      } catch (e) {
+        console.error('Failed to parse signup data:', e)
+        // Fallback to URL param if sessionStorage fails
+        const urlPhone = searchParams.get('phone') || ''
+        setPhone(urlPhone)
+        const masked = urlPhone.replace(/(\d{6})(\d{4})$/, '$1***')
+        setDisplayPhone(masked)
+      }
+    } else {
+      // Fallback: try URL param (for direct links)
+      const urlPhone = searchParams.get('phone') || ''
+      setPhone(urlPhone)
+      const masked = urlPhone.replace(/(\d{6})(\d{4})$/, '$1***')
+      setDisplayPhone(masked)
+    }
+  }, [searchParams])
+
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!phone) {
+      setError('Phone number not found. Please start signup again.')
+      return
+    }
+    
     setLoading(true)
     setError('')
     
@@ -61,7 +95,7 @@ function VerifyContent() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <h1 className="text-2xl font-bold text-center mb-4">Enter Verification Code</h1>
-        <p className="text-sm text-gray-600 text-center mb-6">We sent a code to {phone}</p>
+        <p className="text-sm text-gray-600 text-center mb-6">We sent a code to {displayPhone || 'your phone'}</p>
         <form onSubmit={handleVerify} className="space-y-4">
           <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter 6-digit code" maxLength={6} className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-300 rounded-md" required />
           {error && <p className="text-red-600 text-sm text-center">{error}</p>}

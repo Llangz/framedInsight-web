@@ -118,7 +118,7 @@ export default function SignupPage() {
         consents: consents,
       }))
 
-      router.push(`/auth/verify?phone=${encodeURIComponent(phoneValidation.formatted)}`)
+      router.push(`/auth/verify`)
     } catch (error) {
       console.error('Signup error:', error)
       setErrors({ submit: 'An unexpected error occurred. Please try again.' })
