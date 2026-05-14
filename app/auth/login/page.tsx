@@ -32,9 +32,10 @@ export default function LoginPage() {
       return
     }
 
-    // ✅ Store phone in sessionStorage (same as signup) instead of URL
-    sessionStorage.setItem('loginPhone', validation.formatted)
-    router.push('/auth/verify')
+    // Store phone in sessionStorage — never expose it in the URL
+    sessionStorage.setItem('loginPhone', JSON.stringify({ phone: validation.formatted }))
+
+    router.push(`/auth/verify`)
   }
 
   return (
