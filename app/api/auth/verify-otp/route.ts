@@ -93,6 +93,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 2: Look up OTP record
+    console.log('🔍 Searching for OTP:', {
+      phone: phonePartial,
+      normalisedPhone,
+      otpLength: otp.length,
+      timestamp: new Date().toISOString(),
+    })
+
     const { data: otpRecord, error: fetchError } =
       await supabaseAdmin
         .from('phone_otp_codes')
@@ -101,10 +108,20 @@ export async function POST(req: NextRequest) {
         .eq('otp_code', otp)
         .single()
 
-    if (fetchError || !otpRecord) {
-      console.warn('Invalid OTP attempt:', {
+    if (fetchError) {
+      console.warn('❌ Database error fetching OTP:', {
         phone: phonePartial,
-        hasRecord: !!otpRecord,
+        normalisedPhone,
+        error: fetchError.message,
+        code: fetchError.code,
+        details: fetchError.details,
+      })
+    }
+
+    if (!otpRecord) {
+      console.warn('⚠️ No OTP record found:', {
+        phone: phonePartial,
+        normalisedPhone,
         error: fetchError?.message,
       })
 
@@ -113,6 +130,12 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       )
     }
+
+    console.log('✅ OTP record found:', {
+      phone: phonePartial,
+      hasRecord: true,
+      expiresAt: otpRecord.expires_at,
+    })
 
     // Step 3: Check expiry
     if (new Date(otpRecord.expires_at) < new Date()) {

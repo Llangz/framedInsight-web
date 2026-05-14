@@ -50,6 +50,12 @@ export async function sendPhoneOTP(
     // ✅ Normalize phone FIRST
     const normalisedPhone = normalisePhone(phone)
 
+    console.log('📱 SendPhoneOTP - Normalizing:', {
+      original: phone,
+      normalised: normalisedPhone,
+      timestamp: new Date().toISOString(),
+    })
+
     // Check rate limit before proceeding
     const { data: withinLimit, error: rateLimitError } = await (supabase as any)
       .rpc('check_otp_rate_limit', { p_phone: normalisedPhone })
@@ -85,6 +91,14 @@ export async function sendPhoneOTP(
       console.error('Error storing OTP:', dbError)
       return { success: false, error: `Failed to generate OTP: ${dbError.message}` }
     }
+
+    console.log('✅ OTP stored in database:', {
+      phone: normalisedPhone.substring(0, 6) + '***',
+      normalisedPhone,
+      otp: otp.substring(0, 2) + '****',
+      expiresAt,
+      timestamp: new Date().toISOString(),
+    })
 
     // Call Supabase Edge Function to send SMS via Tiara Connect (Meliora Technologies)
     const response = await fetch(
@@ -131,6 +145,12 @@ export async function sendPhoneOTP(
       
       return { success: false, error: errorMessage }
     }
+
+    console.log('✅ SMS sent via Edge Function:', {
+      phone: normalisedPhone.substring(0, 6) + '***',
+      msgId: data.messageId,
+      timestamp: new Date().toISOString(),
+    })
 
     return { success: true }
 
