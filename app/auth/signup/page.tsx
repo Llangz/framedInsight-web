@@ -117,6 +117,7 @@ export default function SignupPage() {
         farmTypes: formData.farmTypes,
         consents: consents,
       }))
+      console.log('📱 Stored signup phone:', phoneValidation.formatted)
 
       router.push(`/auth/verify`)
     } catch (error) {

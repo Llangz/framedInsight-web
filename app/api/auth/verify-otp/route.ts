@@ -53,9 +53,34 @@ export async function POST(req: NextRequest) {
 
   try {
     // ─────────────────────────────────────────────────────────────────────────
+    // ENHANCED DEBUGGING: Log what we're searching for
+    // ─────────────────────────────────────────────────────────────────────────
+    console.log('🔍 OTP LOOKUP ATTEMPT:', {
+      phone_number: normalisedPhone,
+      otp_code: otp,
+      otp_length: otp.length,
+      phone_format: normalisedPhone.match(/^\+254/) ? 'E.164 ✅' : 'WRONG FORMAT ❌',
+      timestamp: new Date().toISOString()
+    })
+
+    // First, let's see what records exist for this phone
+    const { data: allRecords } = await supabaseAdmin
+      .from('phone_otp_codes')
+      .select('*')
+      .eq('phone_number', normalisedPhone)
+    
+    console.log('📋 ALL OTP RECORDS FOR THIS PHONE:', {
+      count: allRecords?.length || 0,
+      records: allRecords?.map(r => ({
+        otp_code: r.otp_code,
+        expires_at: r.expires_at,
+        created_at: r.created_at,
+        is_expired: new Date(r.expires_at) < new Date()
+      }))
+    })
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Step 1: Look up OTP record FIRST — only increment attempt counter on failure.
-    // This prevents legitimate users from being locked out by the brute-force
-    // trigger when submitting the correct code.
     // ─────────────────────────────────────────────────────────────────────────
     const { data: otpRecord } = await supabaseAdmin
       .from('phone_otp_codes')
@@ -65,6 +90,13 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (!otpRecord) {
+      console.warn('❌ NO MATCHING OTP FOUND:', {
+        phone: phonePartial,
+        otp_provided: otp,
+        all_otps_for_phone: allRecords?.map(r => r.otp_code).join(', ') || 'NONE',
+        timestamp: new Date().toISOString()
+      })
+      
       // Wrong code — increment failure counter
       const { data: attempts, error: attemptsError } = await supabaseAdmin.rpc(
         'increment_otp_attempts',
@@ -85,6 +117,13 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       )
     }
+
+    console.log('✅ OTP MATCH FOUND:', {
+      phone: phonePartial,
+      otp_matched: true,
+      expires_at: otpRecord.expires_at,
+      created_at: otpRecord.created_at
+    })
 
     // Step 2: Check expiry
     if (new Date(otpRecord.expires_at) < new Date()) {

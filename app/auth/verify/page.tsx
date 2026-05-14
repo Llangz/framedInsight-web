@@ -112,7 +112,7 @@ function VerifyContent() {
             inputMode="numeric"
             pattern="[0-9]*"
             value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').trim())}
             placeholder="Enter 6-digit code"
             maxLength={6}
             className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"

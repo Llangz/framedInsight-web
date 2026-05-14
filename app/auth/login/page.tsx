@@ -34,6 +34,7 @@ export default function LoginPage() {
 
     // Store phone in sessionStorage — never expose it in the URL
     sessionStorage.setItem('loginPhone', JSON.stringify({ phone: validation.formatted }))
+    console.log('📱 Stored login phone:', validation.formatted)
 
     router.push(`/auth/verify`)
   }

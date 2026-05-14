@@ -94,6 +94,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    console.log('✅ OTP STORED:', {
+      phone_number: normalisedPhone,
+      otp_code: otp,
+      expires_at: expiresAt,
+      timestamp: new Date().toISOString()
+    })
+
     // Call Supabase Edge Function to send SMS via Tiara Connect
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-otp`,
