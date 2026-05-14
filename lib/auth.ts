@@ -1,7 +1,5 @@
 // lib/auth.ts
-// Custom phone OTP authentication via Supabase Edge Function → Tiara Connect (Meliora Technologies)
-
-import { supabase } from './supabase'
+// Custom phone OTP authentication — all OTP operations run server-side via API routes
 
 interface SendOTPResult {
   success: boolean
@@ -15,36 +13,11 @@ interface VerifyOTPResult {
   error?: string
 }
 
-/**
- * Normalise a phone number to E.164 format WITH the leading +.
- * This MUST match the RLS policy: phone_number ~ '^\+[0-9]+$'
- *
- * Examples:
- *   0712345678    → +254712345678
- *   254712345678  → +254712345678
- *  +254712345678  → +254712345678  (already correct, no-op)
- */
-function normalisePhone(phone: string): string {
-  let digits = phone.replace(/\D/g, '')
-  if (digits.startsWith('0')) {
-    digits = '254' + digits.slice(1)
-  }
-  if (!digits.startsWith('254')) {
-    throw new Error('Invalid Kenyan phone number')
-  }
-  return '+' + digits  // ← E.164: always include the +
-}
-
-// ============================================================================
-// GENERATE OTP
-// ============================================================================
-
-function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
-}
-
 // ============================================================================
 // SEND OTP
+// All OTP generation and storage now happens server-side (/api/auth/send-otp)
+// using the SERVICE ROLE KEY. This eliminates RLS ambiguity and silent failures
+// that occurred when the anon client tried to INSERT directly from the browser.
 // ============================================================================
 
 export async function sendPhoneOTP(
@@ -52,87 +25,19 @@ export async function sendPhoneOTP(
   metadata?: any
 ): Promise<SendOTPResult> {
   try {
-    const otp = generateOTP()
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
-
-    // Normalise to E.164 (+254...) — must match the RLS INSERT policy
-    const normalisedPhone = normalisePhone(phone)
-
-    // Check rate limit before proceeding
-    const { data: withinLimit, error: rateLimitError } = await (supabase as any)
-      .rpc('check_otp_rate_limit', { p_phone: normalisedPhone })
-
-    if (rateLimitError) {
-      console.error('Rate limit check failed:', rateLimitError)
-      // Fail open — don't block user if rate limit check itself errors
-    } else if (!withinLimit) {
-      return {
-        success: false,
-        error: 'Too many OTP requests. Please wait an hour before trying again.',
-      }
-    }
-
-    // Clear any existing OTP for this phone first
-    await supabase
-      .from('phone_otp_codes')
-      .delete()
-      .eq('phone_number', normalisedPhone)
-
-    // Store new OTP — phone stored as +254... to satisfy RLS policy
-    const { error: dbError } = await supabase
-      .from('phone_otp_codes')
-      .insert({
-        phone_number: normalisedPhone,
-        otp_code: otp,
-        expires_at: expiresAt,
-        metadata: metadata,
-        created_at: new Date().toISOString(),
-      })
-
-    if (dbError) {
-      console.error('Error storing OTP:', dbError)
-      return { success: false, error: `Failed to generate OTP: ${dbError.message}` }
-    }
-
-    // Call Supabase Edge Function to send SMS via Tiara Connect
-    // The Edge Function's own normalisePhone handles stripping the + for Tiara's API
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-otp`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ phone: normalisedPhone, otp }),
-      }
-    )
+    const response = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, metadata }),
+    })
 
     const data = await response.json()
 
     if (!response.ok) {
-      // Clean up OTP record if SMS failed
-      await supabase
-        .from('phone_otp_codes')
-        .delete()
-        .eq('phone_number', normalisedPhone)
-
-      let errorMessage = 'Failed to send verification code'
-      if (response.status === 429) {
-        errorMessage = 'SMS service rate limit reached. Please try again in a few moments.'
-      } else if (response.status >= 500) {
-        errorMessage = 'SMS service temporarily unavailable. Please try again shortly.'
-      } else if (data.error?.includes('Invalid phone')) {
-        errorMessage = 'Invalid phone number format. Please check and try again.'
-      } else if (data.error) {
-        errorMessage = data.error
-      }
-
-      return { success: false, error: errorMessage }
+      return { success: false, error: data.error || 'Failed to send verification code' }
     }
 
     return { success: true }
-
   } catch (error) {
     console.error('Unexpected error in sendPhoneOTP:', error)
     return {
@@ -145,18 +50,16 @@ export async function sendPhoneOTP(
 // ============================================================================
 // VERIFY OTP
 // ============================================================================
+
 export async function verifyPhoneOTP(
   phone: string,
   otp: string
 ): Promise<VerifyOTPResult> {
   try {
-    // Normalise to E.164 — must match what sendPhoneOTP stored
-    const normalisedPhone = normalisePhone(phone)
-
     const response = await fetch('/api/auth/verify-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: normalisedPhone, otp }),
+      body: JSON.stringify({ phone, otp }),
     })
 
     const data = await response.json()
@@ -180,14 +83,9 @@ export async function verifyPhoneOTP(
 }
 
 // ============================================================================
-// RESEND OTP
+// RESEND OTP — just re-calls sendPhoneOTP (the server route handles cleanup)
 // ============================================================================
 
 export async function resendPhoneOTP(phone: string): Promise<SendOTPResult> {
-  const normalisedPhone = normalisePhone(phone)
-  await supabase
-    .from('phone_otp_codes')
-    .delete()
-    .eq('phone_number', normalisedPhone)
   return sendPhoneOTP(phone)
 }
