@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 }
 
 import { SyncManager } from '@/components/ui/SyncManager'
+import { WhatsAppButton } from '@/components/ui/WhatsAppButton'
 
 export default function RootLayout({
   children,
@@ -33,6 +34,7 @@ export default function RootLayout({
         <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/5 via-transparent to-transparent pointer-events-none" />
         {children}
         <SyncManager />
+        <WhatsAppButton />
       </body>
     </html>
   )

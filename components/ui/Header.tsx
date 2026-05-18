@@ -48,7 +48,7 @@ export function Header() {
               href="/auth/signup"
               className="inline-block rounded-md border border-transparent bg-primary-600 px-4 py-2 text-base font-medium text-white hover:bg-primary-700"
             >
-              Start Free Trial
+              Try Free – 14 Days
             </Link>
           </div>
 
@@ -94,7 +94,7 @@ export function Header() {
                 href="/auth/signup"
                 className="block w-full rounded-md bg-primary-600 px-4 py-2 text-center text-base font-medium text-white hover:bg-primary-700"
               >
-                Start Free Trial
+                Try Free – 14 Days
               </Link>
             </div>
           </div>

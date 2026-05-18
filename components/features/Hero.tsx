@@ -34,7 +34,7 @@ export function Hero() {
               href="/auth/signup"
               className="rounded-md bg-primary-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-primary-700"
             >
-              Start Free Trial
+              Try Free for 14 Days
             </Link>
             <Link
               href="#how-it-works" 
@@ -43,8 +43,19 @@ export function Hero() {
               Learn More <span aria-hidden="true">→</span>
             </Link>
           </div>
+
+          {/* Trust Badges */}
+          <div className="mt-8 flex flex-wrap items-center gap-4 text-xs text-gray-500">
+            <span className="flex items-center gap-1.5">🔒 <span>Data Protected</span></span>
+            <span className="text-gray-300">|</span>
+            <span className="flex items-center gap-1.5">📱 <span>Any Phone</span></span>
+            <span className="text-gray-300">|</span>
+            <span className="flex items-center gap-1.5">💳 <span>M-PESA Ready</span></span>
+            <span className="text-gray-300">|</span>
+            <span className="flex items-center gap-1.5">✅ <span>EUDR Compliant</span></span>
+          </div>
         </div>
-        
+
         {/* WhatsApp Chat Mockup */}
         <div className="mx-auto mt-16 flex max-w-2xl sm:mt-24 lg:ml-10 lg:mr-0 lg:mt-0 lg:max-w-none lg:flex-none xl:ml-32">
           <div className="max-w-3xl flex-none sm:max-w-5xl lg:max-w-none">

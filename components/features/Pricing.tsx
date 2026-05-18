@@ -23,6 +23,7 @@ export function Pricing() {
       id: 'tier-pro',
       price: 'KES 500',
       period: '/month',
+      dailyRate: '≈ KES 17/day',
       description: 'Everything you need for professional farm management',
       features: [
         'Unlimited records',
@@ -33,28 +34,28 @@ export function Pricing() {
         'Trend alerts & notifications',
         'Financial analytics',
         'Regional coffee calendar',
-        'Priority support',
+        'Priority WhatsApp support',
       ],
-      cta: 'Start Free Trial',
+      cta: 'Try Free for 14 Days',
       mostPopular: true,
     },
     {
-      name: 'Enterprise',
+      name: 'Cooperative',
       id: 'tier-enterprise',
       price: 'Custom',
       period: '',
-      description: 'For cooperatives and large farms',
+      description: 'For cooperatives, FCS societies & large farms (50+ farmers)',
       features: [
         'Everything in Pro',
-        'Multi-farm management',
-        'Cooperative member management',
-        'Bulk EUDR exports',
-        'API access',
-        'Custom integrations',
+        'Aggregate cooperative dashboard',
+        'Bulk farmer onboarding (CSV)',
+        'Bulk EUDR group export',
+        'Quality grading & tracking',
+        'API access & integrations',
         'Dedicated account manager',
-        'Training & onboarding',
+        'On-site training & onboarding',
       ],
-      cta: 'Contact Sales',
+      cta: 'Talk to Our Team',
       mostPopular: false,
     },
   ]
@@ -111,6 +112,13 @@ export function Pricing() {
                   {tier.period}
                 </span>
               </p>
+              {'dailyRate' in tier && tier.dailyRate && (
+                <p className={`mt-1 text-xs ${
+                  tier.mostPopular ? 'text-green-300' : 'text-primary-600'
+                }`}>
+                  {tier.dailyRate}
+                </p>
+              )}
               <Link
                 href={tier.id === 'tier-enterprise' ? '/contact' : '/auth/signup'}
                 className={`mt-6 block rounded-md px-3 py-2 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
@@ -150,10 +158,14 @@ export function Pricing() {
             </div>
           ))}
         </div>
-        <div className="mt-16 text-center">
+        <div className="mt-16 text-center space-y-3">
           <p className="text-sm text-gray-600">
-            All plans include WhatsApp support. Pay via M-Pesa. No credit card required.
+            All plans include WhatsApp support. No credit card required.
           </p>
+          <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-5 py-2 text-sm text-green-800 font-medium">
+            <span>💳</span>
+            <span>Pay with M-PESA Paybill or Till — no bank card needed</span>
+          </div>
         </div>
       </div>
     </div>
