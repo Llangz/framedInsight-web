@@ -1,210 +1,179 @@
+import { createClient } from '@supabase/supabase-js'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 
-/**
- * Normalise to E.164 format WITH the leading + to match what lib/auth.ts stores.
- * RLS policy on phone_otp_codes requires: phone_number ~ '^\+[0-9]+$'
- *
- *   0712345678    → +254712345678
- *   254712345678  → +254712345678
- *  +254712345678  → +254712345678
- */
 function normalisePhone(phone: string): string {
   let digits = phone.replace(/\D/g, '')
-  if (digits.startsWith('0')) {
-    digits = '254' + digits.slice(1)
-  }
-  if (!digits.startsWith('254')) {
-    throw new Error('Invalid Kenyan phone number')
-  }
+  if (digits.startsWith('0')) digits = '254' + digits.slice(1)
+  if (!digits.startsWith('254')) throw new Error('Invalid Kenyan phone number')
   return '+' + digits
 }
 
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies()
-  const { phone, otp } = await req.json()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!phone || !otp) {
-    return NextResponse.json({ error: 'Phone and OTP are required' }, { status: 400 })
+  if (!supabaseUrl || !serviceKey || !anonKey) {
+    console.error('[verify-otp] Missing env vars:', { hasUrl: !!supabaseUrl, hasServiceKey: !!serviceKey, hasAnonKey: !!anonKey })
+    return NextResponse.json({ error: 'Server misconfiguration.' }, { status: 500 })
   }
+
+  // admin: raw supabase-js client with service role — for DB + auth.admin operations
+  const admin = createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+
+  // ssrClient: @supabase/ssr client with anon key — for setting browser session cookies
+  const cookieStore = await cookies()
+  const ssrClient = createServerClient(supabaseUrl, anonKey, {
+    cookies: {
+      get: (name) => cookieStore.get(name)?.value,
+      set: (name, value, opts: CookieOptions) => cookieStore.set({ name, value, ...opts }),
+      remove: (name, opts: CookieOptions) => cookieStore.set({ name, value: '', ...opts }),
+    },
+  })
+
+  let body: any
+  try { body = await req.json() } catch { body = {} }
+  const { phone, otp } = body
+
+  if (!phone || !otp) return NextResponse.json({ error: 'Phone and OTP are required.' }, { status: 400 })
 
   let normalisedPhone: string
-  try {
-    normalisedPhone = normalisePhone(phone)
-  } catch {
-    return NextResponse.json({ error: 'Invalid phone number format' }, { status: 400 })
-  }
+  try { normalisedPhone = normalisePhone(phone) }
+  catch { return NextResponse.json({ error: 'Invalid phone number format.' }, { status: 400 }) }
 
-  const phonePartial = normalisedPhone.substring(0, 7) + '***'
-
-  const supabaseAdmin = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        get(name: string) { return cookieStore.get(name)?.value },
-        set(name: string, value: string, options: CookieOptions) { cookieStore.set({ name, value, ...options }) },
-        remove(name: string, options: CookieOptions) { cookieStore.set({ name, value: '', ...options }) },
-      },
-    }
-  )
+  const phoneTag = normalisedPhone.slice(0, 7) + '***'
 
   try {
-    // ─────────────────────────────────────────────────────────────────────────
-    // ENHANCED DEBUGGING: Log what we're searching for
-    // ─────────────────────────────────────────────────────────────────────────
-    console.log('🔍 OTP LOOKUP ATTEMPT:', {
-      phone_number: normalisedPhone,
-      otp_code: otp,
-      otp_length: otp.length,
-      phone_format: normalisedPhone.match(/^\+254/) ? 'E.164 ✅' : 'WRONG FORMAT ❌',
-      timestamp: new Date().toISOString()
-    })
-
-    // First, let's see what records exist for this phone
-    const { data: allRecords } = await supabaseAdmin
+    // ── 1. Fetch the OTP record ───────────────────────────────────────────────
+    const { data: record, error: fetchErr } = await admin
       .from('phone_otp_codes')
       .select('*')
       .eq('phone_number', normalisedPhone)
-    
-    console.log('📋 ALL OTP RECORDS FOR THIS PHONE:', {
-      count: allRecords?.length || 0,
-      records: allRecords?.map(r => ({
-        otp_code: r.otp_code,
-        expires_at: r.expires_at,
-        created_at: r.created_at,
-        is_expired: new Date(r.expires_at) < new Date()
-      }))
-    })
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Step 1: Look up OTP record FIRST — only increment attempt counter on failure.
-    // ─────────────────────────────────────────────────────────────────────────
-    const { data: otpRecord } = await supabaseAdmin
-      .from('phone_otp_codes')
-      .select('*')
-      .eq('phone_number', normalisedPhone)
-      .eq('otp_code', otp)
       .single()
 
-    if (!otpRecord) {
-      console.warn('❌ NO MATCHING OTP FOUND:', {
-        phone: phonePartial,
-        otp_provided: otp,
-        all_otps_for_phone: allRecords?.map(r => r.otp_code).join(', ') || 'NONE',
-        timestamp: new Date().toISOString()
-      })
-      
-      // Wrong code — increment failure counter
-      const { data: attempts, error: attemptsError } = await supabaseAdmin.rpc(
-        'increment_otp_attempts',
-        { p_phone: normalisedPhone }
+    if (fetchErr || !record) {
+      console.warn('[verify-otp] No record found for:', phoneTag)
+      return NextResponse.json(
+        { error: 'No active code found for this number. Please request a new one.' },
+        { status: 401 }
       )
+    }
 
-      if (!attemptsError && attempts >= 5) {
-        console.warn('Brute force protection triggered:', { phone: phonePartial })
+    // ── 2. Check expiry ───────────────────────────────────────────────────────
+    if (new Date(record.expires_at) < new Date()) {
+      await admin.from('phone_otp_codes').delete().eq('phone_number', normalisedPhone)
+      return NextResponse.json(
+        { error: 'Your code has expired. Please request a new one.' },
+        { status: 401 }
+      )
+    }
+
+    // ── 3. Validate the code ──────────────────────────────────────────────────
+    if (record.otp_code !== String(otp).trim()) {
+      const { data: attempts } = await admin.rpc('increment_otp_attempts', { p_phone: normalisedPhone })
+      console.warn('[verify-otp] Wrong code for:', phoneTag, '| attempts:', attempts)
+      if (attempts >= 5) {
         return NextResponse.json(
-          { error: 'Too many failed attempts. Please request a new OTP.' },
+          { error: 'Too many failed attempts. Please request a new code.' },
           { status: 429 }
         )
       }
-
-      console.warn('Invalid OTP attempt:', { phone: phonePartial, timestamp: new Date().toISOString() })
       return NextResponse.json(
-        { error: 'Invalid OTP code. Please check and try again.' },
+        { error: 'Incorrect code. Please check and try again.' },
         { status: 401 }
       )
     }
 
-    console.log('✅ OTP MATCH FOUND:', {
-      phone: phonePartial,
-      otp_matched: true,
-      expires_at: otpRecord.expires_at,
-      created_at: otpRecord.created_at
-    })
-
-    // Step 2: Check expiry
-    if (new Date(otpRecord.expires_at) < new Date()) {
-      await supabaseAdmin.from('phone_otp_codes').delete().eq('phone_number', normalisedPhone)
-      return NextResponse.json(
-        { error: 'OTP has expired. Please request a new one.' },
-        { status: 401 }
-      )
-    }
-
-    // Step 3: Resolve or create Supabase auth user
-    const metadata = otpRecord.metadata || {}
-    const ghostEmail = metadata.email || `user-${normalisedPhone.replace('+', '')}@framedinsight.app`
+    // ── OTP verified ── proceed to create/retrieve auth user ─────────────────
+    const metadata = record.metadata || {}
+    const ghostEmail = metadata.email
+      || `user${normalisedPhone.replace(/\D/g, '')}@framedinsight.app`
     const randomPassword = crypto.randomBytes(32).toString('hex')
 
+    // ── 4. Find or create auth user ───────────────────────────────────────────
+    // Strategy: attempt createUser first. If email already exists, find and update.
     let userId: string
 
-    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-    if (listError) throw listError
+    const { data: newUserData, error: createErr } = await admin.auth.admin.createUser({
+      email: ghostEmail,
+      password: randomPassword,
+      email_confirm: true,
+      user_metadata: {
+        ...metadata,
+        phone_number: normalisedPhone,
+        auth_method: 'phone_otp',
+      },
+    })
 
-    const existingUser = users.find(
-      (u) => u.email === ghostEmail || u.user_metadata?.phone_number === normalisedPhone
-    )
+    if (createErr) {
+      // User already exists — find them and update password
+      if (createErr.message.includes('already') || createErr.message.includes('exists')) {
+        // Query our own DB for the user_id we may have stored, or fall back to listUsers
+        const { data: { users }, error: listErr } = await admin.auth.admin.listUsers({
+          page: 1, perPage: 1000,
+        })
 
-    if (existingUser) {
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        existingUser.id,
-        { password: randomPassword }
-      )
-      if (updateError) throw updateError
-      userId = existingUser.id
+        if (listErr) {
+          console.error('[verify-otp] listUsers failed:', listErr.message)
+          return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+        }
+
+        const existing = users.find(
+          (u) => u.email === ghostEmail || u.user_metadata?.phone_number === normalisedPhone
+        )
+
+        if (!existing) {
+          console.error('[verify-otp] createUser said duplicate but listUsers found nothing for:', phoneTag)
+          return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+        }
+
+        const { error: updErr } = await admin.auth.admin.updateUserById(existing.id, {
+          password: randomPassword,
+          email_confirm: true,  // force-confirm in case user was created before this flag existed
+        })
+        if (updErr) {
+          console.error('[verify-otp] updateUserById failed:', updErr.message)
+          return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+        }
+
+        userId = existing.id
+      } else {
+        console.error('[verify-otp] createUser unexpected error:', createErr.message)
+        return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+      }
     } else {
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: ghostEmail,
-        password: randomPassword,
-        email_confirm: true,
-        user_metadata: {
-          ...metadata,
-          phone_number: normalisedPhone,
-          auth_method: 'phone_otp',
-        },
-      })
-      if (createError) throw createError
-      userId = newUser.user.id
+      userId = newUserData.user.id
     }
 
-    // Step 4: Create session
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) { return cookieStore.get(name)?.value },
-          set(name: string, value: string, options: CookieOptions) { cookieStore.set({ name, value, ...options }) },
-          remove(name: string, options: CookieOptions) { cookieStore.set({ name, value: '', ...options }) },
-        },
-      }
-    )
-
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    // ── 5. Sign in to create a browser session ────────────────────────────────
+    const { data: signInData, error: signInErr } = await ssrClient.auth.signInWithPassword({
       email: ghostEmail,
       password: randomPassword,
     })
 
-    if (signInError || !signInData.session) {
-      throw signInError || new Error('Failed to create session')
+    if (signInErr || !signInData.session) {
+      console.error('[verify-otp] signInWithPassword failed:', signInErr?.message)
+      return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
     }
 
-    // Step 5: Delete used OTP
-    await supabaseAdmin.from('phone_otp_codes').delete().eq('phone_number', normalisedPhone)
+    // ── 6. Delete the used OTP ────────────────────────────────────────────────
+    await admin.from('phone_otp_codes').delete().eq('phone_number', normalisedPhone)
 
-    console.log('OTP verification successful:', { phone: phonePartial, userId, timestamp: new Date().toISOString() })
+    console.log('[verify-otp] Success:', phoneTag, 'userId:', userId)
 
     return NextResponse.json({
       success: true,
-      user: { id: userId, phone: phonePartial },
+      user: { id: userId, phone: phoneTag },
       session: signInData.session,
     })
 
-  } catch (error: any) {
-    console.error('OTP Verification Error:', { phone: phonePartial, error: error.message })
+  } catch (err: any) {
+    console.error('[verify-otp] Unhandled error for:', phoneTag, '|', err.message)
     return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
   }
 }
