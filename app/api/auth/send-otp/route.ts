@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -44,16 +44,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid phone number format' }, { status: 400 })
   }
 
-  // Use SERVICE ROLE KEY to bypass RLS and ensure DB writes succeed
-  const supabaseAdmin = createServerClient(
+  // Use raw supabase-js client for service role to ensure RLS bypass.
+  // Do NOT use createServerClient from @supabase/ssr with the service role key,
+  // as it will read the user's cookies and override the service role token with an anon/user token.
+  const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        get(name: string) { return cookieStore.get(name)?.value },
-        set() {},
-        remove() {},
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     }
   )
 
