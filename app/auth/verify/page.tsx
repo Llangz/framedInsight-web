@@ -95,8 +95,8 @@ function VerifyContent() {
     // Clean up login session key if present
     sessionStorage.removeItem('loginPhone')
 
-    // Step 3: Redirect
-    router.push('/dashboard')
+    // Step 3: Redirect to account setup
+    router.push('/auth/setup-credentials')
   }
 
   return (
