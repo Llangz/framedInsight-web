@@ -30,9 +30,15 @@ export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
   const ssrClient = createServerClient(supabaseUrl, anonKey, {
     cookies: {
-      get: (name) => cookieStore.get(name)?.value,
-      set: (name, value, opts: CookieOptions) => cookieStore.set({ name, value, ...opts }),
-      remove: (name, opts: CookieOptions) => cookieStore.set({ name, value: '', ...opts }),
+      get(name: string) {
+        return cookieStore.get(name)?.value
+      },
+      set(name: string, value: string, options: CookieOptions) {
+        try { cookieStore.set({ name, value, ...options }) } catch {}
+      },
+      remove(name: string, options: CookieOptions) {
+        try { cookieStore.set({ name, value: '', ...options }) } catch {}
+      },
     },
   })
 
