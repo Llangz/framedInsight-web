@@ -133,6 +133,48 @@ export default function SettingsPage() {
     enterprise_plus: 'Enterprise+ - KES 5,000/month',
   };
 
+  const [paymentMonths, setPaymentMonths] = useState(1);
+  const [isPaying, setIsPaying] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState('');
+
+  const handlePayment = async () => {
+    if (!farm || !farm.phone) {
+      setPaymentMessage('No valid phone number found for farm.');
+      return;
+    }
+    
+    setIsPaying(true);
+    setPaymentMessage('');
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const amount = paymentMonths * 500; // Example KES 500 per month
+
+      const res = await fetch('/api/payments/stkpush', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: farm.phone,
+          amount: amount,
+          farmId: farm.id,
+          userId: session.user.id,
+          months: paymentMonths
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Payment failed to initiate');
+
+      setPaymentMessage('Please check your phone for the M-Pesa prompt.');
+    } catch (err: any) {
+      setPaymentMessage(err.message || 'Payment error');
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-4">
@@ -146,7 +188,7 @@ export default function SettingsPage() {
         {farm && (
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Subscription Status</h2>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-6">
               <div>
                 <p className="text-xs text-gray-600 uppercase tracking-wide">Plan</p>
                 <p className="text-sm font-semibold text-gray-900">
@@ -170,6 +212,39 @@ export default function SettingsPage() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="text-md font-semibold text-gray-900 mb-3">Renew or Upgrade via M-Pesa</h3>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Duration</label>
+                  <select 
+                    value={paymentMonths} 
+                    onChange={(e) => setPaymentMonths(Number(e.target.value))}
+                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value={1}>1 Month (KES 500)</option>
+                    <option value={3}>3 Months (KES 1,500)</option>
+                    <option value={6}>6 Months (KES 3,000)</option>
+                    <option value={12}>1 Year (KES 6,000)</option>
+                  </select>
+                </div>
+                <div className="mt-4 sm:mt-0 flex flex-col w-full sm:w-auto">
+                  <button 
+                    onClick={handlePayment} 
+                    disabled={isPaying}
+                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-md disabled:opacity-50 mt-1"
+                  >
+                    {isPaying ? 'Processing...' : `Pay KES ${paymentMonths * 500}`}
+                  </button>
+                </div>
+              </div>
+              {paymentMessage && (
+                <p className={`mt-3 text-sm font-medium ${paymentMessage.includes('error') || paymentMessage.includes('failed') ? 'text-red-600' : 'text-green-600'}`}>
+                  {paymentMessage}
+                </p>
+              )}
             </div>
           </div>
         )}
