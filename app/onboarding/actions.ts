@@ -3,13 +3,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { Enterprise, CreateFarmParams, FarmCreationResult } from '@/lib/create-farm'
 import { revalidatePath } from 'next/cache'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export async function createFarmAction(params: CreateFarmParams): Promise<FarmCreationResult> {
-  const supabase = await createClient()
+  const supabaseAuth = await createClient()
+
+  // Use service role to bypass RLS for initial provisioning
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   try {
     // 1. Create farm record
-    const { data: farm, error: farmError } = await supabase
+    const { data: farm, error: farmError } = await supabaseAdmin
       .from('farms')
       .insert({
         farm_name: params.farmName,
@@ -38,7 +45,7 @@ export async function createFarmAction(params: CreateFarmParams): Promise<FarmCr
     }
 
     // 2. Link user to farm
-    const { error: managerError } = await supabase
+    const { error: managerError } = await supabaseAdmin
       .from('farm_managers')
       .insert({
         user_id: params.userId,
@@ -49,7 +56,7 @@ export async function createFarmAction(params: CreateFarmParams): Promise<FarmCr
 
     if (managerError) {
       console.error('Error creating farm_manager:', managerError)
-      await supabase.from('farms').delete().eq('id', farm.id)
+      await supabaseAdmin.from('farms').delete().eq('id', farm.id)
       return { success: false, error: managerError.message }
     }
 

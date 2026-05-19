@@ -14,6 +14,12 @@ FOR ALL
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "Service role can manage farm managers"
+ON farm_managers
+FOR ALL
+USING (auth.role() = 'service_role')
+WITH CHECK (auth.role() = 'service_role');
+
 -- Policy 2: farms can only be viewed/updated by their managers
 CREATE POLICY "Farm managers can view their farms"
 ON farms
@@ -25,6 +31,17 @@ ON farms
 FOR UPDATE
 USING (id IN (SELECT farm_id FROM farm_managers WHERE user_id = auth.uid()))
 WITH CHECK (id IN (SELECT farm_id FROM farm_managers WHERE user_id = auth.uid()));
+
+CREATE POLICY "Farm managers can create farms"
+ON farms
+FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Service role can manage farms"
+ON farms
+FOR ALL
+USING (auth.role() = 'service_role')
+WITH CHECK (auth.role() = 'service_role');
 
 -- Policy 3: cows can only be accessed by the farm manager
 CREATE POLICY "Farm managers can access their cows"

@@ -13,6 +13,13 @@ interface PlotRecord {
   region_name: string | null;
 }
 
+interface FarmRecord {
+  id: string;
+  phone: string;
+  farm_name: string;
+  owner_name: string;
+}
+
 interface IndexStats {
   mean: number | null;
   min: number | null;
@@ -242,12 +249,86 @@ function deriveHealthScore(indices: ParsedIndices): {
   return { score, label };
 }
 
+// ─── Send WhatsApp Alert via LipaChat ─────────────────────────────────────────
+
+async function sendWhatsAppAlert(
+  phone: string,
+  plotName: string,
+  alertReason: string,
+  ownerName: string,
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  const LIPACHAT_API_KEY = Deno.env.get("LIPACHAT_API_KEY");
+  const LIPACHAT_WHATSAPP_NUMBER = Deno.env.get("LIPACHAT_WHATSAPP_NUMBER");
+
+  if (!LIPACHAT_API_KEY || !LIPACHAT_WHATSAPP_NUMBER) {
+    return {
+      success: false,
+      error: "LipaChat credentials not configured (LIPACHAT_API_KEY or LIPACHAT_WHATSAPP_NUMBER missing)",
+    };
+  }
+
+  // Format phone: remove +, country code prefixing handled by LipaChat
+  const formattedPhone = phone.replace(/\D/g, "").slice(-9);
+  const recipientPhone = `254${formattedPhone}`; // Kenya country code
+
+  // Localized alert message
+  const message =
+    `⚠️ framedInsight Satellite Alert\n\n` +
+    `Hi ${ownerName},\n\n` +
+    `Your coffee plot "${plotName}" is showing signs of stress.\n` +
+    `Alert: ${alertReason}\n\n` +
+    `⚠️ Please scout this plot immediately for diseases like:\n` +
+    `• Coffee Berry Disease (CBD)\n` +
+    `• Coffee Leaf Rust (CLR)\n` +
+    `• Other pests or nutritional issues\n\n` +
+    `Visit your framedInsight dashboard for detailed satellite data.`;
+
+  try {
+    const response = await fetch(
+      "https://gateway.lipachat.com/api/v1/whatsapp/message/text",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${LIPACHAT_API_KEY}`,
+        },
+        body: JSON.stringify({
+          recipient: recipientPhone,
+          message: message,
+          sender: LIPACHAT_WHATSAPP_NUMBER,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `LipaChat API error (${response.status}): ${errorText}`,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      message: `WhatsApp alert sent to ${recipientPhone}`,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      error: `Failed to send WhatsApp alert: ${message}`,
+    };
+  }
+}
+
 // ─── Process One Plot ─────────────────────────────────────────────────────────
 
 async function processPlot(
   plot: PlotRecord,
   token: string,
   sb: SupabaseClient,
+  farms: Map<string, FarmRecord>,
 ): Promise<ProcessResult> {
   const plotId = plot.id;
 
@@ -387,6 +468,29 @@ async function processPlot(
     return { status: "error", plotId, message: upsertErr.message };
   }
 
+  // Send WhatsApp alert if triggered
+  if (alertTriggered) {
+    const farm = farms.get(plot.farm_id);
+    if (farm && farm.phone) {
+      const whatsappResult = await sendWhatsAppAlert(
+        farm.phone,
+        plot.plot_name,
+        alertReason || "Health anomaly detected",
+        farm.owner_name,
+      );
+
+      if (!whatsappResult.success) {
+        console.warn(
+          `Failed to send WhatsApp alert for plot ${plotId}: ${whatsappResult.error}`
+        );
+      } else {
+        console.log(`✓ WhatsApp alert sent for plot ${plotId}: ${whatsappResult.message}`);
+      }
+    } else {
+      console.warn(`No phone number found for farm ${plot.farm_id}`);
+    }
+  }
+
   await sb.from("coffee_satellite_fetch_log").insert({
     plot_id: plotId, status: "success",
     cloud_cover_pct: indices.cloudCoverPct,
@@ -402,6 +506,62 @@ async function processPlot(
 
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 
+async function runSatelliteScans(sb: SupabaseClient): Promise<{
+  summary: { total: number; succeeded: number; cloudy: number; skipped: number; failed: number };
+  results: ProcessResult[];
+}> {
+  const CDSE_CLIENT_ID = Deno.env.get("CDSE_CLIENT_ID") ?? "";
+  const CDSE_CLIENT_SECRET = Deno.env.get("CDSE_CLIENT_SECRET") ?? "";
+
+  if (!CDSE_CLIENT_ID || !CDSE_CLIENT_SECRET) {
+    throw new Error("CDSE_CLIENT_ID and CDSE_CLIENT_SECRET must be set in Supabase secrets");
+  }
+
+  // Fetch all farms with phone numbers
+  const { data: farmsData, error: farmsErr } = await sb
+    .from("farms")
+    .select("id, phone, farm_name, owner_name");
+
+  if (farmsErr) throw farmsErr;
+
+  const farms = new Map<string, FarmRecord>(
+    (farmsData || []).map((f: any) => [f.id, f as FarmRecord])
+  );
+
+  // Fetch all active coffee plots
+  let query = sb
+    .from("coffee_plots")
+    .select("id, farm_id, plot_name, boundary_geojson, area_hectares, region_name");
+
+  const { data: plots, error: plotsErr } = await query;
+  if (plotsErr) throw plotsErr;
+
+  if (!plots || plots.length === 0) {
+    return { summary: { total: 0, succeeded: 0, cloudy: 0, skipped: 0, failed: 0 }, results: [] };
+  }
+
+  const token = await getCDSEToken(CDSE_CLIENT_ID, CDSE_CLIENT_SECRET);
+  const results: ProcessResult[] = [];
+
+  for (const plot of plots) {
+    results.push(await processPlot(plot as PlotRecord, token, sb, farms));
+    if (plots.length > 1) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  return {
+    summary: {
+      total: plots.length,
+      succeeded: results.filter((r) => r.status === "success").length,
+      cloudy: results.filter((r) => r.status === "cloudy").length,
+      skipped: results.filter((r) => r.status === "skipped").length,
+      failed: results.filter((r) => r.status === "error").length,
+    },
+    results,
+  };
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
@@ -415,58 +575,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     const SUPABASE_URL              = Deno.env.get("SUPABASE_URL")             ?? "";
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const CDSE_CLIENT_ID            = Deno.env.get("CDSE_CLIENT_ID")            ?? "";
-    const CDSE_CLIENT_SECRET        = Deno.env.get("CDSE_CLIENT_SECRET")        ?? "";
 
-    if (!CDSE_CLIENT_ID || !CDSE_CLIENT_SECRET) {
-      throw new Error("CDSE_CLIENT_ID and CDSE_CLIENT_SECRET must be set in Supabase secrets");
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
     }
 
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    const body = await req.json().catch(() => ({})) as {
-      plot_id?: string;
-      farm_id?: string;
-    };
-
-    let query = sb
-      .from("coffee_plots")
-      .select("id, farm_id, plot_name, boundary_geojson, area_hectares, region_name");
-
-    if (body.plot_id)       query = query.eq("id",       body.plot_id);
-    else if (body.farm_id)  query = query.eq("farm_id",  body.farm_id);
-
-    const { data: plots, error: plotsErr } = await query;
-    if (plotsErr) throw plotsErr;
-
-    if (!plots || plots.length === 0) {
-      return new Response(JSON.stringify({ error: "No plots found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const token   = await getCDSEToken(CDSE_CLIENT_ID, CDSE_CLIENT_SECRET);
-    const results: ProcessResult[] = [];
-
-    for (const plot of plots) {
-      results.push(await processPlot(plot as PlotRecord, token, sb));
-      if (plots.length > 1) {
-        await new Promise<void>((resolve) => setTimeout(resolve, 500));
-      }
-    }
+    const result = await runSatelliteScans(sb);
 
     return new Response(
-      JSON.stringify({
-        summary: {
-          total:     plots.length,
-          succeeded: results.filter((r) => r.status === "success").length,
-          cloudy:    results.filter((r) => r.status === "cloudy").length,
-          skipped:   results.filter((r) => r.status === "skipped").length,
-          failed:    results.filter((r) => r.status === "error").length,
-        },
-        results,
-      }),
+      JSON.stringify(result),
       {
         status: 200,
         headers: {
@@ -482,5 +600,37 @@ Deno.serve(async (req: Request): Promise<Response> => {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
+  }
+});
+
+// ─── Automated Cron Job (Runs every 14 days) ─────────────────────────────────
+
+// Schedule satellite scanning to run automatically every 14 days (on 1st & 15th at midnight UTC)
+Deno.cron("Satellite plot scan (twice monthly)", "0 0 1,15 * *", async () => {
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("Missing Supabase credentials for cron job");
+      return;
+    }
+
+    const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const result = await runSatelliteScans(sb);
+
+    console.log(
+      `Automated satellite scan completed: ${result.summary.succeeded}/${result.summary.total} plots scanned successfully`
+    );
+
+    // Log cron execution
+    await sb.from("coffee_satellite_fetch_log").insert({
+      plot_id: "CRON_JOB",
+      status: "success",
+      error_message: `Cron job completed: ${JSON.stringify(result.summary)}`,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Cron job failed:", message);
   }
 });
