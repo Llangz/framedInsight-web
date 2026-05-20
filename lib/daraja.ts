@@ -1,19 +1,29 @@
+// Daraja (M-Pesa) API integration with proper environment switching
+// FIXED: No hardcoded sandbox URLs, no credential fallbacks
+
+const DARAJA_BASE_URL = process.env.DARAJA_ENVIRONMENT === 'production'
+  ? 'https://api.safaricom.co.ke'
+  : 'https://sandbox.safaricom.co.ke'
+
 export async function generateDarajaToken() {
   const consumerKey = process.env.DARAJA_CONSUMER_KEY
   const consumerSecret = process.env.DARAJA_CONSUMER_SECRET
   
   if (!consumerKey || !consumerSecret) {
-    throw new Error('Daraja credentials missing in environment')
+    throw new Error('Daraja credentials missing in environment variables. Please set DARAJA_CONSUMER_KEY and DARAJA_CONSUMER_SECRET.')
   }
 
   const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64')
 
-  const response = await fetch('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
-    method: 'GET',
-    headers: {
-      'Authorization': `Basic ${auth}`
+  const response = await fetch(
+    `${DARAJA_BASE_URL}/oauth/v1/generate?grant_type=client_credentials`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${auth}`
+      }
     }
-  })
+  )
 
   if (!response.ok) {
     throw new Error(`Daraja token generation failed: ${response.statusText}`)
@@ -31,8 +41,13 @@ export async function initiateSTKPush(
 ) {
   const token = await generateDarajaToken()
   
-  const shortcode = process.env.DARAJA_SHORTCODE || '174379'
-  const passkey = process.env.DARAJA_PASSKEY || 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'
+  // FIXED: No fallback credentials - fail loudly if not configured
+  const shortcode = process.env.DARAJA_SHORTCODE
+  const passkey = process.env.DARAJA_PASSKEY
+  
+  if (!shortcode || !passkey) {
+    throw new Error('Daraja shortcode and passkey must be configured in environment variables. Please set DARAJA_SHORTCODE and DARAJA_PASSKEY.')
+  }
   
   const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, -3)
   const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64')
@@ -58,14 +73,17 @@ export async function initiateSTKPush(
     TransactionDesc: transactionDesc
   }
 
-  const response = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
+  const response = await fetch(
+    `${DARAJA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    }
+  )
 
   if (!response.ok) {
     const errText = await response.text()
