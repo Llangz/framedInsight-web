@@ -17,8 +17,9 @@ interface FarmAnimal {
 }
 
 interface Props {
-  animal: Animal
-  farmAnimals: FarmAnimal[]
+  animal?: Animal
+  initialAnimal?: Animal
+  farmAnimals?: FarmAnimal[]
 }
 
 // ── Same breed/option lists as the add form ───────────────────────────────────
@@ -84,7 +85,9 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function EditAnimalClient({ animal, farmAnimals }: Props) {
+export default function EditAnimalClient(props: Props) {
+  const { farmAnimals = [] } = props
+  const animal = props.animal ?? props.initialAnimal!
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
