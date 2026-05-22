@@ -193,7 +193,7 @@ export default function RecordHarvestPage() {
                     ))}
                   </select>
                 ) : (
-                  <p className="text-sm text-gray-500">No active plots found. <a href="/dashboard/coffee/add-plot" className="text-green-600 hover:text-green-700 font-semibold">Add a plot first.</a></p>
+                  <p className="text-sm text-gray-500">No active plots found. <a href="/dashboard/coffee/plots/add" className="text-green-600 hover:text-green-700 font-semibold">Add a plot first.</a></p>
                 )}
               </div>
 

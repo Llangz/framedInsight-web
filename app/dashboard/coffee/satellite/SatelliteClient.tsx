@@ -314,14 +314,22 @@ function PlotHealthCard({
               disabled={refreshing}
               className="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
-              {refreshing ? "Fetching…" : "🛰 Refresh Satellite Data"}
+              {refreshing ? "Fetching…" : "🛰 Refresh"}
             </button>
+            <Link
+              href={`/dashboard/coffee/plots/${plot.plot_id}`}
+              className="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 text-center hover:bg-slate-50 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              View Plot
+            </Link>
             {plot.alert_triggered && (
               <Link
                 href={`/dashboard/coffee/disease/scout?plot_id=${plot.plot_id}`}
                 className="flex-1 py-2 text-xs font-semibold rounded-lg bg-red-500 text-white text-center hover:bg-red-600 transition-colors"
+                onClick={(e) => e.stopPropagation()}
               >
-                Scout This Plot
+                Scout
               </Link>
             )}
           </div>
