@@ -50,3 +50,41 @@ export async function addCow(formData: AddCowFormData) {
   revalidatePath("/dashboard/dairy/herd");
   return { success: true };
 }
+
+export async function updateCow(cowId: string, updates: Partial<CowInsert>) {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data: farmManager } = await supabase
+    .from('farm_managers')
+    .select('farm_id')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!farmManager) throw new Error('Farm profile not found');
+
+  // Verify ownership
+  const { data: cow } = await supabase
+    .from('cows')
+    .select('farm_id')
+    .eq('id', cowId)
+    .single();
+
+  if (!cow || cow.farm_id !== farmManager.farm_id) throw new Error('Forbidden');
+
+  const { data, error } = await supabase
+    .from('cows')
+    .update(updates)
+    .eq('id', cowId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  revalidatePath('/dashboard/dairy/herd');
+  revalidatePath(`/dashboard/dairy/cows/${cowId}`);
+
+  return { cow: data };
+}

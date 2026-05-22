@@ -65,12 +65,9 @@ export default function CowDetailClient({ initialCow }: CowDetailClientProps) {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-            >
-              {isEditing ? 'Cancel' : 'Edit'}
-            </button>
+            <Link href={`/dashboard/dairy/cows/${cow.id}/edit`} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+              Edit
+            </Link>
             <button
               onClick={handleDelete}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"

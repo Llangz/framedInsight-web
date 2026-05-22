@@ -1,13 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
-import EditPlotClient from './EditPlotClient'
+import EditAnimalClient from './EditAnimalClient'
 
-export default async function EditCoffeePlotPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id: plotId } = await params
+export default async function EditAnimalPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -21,15 +17,14 @@ export default async function EditCoffeePlotPage({
 
   if (!farmManager) redirect('/onboarding')
 
-  // Fetch the plot — confirms it exists AND belongs to this farm
-  const { data: plot, error } = await supabase
-    .from('coffee_plots')
+  const { data: animal, error } = await supabase
+    .from('small_ruminants')
     .select('*')
-    .eq('id', plotId)
+    .eq('id', id)
     .eq('farm_id', farmManager.farm_id)
     .single()
 
-  if (error || !plot) notFound()
+  if (error || !animal) notFound()
 
-  return <EditPlotClient plot={plot} />
+  return <EditAnimalClient initialAnimal={animal} />
 }
