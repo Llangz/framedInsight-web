@@ -1,133 +1,138 @@
 'use client'
 
 import Link from 'next/link'
+import {
+  Milk, PlusCircle, Stethoscope, Heart,
+  Droplets, TrendingUp, Beef, AlertTriangle, ArrowRight, CalendarDays
+} from 'lucide-react'
 
-interface DairyClientProps {
-  stats: any
-  alerts: any[]
-  upcoming: any[]
+interface Props {
+  stats: {
+    total_cows: number
+    producing_cows: number
+    dry_cows: number
+    today_milk: number
+    avg_daily_milk: number
+    calves: number
+  }
+  alerts: { id: string; message: string; subMessage: string; type: string }[]
+  upcoming: { id: string; message: string; subMessage: string; type: string }[]
 }
 
-export default function DairyClient({ stats, alerts, upcoming }: DairyClientProps) {
-  const statCards = [
-    { label: 'Total Cows', value: stats?.total_cows || 0, icon: '🐄', link: '/dashboard/dairy/herd' },
-    { label: 'Producing', value: stats?.producing_cows || 0, icon: '🥛', link: '/dashboard/dairy/record-milk' },
-    { label: "Today's Milk", value: `${stats?.today_milk || 0}L`, icon: '📊', link: '/dashboard/dairy/record-milk' },
-    { label: 'Avg Daily', value: `${stats?.avg_daily_milk || 0}L`, icon: '📈' },
-  ]
+const quickActions = [
+  { label: 'Record milk',   Icon: Droplets,    href: '/dashboard/dairy/milk/record'  },
+  { label: 'Add cow',       Icon: PlusCircle,  href: '/dashboard/dairy/add-cow'      },
+  { label: 'Health check',  Icon: Stethoscope, href: '/dashboard/dairy/health'       },
+  { label: 'Breeding',      Icon: Heart,       href: '/dashboard/dairy/breeding'     },
+]
 
-  const quickActions = [
-    { label: 'Record Milk', icon: '🥛', href: '/dashboard/dairy/milk/record', accent: 'emerald' },
-    { label: 'Add Cow', icon: '🐄', href: '/dashboard/dairy/add-cow', accent: 'sky' },
-    { label: 'Health Check', icon: '💉', href: '/dashboard/dairy/health', accent: 'crimson' },
-    { label: 'Breeding', icon: '🐂', href: '/dashboard/dairy/breeding', accent: 'amber' },
+export default function DairyClient({ stats, alerts, upcoming }: Props) {
+  const statCards = [
+    { label: 'Total cows',      value: stats.total_cows,     sub: `${stats.dry_cows} dry`,           Icon: Beef,        href: '/dashboard/dairy/herd'        },
+    { label: 'Producing',       value: stats.producing_cows, sub: 'active animals',                  Icon: TrendingUp,  href: '/dashboard/dairy/herd'        },
+    { label: "Today's milk",    value: `${stats.today_milk}L`,  sub: `avg ${stats.avg_daily_milk}L/day`, Icon: Droplets, href: '/dashboard/dairy/milk'        },
+    { label: 'Calves / heifers',value: stats.calves,         sub: 'in development',                  Icon: Milk,        href: '/dashboard/dairy/herd'        },
   ]
 
   return (
-    <div className="p-4 lg:p-10 max-w-7xl mx-auto space-y-10">
-      {/* Header Section */}
-      <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider">
-            Dairy Enterprise
-          </div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-white tracking-tight">
-            Herd <span className="text-emerald-400">Operations</span>
-          </h1>
-          <p className="text-slate-400 text-lg">
-            Manage your high-performance dairy herd and production metrics.
-          </p>
+    <div className="px-6 py-8 max-w-5xl mx-auto space-y-8">
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium text-[#4B5563] mb-1">Enterprise</p>
+          <h1 className="text-xl font-semibold text-white tracking-tight">Dairy</h1>
+          <p className="text-sm text-[#6B7280] mt-0.5">Herd management and production tracking</p>
         </div>
-        <Link href="/dashboard" className="px-6 py-2 glass-card rounded-xl text-white text-sm font-bold hover:bg-white/5 transition-all">
+        <Link href="/dashboard" className="text-xs text-[#6B7280] hover:text-white transition-colors">
           ← Dashboard
         </Link>
-      </header>
+      </div>
 
-      {/* Stats Grid */}
-      <div className="bento-grid">
-        {statCards.map((stat, index) => (
-          <div key={index} className="glass-card rounded-3xl p-8 hover-lift premium-transition group relative overflow-hidden">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">{stat.label}</span>
-                <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">{stat.icon}</span>
-              </div>
-              <p className="text-4xl font-bold text-white tracking-tight">{stat.value}</p>
-              <div className="mt-6 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 w-2/3 rounded-full" />
-              </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {statCards.map(({ label, value, sub, Icon, href }) => (
+          <Link
+            key={label}
+            href={href}
+            className="group rounded-lg border border-[#2A2D35] bg-[#0D0F14] p-4 hover:border-[#3A3D45] transition-colors"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Icon size={15} className="text-[#4B5563] group-hover:text-emerald-600 transition-colors" />
+              <ArrowRight size={12} className="text-[#2A2D35] group-hover:text-[#6B7280] transition-colors" />
             </div>
-          </div>
+            <p className="text-2xl font-semibold text-white tracking-tight">{value}</p>
+            <p className="text-xs font-medium text-[#6B7280] mt-0.5">{label}</p>
+            <p className="text-[11px] text-[#4B5563]">{sub}</p>
+          </Link>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Quick Actions */}
-        <div className="lg:col-span-4 space-y-4">
-          <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest px-2">Quick Actions</h2>
-          <div className="grid grid-cols-1 gap-3">
-            {quickActions.map((action, index) => (
-              <Link key={index} href={action.href} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all group">
-                <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-2xl grayscale group-hover:grayscale-0 transition-all">
-                  {action.icon}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">{action.label}</p>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Herd Mutation</p>
-                </div>
-                <span className="text-slate-700 group-hover:text-emerald-500 transition-colors">→</span>
+      {/* Main grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Quick actions */}
+        <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+          <div className="px-4 py-3 border-b border-[#2A2D35]">
+            <h2 className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">Actions</h2>
+          </div>
+          <div className="p-2">
+            {quickActions.map(({ label, Icon, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-[#9CA3AF] hover:text-white hover:bg-white/5 transition-colors group"
+              >
+                <Icon size={14} className="text-[#4B5563] group-hover:text-emerald-600 transition-colors flex-shrink-0" />
+                <span className="flex-1">{label}</span>
+                <ArrowRight size={12} className="text-[#2A2D35] group-hover:text-[#6B7280]" />
               </Link>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Alerts & Upcoming */}
-        <div className="lg:col-span-8 space-y-8">
-          <div className="glass-card rounded-3xl p-8">
-            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <span className="p-2 rounded-lg bg-crimson-alert/10 text-crimson-alert">⚠️</span>
-              Health Alerts
-            </h3>
-            {alerts.length > 0 ? (
-              <div className="space-y-4">
-                {alerts.map(alert => (
-                  <div key={alert.id} className="p-4 bg-crimson-alert/5 border border-crimson-alert/10 rounded-2xl flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-crimson-alert animate-pulse" />
-                    <div>
-                      <p className="text-sm font-bold text-white">{alert.message}</p>
-                      <p className="text-xs text-slate-500 font-bold uppercase">{alert.subMessage}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-500 text-sm italic">All animals are healthy and up to date.</p>
-            )}
+        {/* Health alerts */}
+        <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+          <div className="px-4 py-3 border-b border-[#2A2D35] flex items-center gap-2">
+            <AlertTriangle size={13} className="text-[#6B7280]" />
+            <h2 className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">Health alerts</h2>
           </div>
+          <div className="p-3 space-y-1">
+            {alerts.length === 0 ? (
+              <p className="text-xs text-[#4B5563] px-1 py-2">No active alerts</p>
+            ) : alerts.map(a => (
+              <div key={a.id} className="flex items-start gap-2.5 px-2 py-2 rounded-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-white">{a.message}</p>
+                  <p className="text-[11px] text-[#6B7280]">{a.subMessage}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-          <div className="glass-card rounded-3xl p-8">
-            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <span className="p-2 rounded-lg bg-sky-500/10 text-sky-500">📅</span>
-              Upcoming Events
-            </h3>
-            {upcoming.length > 0 ? (
-              <div className="space-y-4">
-                {upcoming.map(event => (
-                  <div key={event.id} className="p-4 bg-sky-500/5 border border-sky-500/10 rounded-2xl flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xl">📅</div>
-                    <div>
-                      <p className="text-sm font-bold text-white">{event.message}</p>
-                      <p className="text-xs text-emerald-400 font-bold uppercase tracking-widest">{event.subMessage}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-500 text-sm italic">No scheduled events for the upcoming week.</p>
-            )}
+        {/* Upcoming events */}
+        <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+          <div className="px-4 py-3 border-b border-[#2A2D35] flex items-center gap-2">
+            <CalendarDays size={13} className="text-[#6B7280]" />
+            <h2 className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">Upcoming</h2>
           </div>
-        </div>
+          <div className="p-3 space-y-1">
+            {upcoming.length === 0 ? (
+              <p className="text-xs text-[#4B5563] px-1 py-2">No upcoming events</p>
+            ) : upcoming.map(e => (
+              <div key={e.id} className="flex items-start gap-2.5 px-2 py-2 rounded-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-white">{e.message}</p>
+                  <p className="text-[11px] text-[#6B7280]">{e.subMessage}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
       </div>
     </div>
   )
