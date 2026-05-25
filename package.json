@@ -26,6 +26,7 @@
     "critters": "^0.0.23",
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
+    "lucide-react": "^1.16.0",
     "next": "^16.2.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
