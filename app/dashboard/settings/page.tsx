@@ -94,7 +94,11 @@ export default function SettingsPage() {
 
       const { farm: updated } = await response.json();
       setFarm(updated);
+      setError('');
+      return updated;
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Update failed';
+      setError(errorMsg);
       throw err;
     }
   };

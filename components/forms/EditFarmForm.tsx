@@ -30,19 +30,28 @@ export function EditFarmForm({ farm, onUpdate }: EditFarmFormProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Initialize form data with proper ID lookups
+  const initialCountyId = KENYA_LOCATIONS.find(c => c.name === farm.county)?.id || '';
+  const initialConstituencyId = (() => {
+    const county = KENYA_LOCATIONS.find(c => c.name === farm.county);
+    return county?.constituencies.find(con => con.name === farm.sub_county)?.id || '';
+  })();
+
   const [formData, setFormData] = useState({
     farmName: farm.farm_name,
     ownerName: farm.owner_name,
     email: farm.email,
-    country: farm.county,
-    constituency: farm.sub_county,
+    countryId: initialCountyId,
+    countryName: farm.county,
+    constituencyId: initialConstituencyId,
+    constituencyName: farm.sub_county,
     ward: farm.ward,
     farmTypes: farm.farm_types || [],
     primaryEnterprise: farm.primary_enterprise,
   });
 
-  const constituencies = getConstituencies(formData.country);
-  const wards = getWards(formData.constituency);
+  const constituencies = getConstituencies(formData.countryId);
+  const wards = getWards(formData.constituencyId);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -80,8 +89,8 @@ export function EditFarmForm({ farm, onUpdate }: EditFarmFormProps) {
         farm_name: formData.farmName,
         owner_name: formData.ownerName,
         email: formData.email,
-        county: formData.country,
-        sub_county: formData.constituency,
+        county: formData.countryName,
+        sub_county: formData.constituencyName,
         ward: formData.ward,
         farm_types: formData.farmTypes,
         primary_enterprise: formData.primaryEnterprise,
@@ -173,15 +182,25 @@ export function EditFarmForm({ farm, onUpdate }: EditFarmFormProps) {
                 County *
               </label>
               <select
-                name="country"
-                value={formData.country}
-                onChange={handleChange}
+                name="countryId"
+                value={formData.countryId}
+                onChange={(e) => {
+                  const selectedCounty = KENYA_LOCATIONS.find(c => c.id === e.target.value);
+                  setFormData(prev => ({
+                    ...prev,
+                    countryId: e.target.value,
+                    countryName: selectedCounty?.name || '',
+                    constituencyId: '',
+                    constituencyName: '',
+                    ward: '',
+                  }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
               >
                 <option value="">Select county</option>
                 {KENYA_LOCATIONS.map(county => (
-                  <option key={county.id} value={county.name}>
+                  <option key={county.id} value={county.id}>
                     {county.name}
                   </option>
                 ))}
@@ -193,16 +212,24 @@ export function EditFarmForm({ farm, onUpdate }: EditFarmFormProps) {
                 Constituency *
               </label>
               <select
-                name="constituency"
-                value={formData.constituency}
-                onChange={handleChange}
+                name="constituencyId"
+                value={formData.constituencyId}
+                onChange={(e) => {
+                  const selectedConstituency = constituencies.find(c => c.id === e.target.value);
+                  setFormData(prev => ({
+                    ...prev,
+                    constituencyId: e.target.value,
+                    constituencyName: selectedConstituency?.name || '',
+                    ward: '',
+                  }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
-                disabled={!formData.country}
+                disabled={!formData.countryId}
               >
                 <option value="">Select constituency</option>
                 {constituencies?.map(const_r => (
-                  <option key={const_r.id} value={const_r.name}>
+                  <option key={const_r.id} value={const_r.id}>
                     {const_r.name}
                   </option>
                 ))}
@@ -219,7 +246,7 @@ export function EditFarmForm({ farm, onUpdate }: EditFarmFormProps) {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
-                disabled={!formData.constituency}
+                disabled={!formData.constituencyId}
               >
                 <option value="">Select ward</option>
                 {wards?.map(ward => (
