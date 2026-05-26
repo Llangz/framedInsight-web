@@ -2,6 +2,27 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import {
+  ArrowLeft,
+  MapPin,
+  TreePine,
+  Satellite,
+  Activity,
+  Wheat,
+  ChevronRight,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Shield,
+  FlaskConical,
+  Plus,
+  ExternalLink,
+  Cloud,
+  Pencil,
+} from 'lucide-react'
 import { Database } from '@/lib/database.types'
 
 type CoffeePlot = Database['public']['Tables']['coffee_plots']['Row']
@@ -20,12 +41,13 @@ interface Props {
 
 type Tab = 'overview' | 'harvests' | 'activities' | 'health'
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function plotAge(plot: CoffeePlot): number {
   if (plot.establishment_year) return new Date().getFullYear() - plot.establishment_year
   if (plot.age_years) return plot.age_years
-  if (plot.planting_date) return Math.floor((Date.now() - new Date(plot.planting_date).getTime()) / (365.25 * 24 * 3600 * 1000))
+  if (plot.planting_date)
+    return Math.floor((Date.now() - new Date(plot.planting_date).getTime()) / (365.25 * 24 * 3600 * 1000))
   return 0
 }
 
@@ -44,11 +66,12 @@ function fmtKES(n: number | null | undefined): string {
   return `KES ${n.toLocaleString('en-KE')}`
 }
 
-function ndviColor(ndvi: number | null | undefined): string {
-  if (ndvi == null) return 'text-gray-400'
-  if (ndvi >= 0.6) return 'text-green-600'
-  if (ndvi >= 0.4) return 'text-yellow-600'
-  return 'text-red-600'
+// Returns Tailwind text color class for NDVI value — dark-mode safe
+function ndviTextColor(ndvi: number | null | undefined): string {
+  if (ndvi == null) return 'text-[#6B7280]'
+  if (ndvi >= 0.6) return 'text-emerald-400'
+  if (ndvi >= 0.4) return 'text-amber-400'
+  return 'text-red-400'
 }
 
 function ndviLabel(ndvi: number | null | undefined, label: string | null | undefined): string {
@@ -59,51 +82,69 @@ function ndviLabel(ndvi: number | null | undefined, label: string | null | undef
   return 'Stressed'
 }
 
-function severityBadge(severity: string): string {
-  if (severity === 'severe' || severity === 'high') return 'bg-red-100 text-red-700 border-red-200'
-  if (severity === 'moderate' || severity === 'medium') return 'bg-yellow-100 text-yellow-700 border-yellow-200'
-  return 'bg-green-100 text-green-700 border-green-200'
+// Severity badge — dark-mode tokens only
+function severityClasses(severity: string): string {
+  if (severity === 'severe' || severity === 'high')
+    return 'bg-red-950/60 text-red-400 border-red-900/60'
+  if (severity === 'moderate' || severity === 'medium')
+    return 'bg-amber-950/60 text-amber-400 border-amber-900/60'
+  return 'bg-emerald-950/60 text-emerald-400 border-emerald-900/60'
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// Activity type → Lucide icon
+function ActivityIcon({ type }: { type: string }) {
+  const lower = type?.toLowerCase() || ''
+  if (lower.includes('fertiliz')) return <Activity size={13} className="text-[#6B7280]" strokeWidth={1.5} />
+  if (lower.includes('spray') || lower.includes('pest')) return <FlaskConical size={13} className="text-[#6B7280]" strokeWidth={1.5} />
+  if (lower.includes('weed') || lower.includes('prun')) return <TreePine size={13} className="text-[#6B7280]" strokeWidth={1.5} />
+  if (lower.includes('harvest')) return <Wheat size={13} className="text-[#6B7280]" strokeWidth={1.5} />
+  return <Activity size={13} className="text-[#6B7280]" strokeWidth={1.5} />
+}
 
-function StatCard({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
+// ── Shared primitives ─────────────────────────────────────────────────────────
+
+function StatCell({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className="text-xl font-bold text-gray-900">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+    <div className="bg-[#0D0F14] px-5 py-5 flex flex-col gap-2">
+      <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest">{label}</p>
+      <p className="text-xl font-semibold text-white tabular-nums leading-none">{value}</p>
+      {sub && <p className="text-xs text-[#4B5563]">{sub}</p>}
     </div>
   )
 }
 
 function NdviBar({ value }: { value: number | null | undefined }) {
-  if (value == null) return <div className="h-2 bg-gray-100 rounded-full" />
+  if (value == null)
+    return <div className="h-1 bg-[#1F2128] rounded-full" />
   const pct = Math.max(0, Math.min(100, ((value + 1) / 2) * 100))
-  const color = value >= 0.6 ? 'bg-green-500' : value >= 0.4 ? 'bg-yellow-400' : 'bg-red-500'
+  const color =
+    value >= 0.6 ? 'bg-emerald-500' : value >= 0.4 ? 'bg-amber-400' : 'bg-red-500'
   return (
-    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+    <div className="h-1 bg-[#1F2128] rounded-full overflow-hidden">
       <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
     </div>
   )
 }
 
-function ActivityIcon({ type }: { type: string }) {
-  const icons: Record<string, string> = {
-    fertilization: '🌿',
-    spraying: '💧',
-    weeding: '🌾',
-    pruning: '✂️',
-    harvest: '🍒',
-    planting: '🌱',
-    irrigation: '🚿',
-    soil_test: '🧪',
-  }
-  const lower = type?.toLowerCase() || ''
-  for (const [key, icon] of Object.entries(icons)) {
-    if (lower.includes(key)) return <span className="text-xl">{icon}</span>
-  }
-  return <span className="text-xl">📋</span>
+function EmptyState({ icon: Icon, message, action }: {
+  icon: React.ElementType
+  message: string
+  action?: { label: string; href: string }
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 gap-4 border border-dashed border-[#2A2D35] rounded-lg">
+      <Icon size={20} className="text-[#2A2D35]" strokeWidth={1} />
+      <p className="text-sm text-[#4B5563]">{message}</p>
+      {action && (
+        <Link
+          href={action.href}
+          className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+        >
+          {action.label} →
+        </Link>
+      )}
+    </div>
+  )
 }
 
 // ── Overview tab ──────────────────────────────────────────────────────────────
@@ -113,134 +154,163 @@ function OverviewTab({ plot, latestSat }: { plot: CoffeePlot; latestSat: Satelli
   const mature = matureTreeCount(plot)
 
   return (
-    <div className="space-y-6">
-      {/* Key Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Total Trees" value={plot.total_trees.toLocaleString()} />
-        <StatCard label="Mature Trees" value={mature.toLocaleString()} sub="≥3 years" />
-        <StatCard label="Plot Age" value={`${age} yrs`} sub={plot.establishment_year ? `Est. ${plot.establishment_year}` : undefined} />
-        <StatCard
+    <div className="space-y-4">
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#1F2128] rounded-lg overflow-hidden border border-[#1F2128]">
+        <StatCell label="Total Trees" value={plot.total_trees.toLocaleString()} />
+        <StatCell label="Mature" value={mature.toLocaleString()} sub="≥ 3 years" />
+        <StatCell label="Age" value={age > 0 ? `${age} yr` : '—'} sub={plot.establishment_year ? `Est. ${plot.establishment_year}` : undefined} />
+        <StatCell
           label="Size"
-          value={plot.land_size_acres ? `${plot.land_size_acres} ac` : plot.area_hectares ? `${plot.area_hectares} ha` : '—'}
+          value={
+            plot.land_size_acres
+              ? `${plot.land_size_acres} ac`
+              : plot.area_hectares
+              ? `${plot.area_hectares} ha`
+              : '—'
+          }
         />
       </div>
 
-      {/* Plot Details */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Plot Details</h3>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+      {/* Plot details */}
+      <div className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] divide-y divide-[#1F2128]">
+        <div className="px-5 py-4">
+          <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest">Plot Details</p>
+        </div>
+        <dl className="grid grid-cols-2 divide-x divide-y divide-[#1F2128]">
           {[
-            { label: 'Variety', value: plot.variety },
-            { label: 'Status', value: plot.plant_status },
-            { label: 'Region', value: plot.region_name },
-            { label: 'Spacing (m)', value: plot.plant_spacing_meters },
-            { label: 'Land Type', value: plot.land_ownership_type },
-            { label: 'Plot Code', value: plot.plot_code },
-          ].map(({ label, value }) => (
-            <div key={label}>
-              <dt className="text-gray-400 text-xs">{label}</dt>
-              <dd className="text-gray-900 font-medium mt-0.5 capitalize">{value ?? '—'}</dd>
+            ['Variety', plot.variety],
+            ['Status', plot.plant_status],
+            ['Region', plot.region_name],
+            ['Spacing', plot.plant_spacing_meters ? `${plot.plant_spacing_meters} m` : null],
+            ['Land type', plot.land_ownership_type],
+            ['Plot code', plot.plot_code],
+          ].map(([label, value]) => (
+            <div key={label} className="px-5 py-3.5">
+              <dt className="text-[11px] text-[#4B5563] uppercase tracking-wider mb-1">{label}</dt>
+              <dd className="text-sm text-white capitalize">{value ?? '—'}</dd>
             </div>
           ))}
         </dl>
         {plot.notes && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <dt className="text-gray-400 text-xs mb-1">Notes</dt>
-            <dd className="text-gray-700 text-sm">{plot.notes}</dd>
+          <div className="px-5 py-3.5">
+            <dt className="text-[11px] text-[#4B5563] uppercase tracking-wider mb-1">Notes</dt>
+            <dd className="text-sm text-[#9CA3AF]">{plot.notes}</dd>
           </div>
         )}
       </div>
 
       {/* GPS */}
       {(plot.gps_latitude || plot.gps_longitude) && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">GPS Location</h3>
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-2xl">📍</span>
+        <div className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] divide-y divide-[#1F2128]">
+          <div className="px-5 py-4 flex items-center gap-3">
+            <MapPin size={14} className="text-[#6B7280]" strokeWidth={1.5} />
+            <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest">GPS Location</p>
+          </div>
+          <div className="px-5 py-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-mono text-white">
                 {plot.gps_latitude?.toFixed(6)}, {plot.gps_longitude?.toFixed(6)}
               </p>
-              <p className="text-xs text-gray-400">
-                {plot.gps_polygon ? 'GPS polygon boundary recorded' : 'Point coordinate only'}
+              <p className="text-xs text-[#4B5563] mt-1">
+                {plot.gps_polygon ? 'Polygon boundary recorded' : 'Point coordinate only'}
               </p>
             </div>
+            <a
+              href={`https://maps.google.com/?q=${plot.gps_latitude},${plot.gps_longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-white transition-colors"
+            >
+              <ExternalLink size={12} />
+              Maps
+            </a>
           </div>
-          <a
-            href={`https://maps.google.com/?q=${plot.gps_latitude},${plot.gps_longitude}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-xs text-primary-600 hover:text-primary-700 font-medium"
-          >
-            Open in Google Maps →
-          </a>
         </div>
       )}
 
-      {/* Satellite health snapshot */}
+      {/* Latest satellite */}
       {latestSat && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Latest Satellite Scan</h3>
-            <span className="text-xs text-gray-400">{fmtDate(latestSat.image_date)}</span>
+        <div className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] divide-y divide-[#1F2128]">
+          <div className="px-5 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Satellite size={14} className="text-[#6B7280]" strokeWidth={1.5} />
+              <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest">Latest Scan</p>
+            </div>
+            <span className="text-xs text-[#4B5563]">{fmtDate(latestSat.image_date)}</span>
           </div>
-          <div className="flex items-center gap-3 mb-3">
-            <div className={`text-2xl font-black ${ndviColor(latestSat.ndvi_mean)}`}>
-              {latestSat.ndvi_mean?.toFixed(2) ?? '—'}
+          <div className="px-5 py-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-2xl font-semibold tabular-nums ${ndviTextColor(latestSat.ndvi_mean)}`}>
+                  {latestSat.ndvi_mean?.toFixed(2) ?? '—'}
+                </p>
+                <p className="text-xs text-[#4B5563] mt-0.5">NDVI · {ndviLabel(latestSat.ndvi_mean, latestSat.health_label)}</p>
+              </div>
+              {latestSat.ndvi_change != null && (
+                <div className="flex items-center gap-1.5">
+                  {latestSat.ndvi_change > 0
+                    ? <TrendingUp size={14} className="text-emerald-400" />
+                    : latestSat.ndvi_change < 0
+                    ? <TrendingDown size={14} className="text-red-400" />
+                    : <Minus size={14} className="text-[#6B7280]" />}
+                  <span className={`text-xs font-medium tabular-nums ${latestSat.ndvi_change < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {latestSat.ndvi_change > 0 ? '+' : ''}{latestSat.ndvi_change.toFixed(3)}
+                  </span>
+                </div>
+              )}
             </div>
-            <div>
-              <p className={`text-sm font-semibold ${ndviColor(latestSat.ndvi_mean)}`}>
-                {ndviLabel(latestSat.ndvi_mean, latestSat.health_label)}
-              </p>
-              <p className="text-xs text-gray-400">NDVI mean</p>
-            </div>
+            <NdviBar value={latestSat.ndvi_mean} />
+            {latestSat.alert_triggered && (
+              <div className="flex items-start gap-2.5 p-3 bg-red-950/40 border border-red-900/40 rounded-md">
+                <AlertTriangle size={13} className="text-red-400 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+                <p className="text-xs text-red-300">{latestSat.alert_reason ?? 'Health alert triggered'}</p>
+              </div>
+            )}
           </div>
-          <NdviBar value={latestSat.ndvi_mean} />
-          {latestSat.alert_triggered && (
-            <div className="mt-3 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
-              <span>🚨</span>
-              <p className="text-xs text-red-700 font-medium">{latestSat.alert_reason ?? 'Health alert triggered'}</p>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Compliance badges */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Compliance</h3>
-        <div className="flex flex-wrap gap-2">
+      {/* Compliance */}
+      <div className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] divide-y divide-[#1F2128]">
+        <div className="px-5 py-4 flex items-center gap-3">
+          <Shield size={14} className="text-[#6B7280]" strokeWidth={1.5} />
+          <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest">Compliance</p>
+        </div>
+        <div className="px-5 py-4 flex flex-wrap gap-2">
           {plot.eudr_risk_level ? (
-            <span className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
+            <span className={`px-2.5 py-1 text-xs font-medium rounded-md border ${
               plot.eudr_risk_level === 'low'
-                ? 'bg-green-100 text-green-700 border-green-200'
+                ? 'bg-emerald-950/60 text-emerald-400 border-emerald-900/60'
                 : plot.eudr_risk_level === 'medium'
-                ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                : 'bg-red-100 text-red-700 border-red-200'
+                ? 'bg-amber-950/60 text-amber-400 border-amber-900/60'
+                : 'bg-red-950/60 text-red-400 border-red-900/60'
             }`}>
-              EUDR: {plot.eudr_risk_level.toUpperCase()} RISK
+              EUDR · {plot.eudr_risk_level.toUpperCase()} RISK
             </span>
           ) : (
-            <span className="px-3 py-1.5 text-xs font-semibold rounded-full border bg-gray-100 text-gray-500 border-gray-200">
-              EUDR: Not assessed
+            <span className="px-2.5 py-1 text-xs font-medium rounded-md border bg-[#17191F] text-[#6B7280] border-[#2A2D35]">
+              EUDR · Not assessed
             </span>
           )}
           {plot.afa_geo_mapping_id && (
-            <span className="px-3 py-1.5 text-xs font-semibold rounded-full border bg-blue-100 text-blue-700 border-blue-200">
-              ✓ AFA Registered
+            <span className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border bg-emerald-950/60 text-emerald-400 border-emerald-900/60">
+              <CheckCircle size={10} strokeWidth={2} /> AFA Registered
             </span>
           )}
           {plot.land_ownership_doc_url && (
-            <span className="px-3 py-1.5 text-xs font-semibold rounded-full border bg-purple-100 text-purple-700 border-purple-200">
-              ✓ Title Uploaded
+            <span className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border bg-[#17191F] text-[#9CA3AF] border-[#2A2D35]">
+              <CheckCircle size={10} strokeWidth={2} /> Title Uploaded
             </span>
           )}
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="px-5 py-3">
           <Link
             href={`/dashboard/coffee/eudr-check/${plot.id}`}
-            className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+            className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-white transition-colors"
           >
-            View EUDR detail →
+            View EUDR detail <ChevronRight size={11} />
           </Link>
         </div>
       </div>
@@ -257,65 +327,55 @@ function HarvestsTab({ harvests, plotId }: { harvests: CoffeeHarvest[]; plotId: 
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Total Cherry (all seasons)" value={`${totalCherry.toLocaleString()} kg`} />
-        <StatCard label="Total Paid" value={fmtKES(totalPaid || null)} />
-      </div>
-
-      <div className="flex justify-end">
-        <Link
-          href={`/dashboard/coffee/harvest/record?plot=${plotId}`}
-          className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 flex items-center gap-2"
-        >
-          🍒 Record Harvest
-        </Link>
+      <div className="grid grid-cols-2 gap-px bg-[#1F2128] rounded-lg overflow-hidden border border-[#1F2128]">
+        <StatCell label="Total Cherry" value={`${totalCherry.toLocaleString()} kg`} sub="all seasons" />
+        <StatCell label="Total Paid" value={totalPaid > 0 ? fmtKES(totalPaid) : '—'} />
       </div>
 
       {harvests.length === 0 ? (
-        <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
-          <div className="text-4xl mb-3">🍒</div>
-          <p className="text-gray-600 text-sm">No harvest records yet for this plot</p>
-        </div>
+        <EmptyState
+          icon={Wheat}
+          message="No harvest records yet for this plot"
+          action={{ label: 'Record first harvest', href: `/dashboard/coffee/harvest/record?plot=${plotId}` }}
+        />
       ) : (
-        <div className="space-y-3">
+        <div className="rounded-lg border border-[#2A2D35] overflow-hidden divide-y divide-[#1F2128]">
           {harvests.map((h) => (
-            <div key={h.id} className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-start justify-between mb-2">
+            <div key={h.id} className="bg-[#0D0F14] px-5 py-4 hover:bg-[#111318] transition-colors">
+              <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="font-semibold text-gray-900 text-sm">{fmtDate(h.harvest_date)}</p>
-                  <p className="text-xs text-gray-400">{h.harvest_season ?? `Season ${h.harvest_year ?? '—'}`}</p>
+                  <p className="text-sm font-medium text-white">{fmtDate(h.harvest_date)}</p>
+                  <p className="text-xs text-[#4B5563] mt-0.5">{h.harvest_season ?? `Season ${h.harvest_year ?? '—'}`}</p>
                 </div>
                 {h.payment_status && (
-                  <span className={`text-xs px-2 py-1 rounded-full border font-medium ${
+                  <span className={`text-xs px-2 py-1 rounded-md border font-medium ${
                     h.payment_status === 'paid'
-                      ? 'bg-green-100 text-green-700 border-green-200'
-                      : 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                      ? 'bg-emerald-950/60 text-emerald-400 border-emerald-900/60'
+                      : 'bg-amber-950/60 text-amber-400 border-amber-900/60'
                   }`}>
                     {h.payment_status}
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-gray-400">Cherry</p>
-                  <p className="font-medium">{h.cherry_kg} kg</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">Parchment</p>
-                  <p className="font-medium">{h.parchment_kg ?? '—'} {h.parchment_kg ? 'kg' : ''}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">Paid</p>
-                  <p className="font-medium text-green-700">{fmtKES(h.amount_paid)}</p>
-                </div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                {[
+                  { label: 'Cherry', value: h.cherry_kg ? `${h.cherry_kg} kg` : '—' },
+                  { label: 'Parchment', value: h.parchment_kg ? `${h.parchment_kg} kg` : '—' },
+                  { label: 'Paid', value: fmtKES(h.amount_paid) },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <p className="text-[11px] text-[#4B5563] uppercase tracking-wider mb-1">{label}</p>
+                    <p className="text-sm text-white tabular-nums">{value}</p>
+                  </div>
+                ))}
               </div>
               {(h.cooperative_name || h.factory_code) && (
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-[#4B5563] mt-2">
                   {h.cooperative_name}{h.factory_code ? ` · ${h.factory_code}` : ''}
                 </p>
               )}
               {h.quality_grade && (
-                <span className="inline-block mt-2 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full border border-blue-200">
+                <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-md border bg-[#17191F] text-[#9CA3AF] border-[#2A2D35]">
                   Grade: {h.quality_grade}
                 </span>
               )}
@@ -332,40 +392,36 @@ function HarvestsTab({ harvests, plotId }: { harvests: CoffeeHarvest[]; plotId: 
 function ActivitiesTab({ activities, plotId }: { activities: CoffeeActivity[]; plotId: string }) {
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Link
-          href={`/dashboard/coffee/activities/record?plot=${plotId}`}
-          className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 flex items-center gap-2"
-        >
-          + Log Activity
-        </Link>
-      </div>
-
       {activities.length === 0 ? (
-        <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
-          <div className="text-4xl mb-3">📋</div>
-          <p className="text-gray-600 text-sm">No activities logged for this plot yet</p>
-        </div>
+        <EmptyState
+          icon={Activity}
+          message="No activities logged for this plot"
+          action={{ label: 'Log first activity', href: `/dashboard/coffee/activities/record?plot=${plotId}` }}
+        />
       ) : (
-        <div className="space-y-3">
+        <div className="rounded-lg border border-[#2A2D35] overflow-hidden divide-y divide-[#1F2128]">
           {activities.map((a) => (
-            <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-4">
+            <div key={a.id} className="bg-[#0D0F14] px-5 py-4 hover:bg-[#111318] transition-colors">
               <div className="flex items-start gap-3">
-                <ActivityIcon type={a.activity_type} />
+                <div className="mt-0.5 p-2 rounded-md bg-[#17191F] border border-[#2A2D35]">
+                  <ActivityIcon type={a.activity_type} />
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-gray-900 text-sm capitalize">
+                    <p className="text-sm font-medium text-white capitalize">
                       {a.activity_type.replace(/_/g, ' ')}
                     </p>
-                    <p className="text-xs text-gray-400 whitespace-nowrap">{fmtDate(a.activity_date)}</p>
+                    <p className="text-xs text-[#4B5563] whitespace-nowrap tabular-nums">{fmtDate(a.activity_date)}</p>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                    {a.product_name && <span>🧴 {a.product_name}</span>}
+                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6B7280]">
+                    {a.product_name && <span>{a.product_name}</span>}
                     {a.quantity && a.quantity_unit && <span>{a.quantity} {a.quantity_unit}</span>}
-                    {a.num_workers && <span>👷 {a.num_workers} workers</span>}
-                    {a.total_cost != null && <span className="text-orange-600 font-medium">{fmtKES(a.total_cost)}</span>}
+                    {a.num_workers && <span>{a.num_workers} workers</span>}
+                    {a.total_cost != null && (
+                      <span className="text-amber-400 font-medium">{fmtKES(a.total_cost)}</span>
+                    )}
                   </div>
-                  {a.notes && <p className="text-xs text-gray-400 mt-1 truncate">{a.notes}</p>}
+                  {a.notes && <p className="text-xs text-[#4B5563] mt-1 truncate">{a.notes}</p>}
                 </div>
               </div>
             </div>
@@ -378,59 +434,55 @@ function ActivitiesTab({ activities, plotId }: { activities: CoffeeActivity[]; p
 
 // ── Health / Satellite tab ────────────────────────────────────────────────────
 
-function HealthTab({
-  diseases,
-  satelliteHistory,
-  plotId,
-}: {
+function HealthTab({ diseases, satelliteHistory, plotId }: {
   diseases: CoffeeDisease[]
   satelliteHistory: SatelliteIndex[]
   plotId: string
 }) {
   return (
     <div className="space-y-6">
+
       {/* Disease reports */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Disease / Pest Reports</h3>
+          <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest">Disease / Pest Reports</p>
           <Link
             href={`/dashboard/coffee/disease/scout?plot=${plotId}`}
-            className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+            className="text-xs text-[#6B7280] hover:text-white transition-colors"
           >
-            + Scout →
+            Scout →
           </Link>
         </div>
 
         {diseases.length === 0 ? (
-          <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-8 text-center">
-            <p className="text-2xl mb-2">🌿</p>
-            <p className="text-gray-600 text-sm">No disease reports — looking healthy!</p>
-          </div>
+          <EmptyState icon={CheckCircle} message="No disease reports — looking healthy" />
         ) : (
-          <div className="space-y-3">
+          <div className="rounded-lg border border-[#2A2D35] overflow-hidden divide-y divide-[#1F2128]">
             {diseases.map((d) => (
-              <div key={d.id} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div key={d.id} className="bg-[#0D0F14] px-5 py-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <p className="font-semibold text-gray-900 text-sm">{d.disease_name}</p>
-                    <p className="text-xs text-gray-400">{fmtDate(d.detection_date)}</p>
+                    <p className="text-sm font-medium text-white">{d.disease_name}</p>
+                    <p className="text-xs text-[#4B5563] mt-0.5">{fmtDate(d.detection_date)}</p>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full border font-medium ${severityBadge(d.severity_level)}`}>
+                  <span className={`text-xs px-2 py-1 rounded-md border font-medium ${severityClasses(d.severity_level)}`}>
                     {d.severity_level}
                   </span>
                 </div>
-                <div className="text-xs text-gray-500 space-y-1">
+                <div className="text-xs text-[#6B7280] space-y-0.5">
                   <p>Affected: {d.affected_percentage}% of trees</p>
                   {d.treatment_applied && (
-                    <p>Treatment: {d.treatment_applied}{d.treatment_date ? ` (${fmtDate(d.treatment_date)})` : ''}</p>
+                    <p>Treatment: {d.treatment_applied}{d.treatment_date ? ` · ${fmtDate(d.treatment_date)}` : ''}</p>
                   )}
                   {d.resulting_losses_kg != null && (
-                    <p className="text-red-600 font-medium">Losses: {d.resulting_losses_kg} kg</p>
+                    <p className="text-red-400 font-medium">Losses: {d.resulting_losses_kg} kg</p>
                   )}
                 </div>
                 {d.ai_diagnosis && (
-                  <div className="mt-2 pt-2 border-t border-gray-100">
-                    <p className="text-xs text-indigo-600 font-medium">🤖 AI: {d.ai_diagnosis}</p>
+                  <div className="mt-2 pt-2 border-t border-[#1F2128]">
+                    <p className="text-xs text-[#6B7280]">
+                      <span className="text-[#4B5563]">AI · </span>{d.ai_diagnosis}
+                    </p>
                   </div>
                 )}
               </div>
@@ -439,49 +491,55 @@ function HealthTab({
         )}
       </div>
 
-      {/* Satellite history */}
+      {/* Satellite NDVI history */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Satellite NDVI History</h3>
+          <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest">NDVI History</p>
           <Link
-            href={`/dashboard/coffee/satellite`}
-            className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+            href="/dashboard/coffee/satellite"
+            className="text-xs text-[#6B7280] hover:text-white transition-colors"
           >
             Full view →
           </Link>
         </div>
 
         {satelliteHistory.length === 0 ? (
-          <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-8 text-center">
-            <p className="text-2xl mb-2">🛰️</p>
-            <p className="text-gray-600 text-sm">No satellite data yet for this plot</p>
-          </div>
+          <EmptyState icon={Satellite} message="No satellite data yet for this plot" />
         ) : (
-          <div className="space-y-2">
+          <div className="rounded-lg border border-[#2A2D35] overflow-hidden divide-y divide-[#1F2128]">
             {satelliteHistory.map((s) => (
-              <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-medium text-gray-700">{fmtDate(s.image_date)}</p>
-                  <div className="flex items-center gap-2">
-                    {s.alert_triggered && (
-                      <span className="text-xs text-red-600 font-bold">🚨 Alert</span>
+              <div key={s.id} className="bg-[#0D0F14] px-5 py-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-white tabular-nums">{fmtDate(s.image_date)}</p>
+                  <div className="flex items-center gap-3">
+                    {s.cloud_cover_pct != null && s.cloud_cover_pct > 50 && (
+                      <span className="flex items-center gap-1 text-xs text-[#4B5563]">
+                        <Cloud size={10} strokeWidth={1.5} />
+                        {s.cloud_cover_pct}%
+                      </span>
                     )}
-                    <span className={`text-xs font-semibold ${ndviColor(s.ndvi_mean)}`}>
-                      NDVI {s.ndvi_mean?.toFixed(3) ?? '—'}
+                    {s.alert_triggered && (
+                      <span className="flex items-center gap-1 text-xs text-red-400 font-medium">
+                        <AlertTriangle size={10} strokeWidth={1.5} />
+                        Alert
+                      </span>
+                    )}
+                    <span className={`text-xs font-semibold tabular-nums ${ndviTextColor(s.ndvi_mean)}`}>
+                      {s.ndvi_mean?.toFixed(3) ?? '—'}
                     </span>
                   </div>
                 </div>
                 <NdviBar value={s.ndvi_mean} />
                 {s.ndvi_change != null && (
-                  <p className={`text-xs mt-1 ${s.ndvi_change < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                    {s.ndvi_change > 0 ? '↑' : '↓'} {Math.abs(s.ndvi_change).toFixed(3)} vs prev scan
+                  <p className={`text-xs mt-1.5 flex items-center gap-1 ${s.ndvi_change < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {s.ndvi_change < 0
+                      ? <TrendingDown size={10} strokeWidth={1.5} />
+                      : <TrendingUp size={10} strokeWidth={1.5} />}
+                    {s.ndvi_change > 0 ? '+' : ''}{s.ndvi_change.toFixed(3)} vs prev
                     {s.weeks_of_decline != null && s.weeks_of_decline > 0
                       ? ` · ${s.weeks_of_decline}w decline`
                       : ''}
                   </p>
-                )}
-                {s.cloud_cover_pct != null && s.cloud_cover_pct > 50 && (
-                  <p className="text-xs text-gray-400 mt-0.5">☁️ {s.cloud_cover_pct}% cloud cover</p>
                 )}
               </div>
             ))}
@@ -492,7 +550,7 @@ function HealthTab({
   )
 }
 
-// ── Main component ─────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function PlotDetailClient({ plot, harvests, activities, diseases, satelliteHistory }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -504,92 +562,101 @@ export default function PlotDetailClient({ plot, harvests, activities, diseases,
     { id: 'overview', label: 'Overview' },
     { id: 'harvests', label: 'Harvests', count: harvests.length },
     { id: 'activities', label: 'Activities', count: activities.length },
-    { id: 'health', label: 'Health', count: diseases.length > 0 ? diseases.length : undefined },
+    { id: 'health', label: 'Health', count: diseases.length || undefined },
   ]
 
   return (
-    <div className="max-w-3xl mx-auto pb-24">
-      {/* ── Header ── */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
-        <div className="px-4 pt-4 pb-0">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
-            <Link href="/dashboard/coffee" className="hover:text-gray-600">Coffee</Link>
-            <span>/</span>
-            <Link href="/dashboard/coffee/plots" className="hover:text-gray-600">Plots</Link>
-            <span>/</span>
-            <span className="text-gray-700 font-medium">{plot.plot_name}</span>
-            <Link href={`/dashboard/coffee/plots/${plot.id}/edit`} className="text-blue-600 hover:text-blue-800">
-              Edit Plot
-            </Link>
-          </div>
+    <div className="min-h-screen bg-obsidian">
+      <div className="max-w-3xl mx-auto pb-24">
 
-          {/* Plot title + status */}
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">{plot.plot_name}</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {plot.variety ?? 'Unknown variety'}
-                {plot.region_name ? ` · ${plot.region_name}` : ''}
-                {age > 0 ? ` · ${age} yr old` : ''}
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-1.5">
-              <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${
-                plot.plant_status === 'productive'
-                  ? 'bg-green-100 text-green-700 border-green-200'
-                  : 'bg-yellow-100 text-yellow-700 border-yellow-200'
-              }`}>
-                {plot.plant_status ?? 'active'}
-              </span>
-              {latestSat && (
-                <span className={`text-xs font-semibold ${ndviColor(latestSat.ndvi_mean)}`}>
-                  🛰 {ndviLabel(latestSat.ndvi_mean, latestSat.health_label)}
-                </span>
-              )}
-            </div>
-          </div>
+        {/* ── Sticky header ── */}
+        <div className="sticky top-0 z-20 bg-obsidian/95 backdrop-blur border-b border-[#1F2128]">
+          <div className="px-6 pt-6 pb-0">
 
-          {/* Tabs */}
-          <div className="flex gap-1 -mb-px overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-primary-600 text-primary-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab.label}
-                {tab.count != null && tab.count > 0 && (
-                  <span className="ml-1.5 text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5">
-                    {tab.count}
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-1.5 text-xs text-[#4B5563] mb-4">
+              <Link href="/dashboard/coffee" className="hover:text-[#9CA3AF] transition-colors">Coffee</Link>
+              <ChevronRight size={11} />
+              <Link href="/dashboard/coffee/plots" className="hover:text-[#9CA3AF] transition-colors">Plots</Link>
+              <ChevronRight size={11} />
+              <span className="text-[#9CA3AF]">{plot.plot_name}</span>
+            </div>
+
+            {/* Title row */}
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <h1 className="text-xl font-semibold text-white tracking-tight">{plot.plot_name}</h1>
+                <p className="text-sm text-[#6B7280] mt-0.5">
+                  {plot.variety ?? 'Unknown variety'}
+                  {plot.region_name ? ` · ${plot.region_name}` : ''}
+                  {age > 0 ? ` · ${age} yr` : ''}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {latestSat && (
+                  <span className={`text-xs font-medium tabular-nums ${ndviTextColor(latestSat.ndvi_mean)}`}>
+                    {ndviLabel(latestSat.ndvi_mean, latestSat.health_label)}
                   </span>
                 )}
-              </button>
-            ))}
+                <span className={`text-xs px-2 py-1 rounded-md border font-medium ${
+                  plot.plant_status === 'productive'
+                    ? 'bg-emerald-950/60 text-emerald-400 border-emerald-900/60'
+                    : 'bg-[#17191F] text-[#9CA3AF] border-[#2A2D35]'
+                }`}>
+                  {plot.plant_status ?? 'active'}
+                </span>
+                <Link
+                  href={`/dashboard/coffee/plots/${plot.id}/edit`}
+                  className="p-1.5 rounded-md text-[#4B5563] hover:text-[#9CA3AF] hover:bg-[#17191F] transition-colors"
+                >
+                  <Pencil size={13} strokeWidth={1.5} />
+                </Link>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-0 -mb-px">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-emerald-500 text-white'
+                      : 'border-transparent text-[#6B7280] hover:text-[#9CA3AF]'
+                  }`}
+                >
+                  {tab.label}
+                  {tab.count != null && tab.count > 0 && (
+                    <span className="ml-1.5 text-[11px] bg-[#1F2128] text-[#6B7280] rounded-full px-1.5 py-0.5 tabular-nums">
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── Tab content ── */}
-      <div className="px-4 pt-5">
-        {activeTab === 'overview' && <OverviewTab plot={plot} latestSat={latestSat} />}
-        {activeTab === 'harvests' && <HarvestsTab harvests={harvests} plotId={plot.id} />}
-        {activeTab === 'activities' && <ActivitiesTab activities={activities} plotId={plot.id} />}
-        {activeTab === 'health' && <HealthTab diseases={diseases} satelliteHistory={satelliteHistory} plotId={plot.id} />}
-      </div>
+        {/* ── Tab content ── */}
+        <div className="px-6 pt-5">
+          {activeTab === 'overview' && <OverviewTab plot={plot} latestSat={latestSat} />}
+          {activeTab === 'harvests' && <HarvestsTab harvests={harvests} plotId={plot.id} />}
+          {activeTab === 'activities' && <ActivitiesTab activities={activities} plotId={plot.id} />}
+          {activeTab === 'health' && <HealthTab diseases={diseases} satelliteHistory={satelliteHistory} plotId={plot.id} />}
+        </div>
 
-      {/* ── FAB: Record Harvest ── */}
-      <div className="fixed bottom-6 right-4 flex flex-col gap-2 items-end">
-        <Link
-          href={`/dashboard/coffee/harvest/record?plot=${plot.id}`}
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-3 rounded-full shadow-lg transition-all active:scale-95"
-        >
-          🍒 Record Harvest
-        </Link>
+        {/* ── FAB ── */}
+        <div className="fixed bottom-6 right-6">
+          <Link
+            href={`/dashboard/coffee/harvest/record?plot=${plot.id}`}
+            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg transition-all active:scale-95 border border-emerald-600/50"
+          >
+            <Plus size={14} strokeWidth={2} />
+            Record Harvest
+          </Link>
+        </div>
+
       </div>
     </div>
   )
