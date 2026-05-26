@@ -1,393 +1,212 @@
 'use client'
 
-import { useState, useMemo } from "react"
-import Link from "next/link"
-import { AnimalCard } from "@/components/features/small-ruminants/AnimalCard"
-import { FilterBar, type Filters } from "@/components/features/small-ruminants/FilterBar"
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type Species = "goat" | "sheep"
-type Sex     = "male" | "female"
-type Status  = "active" | "sold" | "deceased" | "culled"
-type Purpose = "meat" | "dairy" | "breeding" | "dual"
+import { useState, useMemo } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { PlusCircle, Bell, Syringe, Baby, ArrowRight } from 'lucide-react'
+import { AnimalCard } from '@/components/features/small-ruminants/AnimalCard'
+import { FilterBar, type Filters } from '@/components/features/small-ruminants/FilterBar'
 
 interface DashboardAnimal {
-  id: string
-  farm_id: string
-  animal_tag: string
-  name: string | null
-  species: Species
-  breed: string | null
-  upgrade_level: string | null
-  sex: Sex
-  birth_date: string
-  status: Status
-  purpose: Purpose | null
-  ear_notch_pattern: string | null
-  qr_code: string | null
-  notes: string | null
+  id: string; farm_id: string; animal_tag: string; name: string | null
+  species: 'goat' | 'sheep'; breed: string | null; upgrade_level: string | null
+  sex: 'male' | 'female'; birth_date: string; status: string; purpose: string | null
+  ear_notch_pattern: string | null; qr_code: string | null; notes: string | null
 }
-
 interface VaccinationDue {
-  id: string
-  animal_id: string
-  animal_tag: string
-  animal_name: string | null
-  species: Species
-  vaccine_type: string | null
-  vaccine_name: string | null
-  next_vaccination_due: string
-  days_until_due: number
+  id: string; animal_id: string; animal_tag: string; animal_name: string | null
+  species: string; vaccine_type: string | null; vaccine_name: string | null
+  next_vaccination_due: string; days_until_due: number
 }
-
 interface RecentKidding {
-  id: string
-  dam_id: string
-  dam_tag: string
-  dam_name: string | null
-  delivery_date: string
-  sex: string | null
-  birth_weight: number | null
-  vigor_score: string | null
-  colostrum_given: boolean | null
-  kid_lamb_id: string | null
+  id: string; dam_id: string; dam_tag: string; dam_name: string | null
+  delivery_date: string; sex: string | null; birth_weight: number | null
+  vigor_score: string | null; colostrum_given: boolean | null; kid_lamb_id: string | null
+}
+interface LatestWeight { animal_id: string; weight_kg: number; record_date: string; average_daily_gain: number | null; body_condition_score: number | null }
+interface FlockSummary { total: number; goats: number; sheep: number; female: number; male: number; active: number; for_meat: number; for_dairy: number; for_breeding: number }
+
+function fmt(d: string) {
+  return new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
 }
 
-interface LatestWeight {
-  animal_id: string
-  weight_kg: number
-  record_date: string
-  average_daily_gain: number | null
-  body_condition_score: number | null
-}
+const URGENCY = (days: number) =>
+  days <= 0  ? 'text-red-400 border-red-900/40 bg-red-950/30' :
+  days <= 3  ? 'text-amber-400 border-amber-900/40 bg-amber-950/30' :
+               'text-[#9CA3AF] border-[#2A2D35] bg-[#0D0F14]'
 
-interface FlockSummary {
-  total: number
-  goats: number
-  sheep: number
-  female: number
-  male: number
-  active: number
-  for_meat: number
-  for_dairy: number
-  for_breeding: number
-}
+const navItems = [
+  { label: 'Flock',     href: '/dashboard/smallRuminants'           },
+  { label: 'Health',    href: '/dashboard/smallRuminants/health'    },
+  { label: 'Breeding',  href: '/dashboard/smallRuminants/breeding'  },
+  { label: 'Weights',   href: '/dashboard/smallRuminants/weights'   },
+  { label: 'Milk',      href: '/dashboard/smallRuminants/milk'      },
+  { label: 'Sales',     href: '/dashboard/smallRuminants/sales'     },
+]
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const VACCINE_PRIORITY: Record<string, { color: string; bg: string; border: string }> = {
-  PPR:        { color: "text-red-700",    bg: "bg-red-50",    border: "border-red-200" },
-  CCPP:       { color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
-  "Foot Rot": { color: "text-amber-700",  bg: "bg-amber-50",  border: "border-amber-200" },
-  Anthrax:    { color: "text-red-700",    bg: "bg-red-50",    border: "border-red-200" },
-  Deworming:  { color: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200" },
-  default:    { color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
-}
-
-function vaccineStyle(name: string | null) {
-  if (!name) return VACCINE_PRIORITY.default
-  const key = Object.keys(VACCINE_PRIORITY).find(k =>
-    name.toLowerCase().includes(k.toLowerCase())
-  )
-  return VACCINE_PRIORITY[key ?? "default"]
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(d: string | null) {
-  if (!d) return "—"
-  return new Date(d).toLocaleDateString("en-KE", {
-    day: "numeric", month: "short", year: "numeric",
-  })
-}
-
-function urgencyLabel(days: number): { text: string; color: string } {
-  if (days < 0)  return { text: "Overdue",     color: "text-red-600 font-bold" }
-  if (days === 0) return { text: "Due today",  color: "text-red-600 font-bold" }
-  if (days <= 7)  return { text: `${days}d`,   color: "text-red-500 font-semibold" }
-  if (days <= 14) return { text: `${days}d`,   color: "text-orange-500" }
-  return              { text: `${days}d`,       color: "text-slate-500" }
-}
-
-function speciesEmoji(species: Species) {
-  return species === "goat" ? "🐐" : "🐑"
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function FlockSummaryBanner({ summary }: { summary: FlockSummary | null }) {
-  if (!summary || summary.total === 0) return null
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">
-        Flock Overview
-      </p>
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-        {[
-          { label: "Total",    value: summary.total,    color: "text-slate-900" },
-          { label: "Goats",    value: summary.goats,    color: "text-emerald-700", icon: "🐐" },
-          { label: "Sheep",    value: summary.sheep,    color: "text-blue-700",    icon: "🐑" },
-          { label: "Female",   value: summary.female,   color: "text-pink-700" },
-          { label: "Male",     value: summary.male,     color: "text-indigo-700" },
-          { label: "Active",   value: summary.active,   color: "text-emerald-600" },
-        ].map(({ label, value, color, icon }) => (
-          <div key={label} className="text-center">
-            <p className={`text-xl font-bold ${color}`}>
-              {icon && <span className="text-base mr-0.5">{icon}</span>}
-              {value}
-            </p>
-            <p className="text-xs text-slate-500">{label}</p>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-2 mt-3 flex-wrap">
-        {[
-          { label: "Meat",     count: summary.for_meat,     style: "bg-orange-100 text-orange-700" },
-          { label: "Dairy",    count: summary.for_dairy,    style: "bg-blue-100 text-blue-700" },
-          { label: "Breeding", count: summary.for_breeding, style: "bg-purple-100 text-purple-700" },
-        ].filter(p => p.count > 0).map(p => (
-          <span key={p.label} className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.style}`}>
-            {p.count} {p.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function VaccinationAlerts({ vaccinations }: { vaccinations: VaccinationDue[] }) {
-  if (vaccinations.length === 0) return null
-
-  const overdueCount = vaccinations.filter(v => v.days_until_due < 0).length
-
-  return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="text-xs font-bold text-amber-800 uppercase tracking-wide">
-            Vaccination Schedule
-          </p>
-          <p className="text-xs text-amber-600 mt-0.5">
-            Next 30 days · {vaccinations.length} due
-            {overdueCount > 0 && (
-              <span className="ml-2 font-semibold text-red-600">
-                · {overdueCount} overdue
-              </span>
-            )}
-          </p>
-        </div>
-        <Link
-          href="/dashboard/smallRuminants/health"
-          className="text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-200 transition-colors"
-        >
-          Full Calendar →
-        </Link>
-      </div>
-      <div className="space-y-2">
-        {vaccinations.slice(0, 6).map(v => {
-          const style   = vaccineStyle(v.vaccine_name ?? v.vaccine_type)
-          const urgency = urgencyLabel(v.days_until_due)
-          return (
-            <div
-              key={v.id}
-              className={`flex items-center justify-between rounded-lg border px-3 py-2 ${style.bg} ${style.border}`}
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs">{speciesEmoji(v.species)}</span>
-                  <p className={`text-xs font-semibold ${style.color} truncate`}>
-                    {v.animal_name ?? v.animal_tag}
-                  </p>
-                  <span className="text-xs text-slate-400 hidden sm:inline">{v.animal_tag}</span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {v.vaccine_name ?? v.vaccine_type ?? "Vaccination"}
-                  {" · "}{formatDate(v.next_vaccination_due)}
-                </p>
-              </div>
-              <span className={`text-xs ml-3 flex-shrink-0 ${urgency.color}`}>
-                {urgency.text}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function RecentKiddings({ kiddings }: { kiddings: RecentKidding[] }) {
-  if (kiddings.length === 0) return null
-
-  return (
-    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
-            Recent Births
-          </p>
-          <p className="text-xs text-emerald-600 mt-0.5">Last 14 days</p>
-        </div>
-        <Link
-          href="/dashboard/smallRuminants/breeding"
-          className="text-xs font-semibold text-emerald-700 bg-emerald-100 border border-emerald-300 px-3 py-1.5 rounded-lg hover:bg-emerald-200 transition-colors"
-        >
-          Breeding Records →
-        </Link>
-      </div>
-      <div className="space-y-2">
-        {kiddings.map(k => {
-          const daysAgo = Math.floor(
-            (Date.now() - new Date(k.delivery_date).getTime()) / 86_400_000
-          )
-          return (
-            <div
-              key={k.id}
-              className="flex items-center justify-between rounded-lg border border-emerald-200 bg-white px-3 py-2"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs font-semibold text-slate-800">
-                    {k.dam_name ?? k.dam_tag}
-                  </p>
-                  {k.sex && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                      k.sex === "female" ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"
-                    }`}>
-                      {k.sex === "female" ? "♀" : "♂"} {k.sex}
-                    </span>
-                  )}
-                  {k.birth_weight && (
-                    <span className="text-xs text-slate-500">{k.birth_weight}kg</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-xs text-slate-400">
-                    {daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : `${daysAgo}d ago`}
-                  </p>
-                  {k.colostrum_given === false && (
-                    <span className="text-xs text-red-600 font-semibold">· ⚠ No colostrum</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ─── Main Client Page ─────────────────────────────────────────────────────────
-
-interface SmallRuminantsClientProps {
-  initialAnimals: DashboardAnimal[]
-  initialVaccinations: VaccinationDue[]
-  initialKiddings: RecentKidding[]
-  weightMap: Record<string, LatestWeight>
+interface Props {
+  initialAnimals: DashboardAnimal[]; initialVaccinations: VaccinationDue[]
+  initialKiddings: RecentKidding[]; initialWeights: LatestWeight[]; flockSummary: FlockSummary | null
 }
 
 export default function SmallRuminantsClient({
-  initialAnimals,
-  initialVaccinations,
-  initialKiddings,
-  weightMap
-}: SmallRuminantsClientProps) {
-  const [filters, setFilters] = useState<Filters>({
-    species: "all", sex: "all", purpose: "all", search: "",
-  })
+  initialAnimals, initialVaccinations, initialKiddings, initialWeights, flockSummary,
+}: Props) {
+  const pathname = usePathname()
+  const [filters, setFilters] = useState<Filters>({ species: 'all', sex: 'all', purpose: 'all', search: '' })
 
-  const flockSummary = useMemo<FlockSummary | null>(() => {
-    if (initialAnimals.length === 0) return null
-    return {
-      total:        initialAnimals.length,
-      goats:        initialAnimals.filter(a => a.species === "goat").length,
-      sheep:        initialAnimals.filter(a => a.species === "sheep").length,
-      female:       initialAnimals.filter(a => a.sex === "female").length,
-      male:         initialAnimals.filter(a => a.sex === "male").length,
-      active:       initialAnimals.length,
-      for_meat:     initialAnimals.filter(a => a.purpose === "meat").length,
-      for_dairy:    initialAnimals.filter(a => a.purpose === "dairy").length,
-      for_breeding: initialAnimals.filter(a => a.purpose === "breeding" || a.purpose === "dual").length,
-    }
-  }, [initialAnimals])
+  const weightMap = useMemo(
+    () => Object.fromEntries(initialWeights.map(w => [w.animal_id, w])),
+    [initialWeights]
+  )
 
-  const filteredAnimals = useMemo(() => {
+  const filtered = useMemo(() => {
     return initialAnimals.filter(a => {
-      if (filters.species !== "all" && a.species !== filters.species) return false
-      if (filters.sex     !== "all" && a.sex     !== filters.sex)     return false
-      if (filters.purpose !== "all" && a.purpose !== filters.purpose) return false
+      if (filters.species !== 'all' && a.species !== filters.species) return false
+      if (filters.sex     !== 'all' && a.sex     !== filters.sex)     return false
+      if (filters.purpose !== 'all' && a.purpose !== filters.purpose) return false
       if (filters.search) {
         const q = filters.search.toLowerCase()
-        const match =
-          a.animal_tag.toLowerCase().includes(q) ||
-          (a.name?.toLowerCase().includes(q) ?? false) ||
-          (a.breed?.toLowerCase().includes(q) ?? false)
-        if (!match) return false
+        if (!a.animal_tag.toLowerCase().includes(q) &&
+            !(a.name?.toLowerCase().includes(q)) &&
+            !(a.breed?.toLowerCase().includes(q))) return false
       }
       return true
     })
   }, [initialAnimals, filters])
 
-  const alertCount = initialVaccinations.filter(v => v.days_until_due <= 7).length
+  const urgentVax = initialVaccinations.filter(v => v.days_until_due <= 7)
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Sticky Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">←</Link>
-              <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-none">🐐🐑 Sheep & Goats</h1>
-                <p className="text-xs text-slate-500 mt-0.5">{flockSummary?.total || 0} active animals</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {alertCount > 0 && (
-                <Link href="/dashboard/smallRuminants/health" className="text-xs font-semibold bg-amber-50 border border-amber-300 text-amber-700 px-2.5 py-1.5 rounded-lg">
-                  <span>🔔</span> {alertCount}
-                </Link>
-              )}
-              <Link href="/dashboard/smallRuminants/add" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white">+ Add</Link>
-            </div>
-          </div>
-          <div className="flex gap-1 mt-3 overflow-x-auto pb-0.5">
-            {[
-              { label: "🏠 Flock",      href: "/dashboard/smallRuminants" },
-              { label: "💉 Health",     href: "/dashboard/smallRuminants/health" },
-              { label: "🐣 Breeding",   href: "/dashboard/smallRuminants/breeding" },
-              { label: "⚖️ Weights",    href: "/dashboard/smallRuminants/weights" },
-              { label: "🍼 Milk",       href: "/dashboard/smallRuminants/milk" },
-            ].map(({ label, href }) => (
-              <Link key={href} href={href} className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full bg-slate-100 text-slate-600">{label}</Link>
-            ))}
+    <div className="min-h-screen bg-obsidian">
+
+      {/* Sub-nav */}
+      <div className="border-b border-[#2A2D35] bg-[#0A0C10] sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="flex items-center justify-between h-12">
+            <nav className="flex items-center gap-1 overflow-x-auto">
+              {navItems.map(({ label, href }) => {
+                const active = href === '/dashboard/smallRuminants' ? pathname === href : pathname.startsWith(href)
+                return (
+                  <Link key={href} href={href}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
+                      active ? 'text-white bg-white/10' : 'text-[#6B7280] hover:text-white'
+                    }`}>
+                    {label}
+                  </Link>
+                )
+              })}
+            </nav>
+            <Link href="/dashboard/smallRuminants/add"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors flex-shrink-0">
+              <PlusCircle size={12} /> Add
+            </Link>
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-        <FlockSummaryBanner summary={flockSummary} />
-        <VaccinationAlerts vaccinations={initialVaccinations} />
-        <RecentKiddings kiddings={initialKiddings} />
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
 
+        {/* Header + summary */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-white tracking-tight">Sheep &amp; Goats</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">{flockSummary?.total ?? 0} animals registered</p>
+          </div>
+          {urgentVax.length > 0 && (
+            <Link href="/dashboard/smallRuminants/health"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-400 border border-amber-900/40 bg-amber-950/30 rounded-md">
+              <Bell size={12} /> {urgentVax.length} vaccine{urgentVax.length > 1 ? 's' : ''} due
+            </Link>
+          )}
+        </div>
+
+        {/* Stats */}
+        {flockSummary && (
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {[
+              { label: 'Total',    value: flockSummary.total    },
+              { label: 'Active',   value: flockSummary.active   },
+              { label: 'Goats',    value: flockSummary.goats    },
+              { label: 'Sheep',    value: flockSummary.sheep    },
+              { label: 'Female',   value: flockSummary.female   },
+              { label: 'Male',     value: flockSummary.male     },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] p-3">
+                <p className="text-lg font-semibold text-white">{value}</p>
+                <p className="text-[11px] text-[#6B7280]">{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Upcoming vaccinations */}
+        {urgentVax.length > 0 && (
+          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#2A2D35]">
+              <Syringe size={13} className="text-[#6B7280]" />
+              <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Vaccinations due</h2>
+            </div>
+            <div className="divide-y divide-[#1F2128]">
+              {urgentVax.slice(0, 5).map(v => (
+                <div key={v.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white">{v.animal_tag}</p>
+                    <p className="text-xs text-[#6B7280]">{v.vaccine_name || v.vaccine_type || 'Vaccine'}</p>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded border ${URGENCY(v.days_until_due)}`}>
+                    {v.days_until_due <= 0 ? 'Overdue' : `${v.days_until_due}d`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Recent kiddings */}
+        {initialKiddings.length > 0 && (
+          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#2A2D35]">
+              <Baby size={13} className="text-[#6B7280]" />
+              <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Recent kiddings</h2>
+            </div>
+            <div className="divide-y divide-[#1F2128]">
+              {initialKiddings.slice(0, 3).map(k => (
+                <Link key={k.id} href={`/dashboard/smallRuminants/animal/${k.dam_id}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors group">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white">{k.dam_tag}</p>
+                    <p className="text-xs text-[#6B7280]">
+                      {k.birth_weight ? `${k.birth_weight}kg` : '—'} · {k.sex || '—'} · {fmt(k.delivery_date)}
+                    </p>
+                  </div>
+                  <ArrowRight size={12} className="text-[#4B5563] group-hover:text-emerald-400 transition-colors" />
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Animal list */}
         {initialAnimals.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-5xl mb-3">🐐</p>
-            <p className="font-semibold text-slate-700">No animals registered yet</p>
-            <Link href="/dashboard/smallRuminants/add" className="mt-5 inline-flex bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-semibold">+ Register First Animal</Link>
+          <div className="rounded-lg border border-dashed border-[#2A2D35] p-12 text-center">
+            <p className="text-sm text-[#6B7280] mb-4">No animals registered yet</p>
+            <Link href="/dashboard/smallRuminants/add"
+              className="inline-flex items-center gap-2 text-sm text-emerald-500 hover:text-emerald-400">
+              <PlusCircle size={14} /> Register first animal
+            </Link>
           </div>
         ) : (
           <>
             <FilterBar filters={filters} onChange={setFilters} total={initialAnimals.length} />
-            <div className="space-y-3">
-              {filteredAnimals.map(animal => (
-                <AnimalCard key={animal.id} animal={animal as any} latestWeight={weightMap[animal.id] ?? null} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filtered.map(a => (
+                <AnimalCard key={a.id} animal={a as any} latestWeight={weightMap[a.id] ?? null} />
               ))}
             </div>
+            {filtered.length === 0 && (
+              <p className="text-center text-sm text-[#6B7280] py-8">No animals match your filters</p>
+            )}
           </>
         )}
       </div>
