@@ -47,7 +47,7 @@ export default function QuickActions({
     {
       label: 'Add Animal',
       icon: Rabbit,
-      href: '/dashboard/small-ruminants/add',
+      href: '/dashboard/smallRuminants/add',
       show: hasSheepGoats && (selectedEnterprise === 'all' || selectedEnterprise === 'sheep_goats'),
     },
   ].filter((a) => a.show)
