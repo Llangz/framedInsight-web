@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { validateKenyanPhone, formatPhoneForDisplay } from '@/lib/validation'
+import { Phone, AlertCircle } from 'lucide-react'
 
-interface PhoneInputProps {
+interface Props {
   value: string
   onChange: (value: string) => void
   error?: string
@@ -11,42 +12,28 @@ interface PhoneInputProps {
   required?: boolean
 }
 
-export function PhoneInput({ value, onChange, error, label = 'Phone Number', required = true }: PhoneInputProps) {
+export function PhoneInput({ value, onChange, error, label = 'Phone number', required = true }: Props) {
   const [focused, setFocused] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value
-    onChange(input)
-    
-    // Clear error when typing
+    onChange(e.target.value)
     if (localError) setLocalError(null)
   }
 
   const handleBlur = () => {
     setFocused(false)
-    
     if (value) {
-      const validation = validateKenyanPhone(value)
-      if (!validation.isValid) {
-        setLocalError(validation.error)
-      } else {
-        setLocalError(null)
-        // Auto-format to international format
-        onChange(validation.formatted)
-      }
+      const v = validateKenyanPhone(value)
+      if (!v.isValid) setLocalError(v.error ?? null)
+      else { setLocalError(null); onChange(v.formatted) }
     }
   }
 
-  // Real-time validation as user types
   const handleKeyUp = () => {
     if (value && value.length >= 10) {
-      const validation = validateKenyanPhone(value)
-      if (!validation.isValid) {
-        setLocalError(validation.error)
-      } else {
-        setLocalError(null)
-      }
+      const v = validateKenyanPhone(value)
+      setLocalError(v.isValid ? null : v.error ?? null)
     }
   }
 
@@ -54,16 +41,12 @@ export function PhoneInput({ value, onChange, error, label = 'Phone Number', req
   const showError = error || localError
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-        {label} {required && <span className="text-red-500">*</span>}
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
-      
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <span className="text-gray-500 sm:text-sm">🇰🇪</span>
-        </div>
-        
+        <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="tel"
           id="phone"
@@ -73,23 +56,21 @@ export function PhoneInput({ value, onChange, error, label = 'Phone Number', req
           onBlur={handleBlur}
           onKeyUp={handleKeyUp}
           placeholder="0712 345 678"
-          className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-            showError
-              ? 'border-red-300 text-red-900 placeholder-red-300'
-              : 'border-gray-300 text-gray-900 placeholder-gray-500'
-          }`}
           required={required}
+          className={`block w-full pl-9 pr-3 py-2.5 border rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 ${
+            showError
+              ? 'border-red-300 focus:ring-red-400'
+              : 'border-gray-300 focus:ring-emerald-500 focus:border-emerald-500'
+          }`}
         />
       </div>
-      
       {showError && (
-        <p className="text-sm text-red-600">{showError}</p>
-      )}
-      
-      {!showError && value && !focused && (
-        <p className="text-xs text-gray-500">
-          Format: +254 XXX XXX XXX
+        <p className="flex items-center gap-1.5 text-xs text-red-600">
+          <AlertCircle size={11} />{showError}
         </p>
+      )}
+      {!showError && value && !focused && (
+        <p className="text-xs text-gray-400">Format: +254 XXX XXX XXX</p>
       )}
     </div>
   )
