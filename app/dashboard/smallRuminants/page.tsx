@@ -88,13 +88,19 @@ export default async function SmallRuminantsPage() {
       }
     })
 
-  // Map weights (latest per animal)
-  const weightMap: Record<string, any> = {}
-  ;(weightResponse.data || [])
-    .filter(w => animalIds.includes(w.animal_id))
-    .forEach(w => {
-      if (!weightMap[w.animal_id]) weightMap[w.animal_id] = w
-    })
+  const initialWeights = weightResponse.data || []
+
+  const flockSummary = {
+    total: animals.length,
+    active: animals.filter(a => a.status === 'active').length,
+    goats: animals.filter(a => a.species === 'goat').length,
+    sheep: animals.filter(a => a.species === 'sheep').length,
+    female: animals.filter(a => a.sex === 'female').length,
+    male: animals.filter(a => a.sex === 'male').length,
+    for_meat: animals.filter(a => a.purpose === 'meat').length,
+    for_dairy: animals.filter(a => a.purpose === 'dairy').length,
+    for_breeding: animals.filter(a => a.purpose === 'breeding').length,
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -102,7 +108,8 @@ export default async function SmallRuminantsPage() {
         initialAnimals={animals as any}
         initialVaccinations={vaccinations as any}
         initialKiddings={kiddings as any}
-        weightMap={weightMap}
+        initialWeights={initialWeights as any}
+        flockSummary={flockSummary}
       />
     </div>
   )

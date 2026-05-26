@@ -267,9 +267,9 @@ export function EditFarmForm({ farm, onUpdate }: EditFarmFormProps) {
         
         <div className="space-y-3">
           {[
-            { value: 'dairy', label: '🐄 Dairy Farming' },
-            { value: 'coffee', label: '☕ Coffee Production' },
-            { value: 'sheep_goat', label: '🐑 Sheep & Goat Rearing' },
+            { value: 'dairy', label: 'Dairy Farming' },
+            { value: 'coffee', label: 'Coffee Production' },
+            { value: 'sheep_goat', label: 'Sheep & Goat Rearing' },
           ].map(ent => (
             <label key={ent.value} className="flex items-center">
               <input
@@ -301,9 +301,9 @@ export function EditFarmForm({ farm, onUpdate }: EditFarmFormProps) {
           <option value="">Select primary enterprise</option>
           {formData.farmTypes.map(typ => {
             const labels: Record<string, string> = {
-              dairy: '🐄 Dairy Farming',
-              coffee: '☕ Coffee Production',
-              sheep_goat: '🐑 Sheep & Goat Rearing',
+              dairy: 'Dairy Farming',
+              coffee: 'Coffee Production',
+              sheep_goat: 'Sheep & Goat Rearing',
             };
             return (
               <option key={typ} value={typ}>
