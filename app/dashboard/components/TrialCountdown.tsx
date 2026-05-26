@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { Timer, AlertCircle } from 'lucide-react'
 
 interface TrialCountdownProps {
   signupDate: string
@@ -16,16 +17,15 @@ export default function TrialCountdown({ signupDate }: TrialCountdownProps) {
 
   useEffect(() => {
     if (!signupDate) return
-    const signup = new Date(signupDate)
-    const now = new Date()
+    const signup   = new Date(signupDate)
     const trialEnd = new Date(signup.getTime() + 14 * 24 * 60 * 60 * 1000)
-    const diffMs = trialEnd.getTime() - now.getTime()
-    const daysRemaining = Math.ceil(diffMs / (24 * 60 * 60 * 1000))
+    const diffMs   = trialEnd.getTime() - Date.now()
+    const days     = Math.ceil(diffMs / (24 * 60 * 60 * 1000))
 
     setTrialInfo({
-      daysRemaining: Math.max(0, daysRemaining),
-      isActive: daysRemaining > 0,
-      hasExpired: daysRemaining <= 0
+      daysRemaining: Math.max(0, days),
+      isActive:      days > 0,
+      hasExpired:    days <= 0,
     })
   }, [signupDate])
 
@@ -33,23 +33,34 @@ export default function TrialCountdown({ signupDate }: TrialCountdownProps) {
 
   if (trialInfo.hasExpired) {
     return (
-      <div className="flex items-center gap-3 px-4 py-2 bg-crimson-alert/10 border border-crimson-alert/20 rounded-xl text-crimson-alert">
-        <span className="text-sm font-bold">Pro Expired</span>
-        <Link href="/dashboard/billing" className="text-[10px] font-black uppercase tracking-widest bg-crimson-alert text-white px-2 py-1 rounded-lg hover:scale-105 transition-transform">
+      <div className="flex items-center gap-2">
+        <AlertCircle size={12} className="text-red-400 flex-shrink-0" />
+        <span className="text-xs font-medium text-red-400">Trial expired</span>
+        <Link
+          href="/dashboard/billing"
+          className="rounded-md bg-red-500 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-red-400 transition-colors"
+        >
           Upgrade
         </Link>
       </div>
     )
   }
 
-  const isLow = trialInfo.daysRemaining <= 3;
+  const isLow = trialInfo.daysRemaining <= 3
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-2 rounded-xl transition-all ${isLow ? 'bg-amber-500/10 border border-amber-500/20 text-amber-500' : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500'}`}>
-      <span className="text-xl animate-pulse">🎁</span>
-      <div className="flex flex-col">
-        <span className="text-xs font-bold leading-none">{trialInfo.daysRemaining} Days Remaining</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Pro Access</span>
+    <div className="flex items-center gap-2">
+      <Timer
+        size={12}
+        className={`flex-shrink-0 ${isLow ? 'text-amber-400' : 'text-emerald-500'}`}
+      />
+      <div className="flex flex-col leading-none">
+        <span className={`text-xs font-semibold ${isLow ? 'text-amber-400' : 'text-emerald-500'}`}>
+          {trialInfo.daysRemaining}d left
+        </span>
+        <span className="text-[9px] font-medium text-zinc-600 uppercase tracking-widest">
+          Pro trial
+        </span>
       </div>
     </div>
   )

@@ -1,98 +1,141 @@
 import Link from 'next/link'
+import { Lock, Smartphone, CreditCard, ShieldCheck, ArrowRight, MessageSquare, Satellite, Bot } from 'lucide-react'
+
+const trustBadges = [
+  { icon: Lock,        label: 'Data Protected'  },
+  { icon: Smartphone,  label: 'Any Phone'       },
+  { icon: CreditCard,  label: 'M-PESA Ready'    },
+  { icon: ShieldCheck, label: 'EUDR Compliant'  },
+]
+
+const chatMessages = [
+  { from: 'farmer', text: 'Tuyei produced 18 liters today' },
+  { from: 'ai',     text: 'Milk recorded — 18 L for Tuyei\nFarm total today: 51 L' },
+  { from: 'farmer', text: 'Coffee leaves turning brown, plot A' },
+  { from: 'ai',     text: 'Possible: Coffee Leaf Rust\nSend a photo for confirmation' },
+]
 
 export function Hero() {
   return (
-    <div className="relative isolate overflow-hidden bg-white">
-      <div className="mx-auto max-w-7xl px-6 pb-24 pt-10 sm:pb-32 lg:flex lg:px-8 lg:py-40">
-        <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-xl lg:flex-shrink-0 lg:pt-8">
-          <h1 className="mt-10 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-            Manage Your Farm with AI-Powered WhatsApp Assistant
+    <section className="bg-white border-b border-zinc-100">
+      <div className="mx-auto max-w-6xl px-6 py-20 lg:py-28 lg:flex lg:items-center lg:gap-16">
+
+        {/* ── Left copy ── */}
+        <div className="lg:flex-1">
+          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600 mb-8">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Now in Kenya · 5,000+ farms
+          </div>
+
+          <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl leading-[1.1]">
+            Farm management<br />
+            <span className="text-emerald-600">through WhatsApp</span>
           </h1>
-          <p className="mt-6 text-lg leading-8 text-gray-600">
-            Record keeping, expert advice, and satellite monitoring - all through WhatsApp. No complex software. No expensive equipment. Just chat naturally about your farm.
+
+          <p className="mt-6 text-lg text-zinc-600 leading-relaxed max-w-xl">
+            Record milk, report diseases, and get expert AI advice — all through a WhatsApp chat.
+            No app download. No complex software. Just your phone.
           </p>
-          
-          <div className="mt-10 flex items-center gap-x-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold tracking-tight text-primary-600">5,000+</p>
-              <p className="text-sm text-gray-600">Active Farmers</p>
+
+          {/* Stats row */}
+          <div className="mt-10 flex items-center gap-8">
+            <div>
+              <p className="text-2xl font-bold text-zinc-900">5,000+</p>
+              <p className="text-sm text-zinc-500">Active farmers</p>
             </div>
-            <div className="h-12 w-px bg-gray-300" />
-            <div className="text-center">
-              <p className="text-3xl font-bold tracking-tight text-primary-600">10,000+</p>
-              <p className="text-sm text-gray-600">Hectares Mapped</p>
+            <div className="h-8 w-px bg-zinc-200" />
+            <div>
+              <p className="text-2xl font-bold text-zinc-900">10,000+</p>
+              <p className="text-sm text-zinc-500">Hectares mapped</p>
             </div>
-            <div className="h-12 w-px bg-gray-300" />
-            <div className="text-center">
-              <p className="text-3xl font-bold tracking-tight text-primary-600">100%</p>
-              <p className="text-sm text-gray-600">EUDR Compliant</p>
+            <div className="h-8 w-px bg-zinc-200" />
+            <div>
+              <p className="text-2xl font-bold text-zinc-900">100%</p>
+              <p className="text-sm text-zinc-500">EUDR compliant</p>
             </div>
           </div>
 
-          <div className="mt-10 flex items-center gap-x-6">
+          {/* CTAs */}
+          <div className="mt-10 flex items-center gap-4 flex-wrap">
             <Link
               href="/auth/signup"
-              className="rounded-md bg-primary-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-primary-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors"
             >
-              Try Free for 14 Days
+              Try free — 14 days
+              <ArrowRight size={14} />
             </Link>
             <Link
-              href="#how-it-works" 
-              className="text-base font-semibold leading-6 text-gray-900"
+              href="#how-it-works"
+              className="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
             >
-              Learn More <span aria-hidden="true">→</span>
+              See how it works
+              <ArrowRight size={14} />
             </Link>
           </div>
 
-          {/* Trust Badges */}
-          <div className="mt-8 flex flex-wrap items-center gap-4 text-xs text-gray-500">
-            <span className="flex items-center gap-1.5">🔒 <span>Data Protected</span></span>
-            <span className="text-gray-300">|</span>
-            <span className="flex items-center gap-1.5">📱 <span>Any Phone</span></span>
-            <span className="text-gray-300">|</span>
-            <span className="flex items-center gap-1.5">💳 <span>M-PESA Ready</span></span>
-            <span className="text-gray-300">|</span>
-            <span className="flex items-center gap-1.5">✅ <span>EUDR Compliant</span></span>
+          {/* Trust badges */}
+          <div className="mt-8 flex flex-wrap items-center gap-5">
+            {trustBadges.map(({ icon: Icon, label }) => (
+              <span key={label} className="flex items-center gap-1.5 text-xs text-zinc-500">
+                <Icon size={13} className="text-zinc-400" />
+                {label}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* WhatsApp Chat Mockup */}
-        <div className="mx-auto mt-16 flex max-w-2xl sm:mt-24 lg:ml-10 lg:mr-0 lg:mt-0 lg:max-w-none lg:flex-none xl:ml-32">
-          <div className="max-w-3xl flex-none sm:max-w-5xl lg:max-w-none">
-            <div className="rounded-xl bg-gray-900 shadow-xl ring-1 ring-gray-400/10 sm:-m-4 lg:-m-0 lg:rounded-2xl">
-              <div className="flex items-center gap-x-4 border-b border-gray-700 bg-gray-800 px-6 py-4 rounded-t-xl">
-                <div className="text-sm font-medium text-white">WhatsApp Chat</div>
+        {/* ── Right: Chat mockup ── */}
+        <div className="hidden lg:block lg:flex-1 max-w-sm xl:max-w-md">
+          <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+            {/* Header bar */}
+            <div className="flex items-center gap-3 border-b border-zinc-100 bg-zinc-50 px-4 py-3">
+              <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center">
+                <Bot size={15} className="text-white" />
               </div>
-              <div className="px-6 py-6 space-y-4">
-                <div className="flex justify-start">
-                  <div className="bg-green-600 text-white rounded-lg px-4 py-2 max-w-xs">
-                    Tuyei produced 18 liters today
+              <div>
+                <p className="text-xs font-semibold text-zinc-900">framedInsight AI</p>
+                <p className="text-[10px] text-emerald-600">Active</p>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="px-4 py-5 space-y-3 bg-zinc-50/50">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.from === 'farmer' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`rounded-xl px-3.5 py-2 text-xs max-w-[75%] whitespace-pre-line leading-relaxed ${
+                      msg.from === 'farmer'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-white border border-zinc-200 text-zinc-800'
+                    }`}
+                  >
+                    {msg.text}
                   </div>
                 </div>
-                <div className="flex justify-end">
-                  <div className="bg-gray-700 text-white rounded-lg px-4 py-2 max-w-xs">
-                    ✓ Milk recorded: 18L for Tuyei<br/>
-                    Today&apos;s farm total: 51L<br/>
-                    Great production! 🎉
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="bg-green-600 text-white rounded-lg px-4 py-2 max-w-xs">
-                    Coffee leaves turning brown plot A
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <div className="bg-gray-700 text-white rounded-lg px-4 py-2 max-w-xs">
-                    📸 Send a photo of the affected leaves<br/>
-                    Possible: Coffee Leaf Rust<br/>
-                    I&apos;ll help diagnose it
-                  </div>
-                </div>
+              ))}
+            </div>
+
+            {/* Input stub */}
+            <div className="border-t border-zinc-100 px-4 py-3 flex items-center gap-2">
+              <div className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-400">
+                Message framedInsight...
+              </div>
+              <div className="h-7 w-7 rounded-lg bg-emerald-600 flex items-center justify-center">
+                <ArrowRight size={13} className="text-white" />
               </div>
             </div>
           </div>
+
+          {/* Floating badges */}
+          <div className="mt-4 flex gap-3 justify-end">
+            <div className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm">
+              <Satellite size={12} className="text-emerald-600" />
+              Satellite scan — 2 days ago
+            </div>
+          </div>
         </div>
+
       </div>
-    </div>
+    </section>
   )
 }

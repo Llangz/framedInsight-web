@@ -1,104 +1,110 @@
 import Link from 'next/link'
+import { Check, FileText } from 'lucide-react'
+
+const checklistItems = [
+  { label: 'GPS Coordinates',       status: 'automated', done: true  },
+  { label: 'Plot Area Calculation', status: 'automated', done: true  },
+  { label: 'Deforestation Risk',    status: 'automated', done: true  },
+  { label: 'Land Title Document',   status: 'Upload via WhatsApp', done: false },
+  { label: 'Export Documentation',  status: 'One-click PDF', done: true  },
+]
+
+const benefits = [
+  { label: 'GPS Mapping',      description: 'Walk your plot boundary, we handle the coordinates.' },
+  { label: 'Risk Assessment',  description: 'Automated deforestation risk classification.'        },
+  { label: 'Document Storage', description: 'Upload land title photos via WhatsApp.'              },
+  { label: 'Export Reports',   description: 'One-click EUDR compliance PDF.'                      },
+]
 
 export function EUDRSection() {
   return (
-    <div className="bg-coffee-50 py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
-          <div className="grid grid-cols-1 gap-x-8 gap-y-16 lg:grid-cols-2">
-            <div>
-              <h2 className="text-base font-semibold leading-7 text-coffee-600">Coffee Farmers</h2>
-              <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-                EUDR Deadline: December 31, 2025
-              </p>
-              <p className="mt-6 text-lg leading-8 text-gray-600">
-                The EU Deforestation Regulation requires GPS coordinates, deforestation risk assessment, and land ownership documentation for every coffee plot. Without compliance, you cannot export to EU markets.
-              </p>
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">framedInsight Makes Compliance Easy:</h3>
-                <ul className="space-y-3">
-                  <li className="flex items-start">
-                    <span className="text-green-600 text-xl mr-3">✓</span>
-                    <span className="text-gray-700"><strong>GPS Mapping:</strong> Walk your plot boundary, we handle the coordinates</span>
+    <section className="bg-white py-24 sm:py-32 border-y border-zinc-100">
+      <div className="mx-auto max-w-6xl px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 items-start">
+
+          {/* ── Left copy ── */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 mb-3">
+              Coffee Farmers
+            </p>
+            <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+              EUDR Deadline: December 31, 2025
+            </h2>
+            <p className="mt-5 text-base text-zinc-500 leading-relaxed">
+              The EU Deforestation Regulation requires GPS coordinates, deforestation risk assessment,
+              and land ownership documentation for every coffee plot. Without compliance, you cannot
+              export to EU markets.
+            </p>
+
+            <div className="mt-8 border-t border-zinc-100 pt-8">
+              <h3 className="text-sm font-semibold text-zinc-900 mb-5">
+                framedInsight makes compliance easy
+              </h3>
+              <ul className="space-y-4">
+                {benefits.map((b) => (
+                  <li key={b.label} className="flex gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50">
+                      <Check size={11} className="text-emerald-600" />
+                    </span>
+                    <span className="text-sm text-zinc-700">
+                      <strong className="font-semibold text-zinc-900">{b.label}:</strong>{' '}
+                      {b.description}
+                    </span>
                   </li>
-                  <li className="flex items-start">
-                    <span className="text-green-600 text-xl mr-3">✓</span>
-                    <span className="text-gray-700"><strong>Risk Assessment:</strong> Automated deforestation risk classification</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-green-600 text-xl mr-3">✓</span>
-                    <span className="text-gray-700"><strong>Document Storage:</strong> Upload land title photos via WhatsApp</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-green-600 text-xl mr-3">✓</span>
-                    <span className="text-gray-700"><strong>Export Reports:</strong> One-click EUDR compliance PDF</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="mt-10">
-                <Link
-                  href="/auth/signup"
-                  className="rounded-md bg-coffee-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-coffee-700"
-                >
-                  Map My Coffee Plots Now
-                </Link>
-              </div>
+                ))}
+              </ul>
             </div>
-            
-            <div className="rounded-2xl bg-white p-8 shadow-lg ring-1 ring-gray-200">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">EUDR Compliance Checklist</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-green-600 text-2xl mr-3">✓</span>
-                    <span className="font-medium text-gray-900">GPS Coordinates</span>
-                  </div>
-                  <span className="text-sm text-green-600">Automated</span>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-green-600 text-2xl mr-3">✓</span>
-                    <span className="font-medium text-gray-900">Plot Area Calculation</span>
-                  </div>
-                  <span className="text-sm text-green-600">Automated</span>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-green-600 text-2xl mr-3">✓</span>
-                    <span className="font-medium text-gray-900">Deforestation Risk</span>
-                  </div>
-                  <span className="text-sm text-green-600">Automated</span>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-yellow-600 text-2xl mr-3">📄</span>
-                    <span className="font-medium text-gray-900">Land Title Document</span>
-                  </div>
-                  <span className="text-sm text-yellow-600">Upload via WhatsApp</span>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-green-600 text-2xl mr-3">✓</span>
-                    <span className="font-medium text-gray-900">Export Documentation</span>
-                  </div>
-                  <span className="text-sm text-green-600">One-click PDF</span>
-                </div>
-              </div>
-              
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-900">
-                  <strong>Time to complete:</strong> 15 minutes per plot<br/>
-                  <strong>Deadline:</strong> 272 days remaining
-                </p>
-              </div>
+
+            <div className="mt-8">
+              <Link
+                href="/auth/signup"
+                className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors"
+              >
+                Map my coffee plots now
+              </Link>
             </div>
           </div>
+
+          {/* ── Right: checklist card ── */}
+          <div className="rounded-xl border border-zinc-200 overflow-hidden">
+            <div className="border-b border-zinc-100 bg-zinc-50 px-6 py-4">
+              <h3 className="text-sm font-semibold text-zinc-900">EUDR Compliance Checklist</h3>
+            </div>
+
+            <div className="divide-y divide-zinc-100 bg-white">
+              {checklistItems.map((item) => (
+                <div key={item.label} className="flex items-center justify-between px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                      item.done
+                        ? 'border-emerald-200 bg-emerald-50'
+                        : 'border-zinc-200 bg-zinc-50'
+                    }`}>
+                      {item.done
+                        ? <Check size={11} className="text-emerald-600" />
+                        : <FileText size={11} className="text-zinc-400" />
+                      }
+                    </span>
+                    <span className="text-sm font-medium text-zinc-900">{item.label}</span>
+                  </div>
+                  <span className={`text-xs font-medium ${
+                    item.done ? 'text-emerald-600' : 'text-amber-600'
+                  }`}>
+                    {item.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-zinc-100 bg-zinc-50 px-6 py-4">
+              <p className="text-xs text-zinc-500">
+                <span className="font-medium text-zinc-700">Time to complete:</span> 15 minutes per plot
+              </p>
+            </div>
+          </div>
+
         </div>
       </div>
-    </div>
+    </section>
   )
 }

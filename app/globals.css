@@ -1,79 +1,91 @@
 @import "tailwindcss";
 
 @theme {
-  /* Obsidian Theme Palette */
-  --color-obsidian: #0A0C10;
-  --color-deep-slate: #161B22;
-  --color-emerald-glow: #10B981;
-  --color-gold-harvest: #FBBF24;
-  --color-crimson-alert: #EF4444;
-  
-  /* Brand Colors */
-  --color-primary-50: #f0fdf4;
-  --color-primary-100: #dcfce7;
-  --color-primary-500: #10B981;
+  /* Core Palette */
+  --color-obsidian:    #09090b;
+  --color-surface:     #18181b;
+  --color-surface-2:   #27272a;
+  --color-border:      #3f3f46;
+  --color-muted:       #71717a;
+
+  /* Brand — Emerald */
+  --color-primary-50:  #ecfdf5;
+  --color-primary-100: #d1fae5;
+  --color-primary-500: #10b981;
   --color-primary-600: #059669;
   --color-primary-700: #047857;
-  
-  --color-coffee-500: #8B4513;
-  --color-coffee-600: #723A10;
-  --color-coffee-700: #5D2F0D;
+
+  /* Coffee accent */
+  --color-coffee-500: #92400e;
+  --color-coffee-600: #78350f;
+  --color-coffee-700: #451a03;
+
+  /* Semantic */
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
 }
 
 :root {
-  --background: #0A0C10;
-  --foreground: #F0F6FC;
-  --card: #161B22;
-  --border: rgba(255, 255, 255, 0.1);
-  --ring: #10B981;
+  --background:  #09090b;
+  --foreground:  #fafafa;
+  --card:        #18181b;
+  --border:      #27272a;
+  --ring:        #10b981;
 }
 
+/* ── Base ──────────────────────────────────────────────────── */
 body {
   color: var(--foreground);
   background-color: var(--background);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Utility classes ───────────────────────────────────────── */
 @layer utilities {
+  /* Card surfaces */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+  }
+
+  .card-hover {
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .card-hover:hover {
+    border-color: #3f3f46;
+    background-color: #1c1c1f;
+  }
+
+  /* Legacy glass-card kept for dashboard compat */
   .glass-card {
-    background: rgba(22, 27, 34, 0.7);
+    background: rgba(24, 24, 27, 0.8);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
   }
 
-  .glow-emerald {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
-  }
-
-  .bento-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-  }
-
+  /* Transitions */
   .premium-transition {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
   }
 
   .hover-lift:hover {
-    transform: translateY(-4px);
-    border-color: rgba(16, 185, 129, 0.4);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+  }
+
+  /* Bento grid */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
   }
 }
 
-/* ─── Input Reset ───────────────────────────────────────────────────────────
-   The Obsidian body sets color: #F0F6FC (near-white). Without an explicit
-   override, every <input>, <select>, and <textarea> on a white/light
-   background inherits that near-white text and becomes unreadable.
-   This block resets them to always render dark text on a white background,
-   which is correct for all the light-card pages (auth, onboarding, etc.).
-   Dashboard components that intentionally want dark inputs can still override
-   with their own Tailwind classes.                                           */
+/* ── Input Reset ────────────────────────────────────────────── */
+/*  Light-bg pages (auth, onboarding) need dark text on white.  */
 input,
 input[type="text"],
 input[type="email"],
@@ -83,38 +95,28 @@ input[type="number"],
 input[type="search"],
 select,
 textarea {
-  color: #111827;           /* gray-900 */
+  color: #111827;
   background-color: #ffffff;
-  -webkit-text-fill-color: #111827; /* overrides Safari autofill colour */
+  -webkit-text-fill-color: #111827;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #9ca3af;           /* gray-400 — visible but clearly secondary */
+  color: #9ca3af;
   -webkit-text-fill-color: #9ca3af;
 }
 
-/* Autofill (Chrome/Safari override) */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
   -webkit-text-fill-color: #111827;
   -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
-  box-shadow: 0 0 0px 1000px #ffffff inset;
+  box-shadow:         0 0 0px 1000px #ffffff inset;
   transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Custom Scrollbar for Obsidian Theme */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--background);
-}
-::-webkit-scrollbar-thumb {
-  background: #30363D;
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #484F58;
-}
+/* ── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: var(--background); }
+::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #52525b; }

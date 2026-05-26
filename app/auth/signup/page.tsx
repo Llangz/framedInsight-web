@@ -7,10 +7,17 @@ import { Header } from '@/components/ui/Header'
 import { Footer } from '@/components/ui/Footer'
 import { PhoneInput } from '@/components/auth/PhoneInput'
 import { ConsentCheckboxes } from '@/components/auth/ConsentCheckboxes'
-import { LanguageToggle, useTranslation, translations, type Language } from '@/components/auth/LanguageToggle'
+import { LanguageToggle, useTranslation, type Language } from '@/components/auth/LanguageToggle'
 import { validateKenyanPhone, validateEmail, validateName, validateFarmName, validateCounty, KENYAN_COUNTIES } from '@/lib/validation'
 import { sendPhoneOTP } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { Milk, Coffee, Rabbit, Check } from 'lucide-react'
+
+const enterpriseOptions = [
+  { id: 'dairy',      label: 'Dairy',    icon: Milk    },
+  { id: 'coffee',     label: 'Coffee',   icon: Coffee  },
+  { id: 'sheep_goat', label: 'Livestock',icon: Rabbit  },
+]
 
 export default function SignupPage() {
   const router = useRouter()
@@ -117,7 +124,6 @@ export default function SignupPage() {
         farmTypes: formData.farmTypes,
         consents: consents,
       }))
-      console.log('📱 Stored signup phone:', phoneValidation.formatted)
 
       router.push(`/auth/verify`)
     } catch (error) {
@@ -290,35 +296,40 @@ export default function SignupPage() {
             {/* ── STEP 2: Enterprises ── */}
             {step === 'enterprises' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-medium text-gray-900">What do you farm?</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  {['dairy', 'coffee', 'sheep_goat'].map(ent => (
-                    <button
-                      key={ent}
-                      type="button"
-                      onClick={() => toggleEnterprise(ent)}
-                      className={`p-4 border-2 rounded-lg text-gray-900 ${
-                        formData.farmTypes.includes(ent)
-                          ? 'border-primary-600 bg-primary-50'
-                          : 'border-gray-300 bg-white hover:border-gray-400'
-                      }`}
-                    >
-                      <div className="text-3xl">
-                        {ent === 'dairy' ? '🐄' : ent === 'coffee' ? '☕' : '🐐'}
-                      </div>
-                      <div className="text-sm font-medium capitalize mt-1">
-                        {ent.replace('_', '/')}
-                      </div>
-                    </button>
-                  ))}
+                <h3 className="text-sm font-semibold text-zinc-900">What do you farm?</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {enterpriseOptions.map((ent) => {
+                    const Icon    = ent.icon
+                    const active  = formData.farmTypes.includes(ent.id)
+                    return (
+                      <button
+                        key={ent.id}
+                        type="button"
+                        onClick={() => toggleEnterprise(ent.id)}
+                        className={`relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors ${
+                          active
+                            ? 'border-emerald-500 bg-emerald-50'
+                            : 'border-zinc-200 bg-white hover:border-zinc-300'
+                        }`}
+                      >
+                        {active && (
+                          <span className="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500">
+                            <Check size={9} className="text-white" />
+                          </span>
+                        )}
+                        <Icon size={22} className={active ? 'text-emerald-600' : 'text-zinc-500'} />
+                        <span className="text-xs font-semibold text-zinc-900">{ent.label}</span>
+                      </button>
+                    )
+                  })}
                 </div>
-                {errors.enterprises && <p className="text-red-600 text-sm">{errors.enterprises}</p>}
+                {errors.enterprises && <p className="text-red-600 text-xs">{errors.enterprises}</p>}
                 <div className="flex justify-between">
-                  <button type="button" onClick={prevStep} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
-                    ← Back
+                  <button type="button" onClick={prevStep} className="px-4 py-2 border border-zinc-200 text-zinc-700 text-sm rounded-lg hover:bg-zinc-50 transition-colors">
+                    Back
                   </button>
-                  <button type="button" onClick={nextStep} className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-medium">
-                    Next →
+                  <button type="button" onClick={nextStep} className="px-4 py-2 bg-zinc-900 text-white text-sm rounded-lg hover:bg-zinc-800 font-medium transition-colors">
+                    Next
                   </button>
                 </div>
               </div>
@@ -327,12 +338,15 @@ export default function SignupPage() {
             {/* ── STEP 3: Consents ── */}
             {step === 'consents' && (
               <div className="space-y-6">
-                <div className="bg-green-50 p-4 rounded-md border border-green-200">
-                  <p className="text-sm font-medium text-green-800">🎁 14 Days FREE Trial Includes:</p>
-                  <ul className="text-sm text-green-700 mt-2 space-y-1 list-disc pl-5">
-                    <li>AI disease detection</li>
-                    <li>Satellite monitoring</li>
-                    <li>EUDR compliance</li>
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-4">
+                  <p className="text-xs font-semibold text-emerald-800 mb-2">14 days Pro trial includes:</p>
+                  <ul className="space-y-1">
+                    {['AI disease detection', 'Satellite monitoring', 'EUDR compliance'].map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-xs text-emerald-700">
+                        <Check size={11} className="text-emerald-600 flex-shrink-0" />
+                        {f}
+                      </li>
+                    ))}
                   </ul>
                 </div>
                 <ConsentCheckboxes consents={consents} onChange={setConsents} errors={errors} />

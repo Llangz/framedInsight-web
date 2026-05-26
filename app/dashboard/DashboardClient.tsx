@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Bell, Zap, ClipboardList } from 'lucide-react'
 import FarmOverview from './components/FarmOverview'
 import EnterpriseSwitcher from './components/EnterpriseSwitcher'
 import QuickActions from './components/QuickActions'
@@ -18,48 +19,47 @@ export default function DashboardClient({ farmData, farmStats }: DashboardClient
   const farmDisplayName = farmData?.farm_name || 'your farm'
 
   return (
-    <div className="p-4 lg:p-10 max-w-7xl mx-auto space-y-10">
-      {/* Header Section */}
-      <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+
+      {/* ── Page header ── */}
+      <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+              Live operations
             </span>
-            Live Operations
           </div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-white tracking-tight">
-            Habari, <span className="text-emerald-400">{farmDisplayName}</span> 👋
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Habari, <span className="text-emerald-500">{farmDisplayName}</span>
           </h1>
-          <p className="text-slate-400 text-lg">
+          <p className="text-sm text-zinc-500">
             Operational overview and real-time enterprise metrics.
           </p>
         </div>
-        
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-3">
           {farmStats?.pending_alerts > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-crimson-alert/10 border border-crimson-alert/20 rounded-xl text-crimson-alert transition-all hover:bg-crimson-alert/20">
-              <span className="text-sm font-bold">
-                🔔 {farmStats.pending_alerts} Alert{farmStats.pending_alerts > 1 ? 's' : ''}
-              </span>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-900 bg-red-950/50 text-red-400 text-xs font-medium">
+              <Bell size={13} />
+              {farmStats.pending_alerts} alert{farmStats.pending_alerts > 1 ? 's' : ''}
             </div>
           )}
-          <div className="glass-card px-4 py-2 rounded-xl">
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5">
             <TrialCountdown signupDate={farmData?.created_at} />
           </div>
         </div>
       </header>
 
-      {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: Enterprise & Stats */}
-        <div className="lg:col-span-8 space-y-8">
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Enterprise Selector</h2>
-            </div>
+      {/* ── Main grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        {/* Left: Enterprise + stats */}
+        <div className="lg:col-span-8 space-y-6">
+          <section className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-600">
+              Enterprise selector
+            </p>
             <EnterpriseSwitcher
               hasDairy={farmData?.has_dairy || farmData?.farm_types?.includes('dairy')}
               hasCoffee={farmData?.has_coffee || farmData?.farm_types?.includes('coffee')}
@@ -69,7 +69,7 @@ export default function DashboardClient({ farmData, farmStats }: DashboardClient
             />
           </section>
 
-          <section className="space-y-4">
+          <section>
             <FarmOverview
               farmData={farmData}
               farmStats={farmStats}
@@ -78,12 +78,12 @@ export default function DashboardClient({ farmData, farmStats }: DashboardClient
           </section>
         </div>
 
-        {/* Right Column: Actions & Activity */}
-        <div className="lg:col-span-4 space-y-8">
-          <section className="glass-card rounded-3xl p-6 hover-lift premium-transition">
-            <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">⚡</span>
-              Quick Actions
+        {/* Right: Actions + activity */}
+        <div className="lg:col-span-4 space-y-6">
+          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2">
+              <Zap size={12} className="text-emerald-500" />
+              Quick actions
             </h2>
             <QuickActions
               hasDairy={farmData?.has_dairy || farmData?.farm_types?.includes('dairy')}
@@ -93,10 +93,10 @@ export default function DashboardClient({ farmData, farmStats }: DashboardClient
             />
           </section>
 
-          <section className="glass-card rounded-3xl p-6 premium-transition">
-            <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">📜</span>
-              Recent Activity
+          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2">
+              <ClipboardList size={12} className="text-zinc-500" />
+              Recent activity
             </h2>
             <RecentActivity farmId={farmData?.id} />
           </section>

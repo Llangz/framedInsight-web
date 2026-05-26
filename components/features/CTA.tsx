@@ -1,35 +1,51 @@
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
+
+const proofPoints = [
+  'No app download',
+  'Works via WhatsApp',
+  'Cancel anytime',
+]
 
 export function CTA() {
   return (
-    <div className="bg-primary-600">
-      <div className="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
+    <section className="bg-zinc-950 border-t border-zinc-900">
+      <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Join 5,000+ Kenyan Farmers Using framedInsight
+            Join 5,000+ Kenyan farmers using framedInsight
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-primary-100">
-            Start managing your farm through WhatsApp today. Free trial, no credit card required. Get EUDR compliant in 15 minutes.
+          <p className="mx-auto mt-5 max-w-xl text-base text-zinc-400 leading-relaxed">
+            Start managing your farm through WhatsApp today. Free trial, no credit card required.
+            Get EUDR compliant in 15 minutes.
           </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
+
+          <div className="mt-10 flex items-center justify-center gap-4 flex-wrap">
             <Link
               href="/auth/signup"
-              className="rounded-md bg-white px-6 py-3.5 text-base font-semibold text-primary-600 shadow-sm hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-100 transition-colors"
             >
-              Start Free Trial
+              Start free trial
+              <ArrowRight size={14} />
             </Link>
-            <Link 
-              href="/contact" 
-              className="text-base font-semibold leading-6 text-white"
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors"
             >
-              Talk to Sales <span aria-hidden="true">→</span>
+              Talk to sales
+              <ArrowRight size={14} />
             </Link>
           </div>
-          <p className="mt-6 text-sm text-primary-200">
-            ✓ No app download  ✓ Works via WhatsApp  ✓ Cancel anytime
-          </p>
+
+          <div className="mt-8 flex items-center justify-center gap-6 flex-wrap">
+            {proofPoints.map((p) => (
+              <span key={p} className="text-xs text-zinc-600">
+                {p}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }

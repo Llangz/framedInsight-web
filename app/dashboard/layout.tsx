@@ -4,28 +4,32 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import {
+  LayoutDashboard, Milk, Coffee, Rabbit,
+  Settings, User, Bell, Menu, X, LogOut, Leaf,
+} from 'lucide-react';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase     = createClient(supabaseUrl, supabaseKey);
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+const navItems = [
+  { label: 'Dashboard', href: '/dashboard',               icon: LayoutDashboard },
+  { label: 'Dairy',     href: '/dashboard/dairy',          icon: Milk            },
+  { label: 'Coffee',    href: '/dashboard/coffee',         icon: Coffee          },
+  { label: 'Livestock', href: '/dashboard/smallRuminants', icon: Rabbit          },
+  { label: 'Settings',  href: '/dashboard/settings',       icon: Settings        },
+];
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router   = useRouter();
+  const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-
-  const navigationItems = [
-    { label: 'Dashboard', href: '/dashboard', icon: '📊' },
-    { label: 'Dairy', href: '/dashboard/dairy', icon: '🐄' },
-    { label: 'Coffee', href: '/dashboard/coffee', icon: '☕' },
-    { label: 'Livestock', href: '/dashboard/smallRuminants', icon: '🐑' },
-    { label: 'Settings', href: '/dashboard/settings', icon: '⚙️' },
-  ];
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -35,131 +39,131 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isActive = (href: string) => pathname === href;
 
   return (
-    <div className="flex h-screen bg-obsidian overflow-hidden font-['Outfit']">
-      {/* Sidebar Overlay (Mobile) */}
+    <div className="flex h-screen bg-zinc-950 overflow-hidden font-['Outfit']">
+
+      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-all"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* ── Sidebar ── */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-72 glass-card border-r border-white/5 transform transition-all duration-500 ease-out
+          fixed inset-y-0 left-0 z-50 w-64 border-r border-zinc-800 bg-zinc-950 flex flex-col
+          transform transition-transform duration-300 ease-in-out
           lg:relative lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-between p-8">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                <span className="text-xl">🌱</span>
-              </div>
-              <span className="text-xl font-black text-white tracking-tighter">
-                framed<span className="text-emerald-500">Insight</span>
-              </span>
-            </Link>
-            <button
-              className="lg:hidden text-slate-400 hover:text-white"
-              onClick={() => setSidebarOpen(false)}
-            >
-              ✕
-            </button>
-          </div>
+        {/* Logo */}
+        <div className="flex items-center justify-between h-14 px-5 border-b border-zinc-800">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded border border-zinc-700 bg-zinc-900">
+              <Leaf size={13} className="text-emerald-500" />
+            </div>
+            <span className="text-sm font-semibold text-white tracking-tight">
+              framed<span className="text-emerald-500">Insight</span>
+            </span>
+          </Link>
+          <button
+            className="lg:hidden text-zinc-500 hover:text-white transition-colors"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X size={16} />
+          </button>
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-6 space-y-2 overflow-y-auto custom-scrollbar">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-6 px-4">Enterprise Management</div>
-            {navigationItems.map(item => (
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+            Operations
+          </p>
+          {navItems.map((item) => {
+            const Icon   = item.icon;
+            const active = isActive(item.href);
+            return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={`
-                  flex items-center px-4 py-3.5 rounded-2xl transition-all duration-300 group
-                  ${
-                    isActive(item.href)
-                      ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }
+                  flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                  ${active
+                    ? 'bg-zinc-800 text-white'
+                    : 'text-zinc-500 hover:text-white hover:bg-zinc-900'}
                 `}
               >
-                <span className={`text-xl mr-4 transition-transform group-hover:scale-110 ${isActive(item.href) ? 'grayscale-0' : 'grayscale opacity-60'}`}>
-                  {item.icon}
-                </span>
-                <span className="text-sm font-bold tracking-tight">{item.label}</span>
-                {isActive(item.href) && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                )}
+                <Icon size={15} className={active ? 'text-emerald-500' : 'text-zinc-600'} />
+                {item.label}
+                {active && <span className="ml-auto h-1 w-1 rounded-full bg-emerald-500" />}
               </Link>
-            ))}
-          </nav>
+            );
+          })}
+        </nav>
 
-          {/* User Menu */}
-          <div className="p-6">
-            <div className="relative glass-card rounded-2xl p-4 hover:bg-white/5 transition-colors group cursor-pointer" onClick={() => setShowUserMenu(!showUserMenu)}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-white border border-white/10 group-hover:border-emerald-500/50 transition-colors">
-                  👤
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">Main Farm</p>
-                  <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Verified Pro</p>
-                </div>
+        {/* User menu */}
+        <div className="border-t border-zinc-800 p-3">
+          <div className="relative">
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-zinc-900 transition-colors group"
+              onClick={() => setShowUserMenu((v) => !v)}
+            >
+              <div className="h-7 w-7 flex-shrink-0 rounded-full border border-zinc-700 bg-zinc-800 flex items-center justify-center">
+                <User size={13} className="text-zinc-400" />
               </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">Main Farm</p>
+                <p className="text-[10px] text-emerald-500 font-medium">Pro</p>
+              </div>
+            </button>
 
-              {showUserMenu && (
-                <div className="absolute bottom-full left-0 right-0 mb-4 glass-card rounded-2xl shadow-2xl py-2 border border-white/10 animate-in fade-in slide-in-from-bottom-2">
-                  <Link
-                    href="/dashboard/settings"
-                    className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 hover:text-white hover:bg-white/5"
-                  >
-                    <span>⚙️</span> Account Settings
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-crimson-alert hover:bg-crimson-alert/10"
-                  >
-                    <span>🚪</span> Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
+            {showUserMenu && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-zinc-800 bg-zinc-900 py-1 shadow-xl">
+                <Link
+                  href="/dashboard/settings"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                >
+                  <Settings size={13} />
+                  Account settings
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-zinc-800 transition-colors"
+                >
+                  <LogOut size={13} />
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Decorative Background Blob */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
-        
-        {/* Top Bar */}
-        <header className="h-20 flex items-center justify-between px-8 border-b border-white/5">
+      {/* ── Main content ── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Top bar */}
+        <header className="h-14 flex items-center justify-between px-6 border-b border-zinc-800 bg-zinc-950">
           <button
-            className="lg:hidden w-10 h-10 glass-card rounded-xl flex items-center justify-center text-white"
+            className="lg:hidden text-zinc-500 hover:text-white transition-colors"
             onClick={() => setSidebarOpen(true)}
           >
-            ☰
+            <Menu size={18} />
           </button>
 
           <div className="flex-1" />
 
-          {/* Alerts Badge */}
-          <div className="flex items-center gap-4">
-            <button className="relative w-10 h-10 glass-card rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors">
-              🔔
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-crimson-alert rounded-full shadow-[0_0_10px_rgba(239,68,68,0.5)]"></span>
-            </button>
-          </div>
+          <button className="relative text-zinc-500 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-zinc-900">
+            <Bell size={16} />
+            <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-500" />
+          </button>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar relative">
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

@@ -1,5 +1,7 @@
 'use client'
 
+import { LayoutGrid, Milk, Coffee, Rabbit } from 'lucide-react'
+
 interface EnterpriseSwitcherProps {
   hasDairy: boolean
   hasCoffee: boolean
@@ -8,43 +10,44 @@ interface EnterpriseSwitcherProps {
   onSelect: (enterprise: 'all' | 'dairy' | 'coffee' | 'sheep_goats') => void
 }
 
+const enterprises = [
+  { id: 'all'         as const, label: 'Overview', icon: LayoutGrid, show: () => true     },
+  { id: 'dairy'       as const, label: 'Dairy',    icon: Milk,        show: (h: boolean) => h },
+  { id: 'coffee'      as const, label: 'Coffee',   icon: Coffee,      show: (h: boolean) => h },
+  { id: 'sheep_goats' as const, label: 'Livestock',icon: Rabbit,      show: (h: boolean) => h },
+]
+
 export default function EnterpriseSwitcher({
-  hasDairy,
-  hasCoffee,
-  hasSheepGoats,
-  selected,
-  onSelect
+  hasDairy, hasCoffee, hasSheepGoats, selected, onSelect,
 }: EnterpriseSwitcherProps) {
-  const enterprises = [
-    { id: 'all' as const, label: 'Overview', icon: '🌾', show: true },
-    { id: 'dairy' as const, label: 'Dairy', icon: '🐄', show: hasDairy },
-    { id: 'coffee' as const, label: 'Coffee', icon: '☕', show: hasCoffee },
-    { id: 'sheep_goats' as const, label: 'Livestock', icon: '🐏', show: hasSheepGoats },
-  ].filter(e => e.show)
+  const shows: Record<string, boolean> = {
+    all: true, dairy: hasDairy, coffee: hasCoffee, sheep_goats: hasSheepGoats,
+  }
+
+  const visible = enterprises.filter((e) => shows[e.id])
 
   return (
-    <div className="glass-card p-1.5 rounded-2xl inline-flex gap-1.5 overflow-x-auto max-w-full">
-      {enterprises.map((enterprise) => (
-        <button
-          key={enterprise.id}
-          onClick={() => onSelect(enterprise.id)}
-          className={`
-            px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300
-            flex items-center gap-2 whitespace-nowrap
-            ${selected === enterprise.id
-              ? 'bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }
-          `}
-        >
-          <span className={`text-xl transition-transform duration-300 ${selected === enterprise.id ? 'scale-110' : 'grayscale opacity-60'}`}>
-            {enterprise.icon}
-          </span>
-          <span className={selected === enterprise.id ? 'translate-x-0' : '-translate-x-1'}>
-            {enterprise.label}
-          </span>
-        </button>
-      ))}
+    <div className="inline-flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 p-1 overflow-x-auto max-w-full">
+      {visible.map((e) => {
+        const Icon   = e.icon
+        const active = selected === e.id
+        return (
+          <button
+            key={e.id}
+            onClick={() => onSelect(e.id)}
+            className={`
+              flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold
+              whitespace-nowrap transition-colors
+              ${active
+                ? 'bg-zinc-800 text-white'
+                : 'text-zinc-500 hover:text-white hover:bg-zinc-800/50'}
+            `}
+          >
+            <Icon size={13} className={active ? 'text-emerald-500' : 'text-zinc-600'} />
+            {e.label}
+          </button>
+        )
+      })}
     </div>
   )
 }

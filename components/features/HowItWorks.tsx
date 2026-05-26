@@ -1,61 +1,78 @@
-export function HowItWorks() {
-  const steps = [
-    {
-      number: '01',
-      title: 'Sign Up',
-      description: 'Enter your phone number and connect via WhatsApp. Takes less than 2 minutes.',
-      icon: '📱',
-    },
-    {
-      number: '02',
-      title: 'Map Your Farm',
-      description: 'GPS-map your plots using our web tool or WhatsApp location pins. EUDR compliant.',
-      icon: '🗺️',
-    },
-    {
-      number: '03',
-      title: 'Chat to Record',
-      description: 'Simply message "Tuyei gave 18 liters" and it\'s automatically logged. Natural language.',
-      icon: '💬',
-    },
-    {
-      number: '04',
-      title: 'Get AI Insights',
-      description: 'Receive alerts about declining production, disease detection, and expert recommendations.',
-      icon: '🤖',
-    },
-  ]
+import { Smartphone, MapPin, MessageSquare, Sparkles } from 'lucide-react'
 
+const steps = [
+  {
+    number: '01',
+    title: 'Sign Up',
+    description: 'Enter your phone number and link your WhatsApp account. Takes less than 2 minutes.',
+    icon: Smartphone,
+  },
+  {
+    number: '02',
+    title: 'Map Your Farm',
+    description: 'GPS-map your plots using our web tool or WhatsApp location pins — EUDR compliant from day one.',
+    icon: MapPin,
+  },
+  {
+    number: '03',
+    title: 'Chat to Record',
+    description: 'Message "Tuyei gave 18 liters" and it is automatically logged. Natural language, no forms.',
+    icon: MessageSquare,
+  },
+  {
+    number: '04',
+    title: 'Get AI Insights',
+    description: 'Receive alerts about declining production, disease detection, and expert agronomist recommendations.',
+    icon: Sparkles,
+  },
+]
+
+export function HowItWorks() {
   return (
-    <div id="how-it-works" className="bg-white py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl lg:text-center">
-          <h2 className="text-base font-semibold leading-7 text-primary-600">Simple Process</h2>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            As Easy as Sending a WhatsApp Message
+    <section id="how-it-works" className="bg-zinc-950 py-24 sm:py-32">
+      <div className="mx-auto max-w-6xl px-6 lg:px-8">
+
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-500 mb-3">
+            Simple process
           </p>
-          <p className="mt-6 text-lg leading-8 text-gray-600">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            As easy as sending a WhatsApp message
+          </h2>
+          <p className="mt-4 text-base text-zinc-400 leading-relaxed">
             No complex software to learn. No expensive equipment to buy. Just chat naturally about your farm.
           </p>
         </div>
-        
-        <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-          <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-4">
-            {steps.map((step) => (
-              <div key={step.number} className="flex flex-col">
-                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
-                  <div className="text-5xl">{step.icon}</div>
-                </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
-                  <div className="text-sm font-semibold text-primary-600 mb-2">Step {step.number}</div>
-                  <p className="font-semibold text-gray-900 text-lg mb-2">{step.title}</p>
-                  <p className="flex-auto">{step.description}</p>
-                </dd>
+
+        <div className="mt-14 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step, index) => {
+            const Icon = step.icon
+            return (
+              <div key={step.number} className="relative flex flex-col">
+                {/* Connector line */}
+                {index < steps.length - 1 && (
+                  <div className="hidden lg:block absolute top-5 left-full w-full h-px bg-zinc-800 -translate-x-4 z-0" />
+                )}
+
+                <div className="relative z-10">
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900">
+                    <Icon size={18} className="text-emerald-500" />
+                  </div>
+
+                  <div className="mt-4">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">
+                      Step {step.number}
+                    </span>
+                    <h3 className="mt-1.5 text-base font-semibold text-white">{step.title}</h3>
+                    <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{step.description}</p>
+                  </div>
+                </div>
               </div>
-            ))}
-          </dl>
+            )
+          })}
         </div>
+
       </div>
-    </div>
+    </section>
   )
 }
