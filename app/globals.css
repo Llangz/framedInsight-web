@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-@theme {
+
+:root {
   /* Core Palette */
   --color-obsidian:    #09090b;
   --color-surface:     #18181b;
@@ -23,9 +24,7 @@
   /* Semantic */
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
-}
 
-:root {
   --background:  #09090b;
   --foreground:  #fafafa;
   --card:        #18181b;
@@ -85,35 +84,9 @@ body {
 }
 
 /* ── Input Reset ────────────────────────────────────────────── */
-/*  Light-bg pages (auth, onboarding) need dark text on white.  */
-input,
-input[type="text"],
-input[type="email"],
-input[type="tel"],
-input[type="password"],
-input[type="number"],
-input[type="search"],
-select,
-textarea {
-  color: #111827;
-  background-color: #ffffff;
-  -webkit-text-fill-color: #111827;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: #9ca3af;
-  -webkit-text-fill-color: #9ca3af;
-}
-
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #111827;
-  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
-  box-shadow:         0 0 0px 1000px #ffffff inset;
-  transition: background-color 5000s ease-in-out 0s;
-}
+/* Removed: auth and onboarding pages declare bg-white text-gray-900
+   on their inputs directly via Tailwind, so no global override needed.
+   Dashboard inputs must inherit from component-level Tailwind classes. */
 
 /* ── Scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 6px; }

@@ -1,101 +1,175 @@
+// ============================================================================
+// M-Pesa Daraja STK Callback — framedInsight
+// POST /api/payments/callback
+//
+// Safaricom calls this URL after the farmer completes (or cancels) the M-Pesa
+// prompt.  We MUST return HTTP 200 quickly; Safaricom retries on any other
+// status and will hammer the endpoint.
+//
+// Security: Safaricom does not sign callbacks, so we validate by matching
+// CheckoutRequestID against a pending row we inserted at STK push time.
+// The service-role key is only used server-side and never exposed to clients.
+// ============================================================================
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Always acknowledge to Safaricom — never return non-200
+const ACK = () => NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' })
+
+function adminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('Supabase service config missing')
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
+}
+
 export async function POST(req: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceKey) {
-    return NextResponse.json({ error: 'Server misconfiguration.' }, { status: 500 })
-  }
-
-  const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-
+  let body: any
   try {
-    const body = await req.json()
-    console.log('M-Pesa Callback received:', JSON.stringify(body, null, 2))
-
-    if (!body.Body || !body.Body.stkCallback) {
-      return NextResponse.json({ success: true }) // Acknowledge to Safaricom anyway
-    }
-
-    const { CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = body.Body.stkCallback
-
-    // 1. Find transaction
-    const { data: transaction, error: fetchErr } = await supabaseAdmin
-      .from('transactions')
-      .select('*')
-      .eq('checkout_request_id', CheckoutRequestID)
-      .single()
-
-    if (fetchErr || !transaction) {
-      console.error('Transaction not found for checkout ID:', CheckoutRequestID)
-      return NextResponse.json({ success: true })
-    }
-
-    if (ResultCode === 0 && CallbackMetadata) {
-      // Payment Successful
-      const receiptItem = CallbackMetadata.Item.find((item: any) => item.Name === 'MpesaReceiptNumber')
-      const receiptNumber = receiptItem ? receiptItem.Value : null
-
-      // Update transaction status
-      await supabaseAdmin
-        .from('transactions')
-        .update({
-          status: 'completed',
-          mpesa_receipt_number: receiptNumber,
-          result_desc: ResultDesc,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', transaction.id)
-
-      // Get current farm to check expiry
-      const { data: farm } = await supabaseAdmin
-        .from('farms')
-        .select('subscription_end_date')
-        .eq('id', transaction.farm_id)
-        .single()
-
-      if (farm) {
-        let currentEnd = new Date(farm.subscription_end_date)
-        const now = new Date()
-
-        // Subscription stacking logic: 
-        // If current end date is in the future, add to it. Otherwise, add to today.
-        if (currentEnd < now) {
-          currentEnd = now
-        }
-
-        const newEndDate = new Date(currentEnd)
-        newEndDate.setMonth(newEndDate.getMonth() + transaction.months_added)
-
-        // Update farm subscription
-        await supabaseAdmin
-          .from('farms')
-          .update({
-            subscription_end_date: newEndDate.toISOString(),
-            is_active: true
-          })
-          .eq('id', transaction.farm_id)
-      }
-    } else {
-      // Payment Failed or Cancelled
-      await supabaseAdmin
-        .from('transactions')
-        .update({
-          status: 'failed',
-          result_desc: ResultDesc,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', transaction.id)
-    }
-
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('Callback Error:', error)
-    // Safaricom expects a 200 OK so it doesn't retry infinitely
-    return NextResponse.json({ success: true, error: error.message })
+    body = await req.json()
+  } catch {
+    // Malformed JSON — still ACK so Safaricom doesn't retry
+    console.error('[mpesa-callback] Could not parse body')
+    return ACK()
   }
+
+  // ── 1. Extract the callback envelope ────────────────────────────────────
+  const callback = body?.Body?.stkCallback
+  if (!callback) {
+    console.error('[mpesa-callback] Missing stkCallback in body:', JSON.stringify(body))
+    return ACK()
+  }
+
+  const {
+    CheckoutRequestID,
+    MerchantRequestID,
+    ResultCode,
+    ResultDesc,
+    CallbackMetadata,
+  } = callback
+
+  const success = ResultCode === 0
+  const maskedId = CheckoutRequestID?.slice(-8) ?? 'unknown'
+  console.log(`[mpesa-callback] ${maskedId} ResultCode=${ResultCode} "${ResultDesc}"`)
+
+  const supabase = adminClient()
+
+  // ── 2. Look up the pending transaction ──────────────────────────────────
+  const { data: txn, error: txnErr } = await supabase
+    .from('transactions')
+    .select('id, farm_id, user_id, months_added, amount, status')
+    .eq('checkout_request_id', CheckoutRequestID)
+    .single()
+
+  if (txnErr || !txn) {
+    console.error(`[mpesa-callback] No transaction for CheckoutRequestID ${maskedId}:`, txnErr?.message)
+    return ACK()
+  }
+
+  // ── 3. Guard against duplicate callbacks (Safaricom retries) ────────────
+  if (txn.status !== 'pending') {
+    console.log(`[mpesa-callback] Already processed (status=${txn.status}), skipping`)
+    return ACK()
+  }
+
+  // ── 4a. Payment FAILED or CANCELLED ─────────────────────────────────────
+  if (!success) {
+    await supabase
+      .from('transactions')
+      .update({ status: 'failed', result_desc: ResultDesc, updated_at: new Date().toISOString() })
+      .eq('id', txn.id)
+
+    console.log(`[mpesa-callback] Payment failed for farm ${txn.farm_id}: ${ResultDesc}`)
+    return ACK()
+  }
+
+  // ── 4b. Payment SUCCESSFUL ───────────────────────────────────────────────
+  // Extract the M-Pesa receipt number from metadata items
+  const items: { Name: string; Value: any }[] = CallbackMetadata?.Item ?? []
+  const get = (name: string) => items.find(i => i.Name === name)?.Value ?? null
+  const receiptNumber = get('MpesaReceiptNumber')
+  const paidAmount    = get('Amount')
+  const paidPhone     = get('PhoneNumber')
+
+  console.log(`[mpesa-callback] ✅ Payment confirmed. Receipt=${receiptNumber} Amount=${paidAmount} Phone=${String(paidPhone).slice(0, 6)}***`)
+
+  // ── 5. Determine the correct tier from the amount paid ──────────────────
+  // Compare paid amount to monthly prices to infer tier.
+  // months_added was stored at STK push time — use that to derive monthly rate.
+  const monthlyRate = Math.round(txn.amount / txn.months_added)
+  const newTier = inferTierFromMonthlyRate(monthlyRate)
+
+  // ── 6. Update transaction to completed ──────────────────────────────────
+  const { error: txnUpdateErr } = await supabase
+    .from('transactions')
+    .update({
+      status:               'completed',
+      mpesa_receipt_number: receiptNumber,
+      result_desc:          ResultDesc,
+      updated_at:           new Date().toISOString(),
+    })
+    .eq('id', txn.id)
+
+  if (txnUpdateErr) {
+    console.error('[mpesa-callback] Failed to update transaction:', txnUpdateErr.message)
+    // Don't return — still try to activate the subscription
+  }
+
+  // ── 7. Fetch current farm subscription state ─────────────────────────────
+  const { data: farm, error: farmErr } = await supabase
+    .from('farms')
+    .select('id, subscription_tier, subscription_end_date')
+    .eq('id', txn.farm_id)
+    .single()
+
+  if (farmErr || !farm) {
+    console.error('[mpesa-callback] Farm not found:', txn.farm_id)
+    return ACK()
+  }
+
+  // ── 8. Calculate new subscription end date (stacking logic) ─────────────
+  const now = new Date()
+  const currentEnd = farm.subscription_end_date
+    ? new Date(farm.subscription_end_date)
+    : null
+
+  // If current subscription is still active, stack on top of it.
+  // Otherwise start from today.
+  const startFrom = currentEnd && currentEnd > now ? currentEnd : now
+  const newEndDate = new Date(startFrom)
+  newEndDate.setMonth(newEndDate.getMonth() + txn.months_added)
+
+  // ── 9. Activate / extend the subscription ───────────────────────────────
+  const { error: farmUpdateErr } = await supabase
+    .from('farms')
+    .update({
+      subscription_tier:       newTier,
+      subscription_end_date:   newEndDate.toISOString(),
+      subscription_start_date: now.toISOString(),
+      is_active:               true,
+      updated_at:              now.toISOString(),
+    })
+    .eq('id', txn.farm_id)
+
+  if (farmUpdateErr) {
+    console.error('[mpesa-callback] CRITICAL: Failed to activate subscription:', farmUpdateErr.message)
+    // TODO: Add to a dead-letter queue / alert — farmer paid but sub not activated
+  } else {
+    console.log(
+      `[mpesa-callback] ✅ Subscription activated: farm=${txn.farm_id} tier=${newTier} ` +
+      `months=${txn.months_added} end=${newEndDate.toISOString().split('T')[0]}`
+    )
+  }
+
+  return ACK()
+}
+
+// ── Helper: derive tier from monthly KES rate ────────────────────────────────
+// Valid DB tiers: 'smallholder' | 'commercial' | 'enterprise'
+// enterprise_plus is handled via manual sales flow, not M-Pesa self-serve
+function inferTierFromMonthlyRate(monthlyKes: number): string {
+  if (monthlyKes >= 2000) return 'enterprise'
+  if (monthlyKes >= 400)  return 'commercial'
+  return 'smallholder'
 }
