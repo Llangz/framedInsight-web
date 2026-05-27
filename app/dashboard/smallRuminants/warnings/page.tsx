@@ -87,7 +87,7 @@ export default function WarningsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
         if (!session) return
         const res = await fetch('/api/ai/livestock-warnings/small-ruminants', {
           method: 'POST',
