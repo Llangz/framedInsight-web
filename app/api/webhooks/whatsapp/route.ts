@@ -1,96 +1,157 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { sendWhatsAppMessage, sendWhatsAppButtons } from '@/lib/lipachat'
 import { processFarmerIntent, executeIntent } from '@/lib/ai/intent-processor'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role for backend lookups
-)
+// ── Send WhatsApp text message directly (no lib dependency)
+async function sendReply(to: string, message: string) {
+  const apiKey = process.env.LIPACHAT_API_KEY
+  const from = process.env.LIPACHAT_WHATSAPP_NUMBER
+
+  if (!apiKey || !from) {
+    throw new Error(`Missing env vars: LIPACHAT_API_KEY=${!!apiKey} LIPACHAT_WHATSAPP_NUMBER=${!!from}`)
+  }
+
+  const cleanTo = to.replace(/^\+/, '').trim()
+
+  console.log(`Sending reply to ${cleanTo} from ${from}`)
+
+  const res = await fetch('https://gateway.lipachat.com/api/v1/whatsapp/message/text', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apiKey': apiKey,
+    },
+    body: JSON.stringify({
+      message,
+      to: cleanTo,
+      from,
+      messageId: crypto.randomUUID(),
+    }),
+  })
+
+  const data = await res.json()
+  console.log('LipaChat send response:', JSON.stringify(data))
+
+  if (data?.status === 'error') {
+    throw new Error(`LipaChat error: ${data.message || JSON.stringify(data)}`)
+  }
+
+  return data
+}
+
+// ── Main menu text
+function mainMenuText() {
+  return (
+    `Jambo! 👋 Mimi ni *framedInsight AI*\n\n` +
+    `Chagua huduma:\n` +
+    `1️⃣ Coffee - Mavuno, EUDR, Magonjwa\n` +
+    `2️⃣ Dairy - Maziwa, Afya ya Ng'ombe\n` +
+    `3️⃣ Goats/Sheep - Uzito, Afya, Mauzo\n\n` +
+    `Au andika ombi moja kwa moja k.m:\n` +
+    `"Cow 01 ametoa 12L asubuhi"`
+  )
+}
+
+export async function GET() {
+  return NextResponse.json({ status: 'Webhook active', version: '4.0' })
+}
 
 export async function POST(req: NextRequest) {
+  let body: any
+
+  // Step 1: Parse body
   try {
-    const body = await req.json()
-    console.log('WhatsApp Webhook Received:', body)
+    body = await req.json()
+  } catch (e) {
+    console.error('JSON parse error')
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
 
-    const { from: senderNumber, text: messageText, messageId: lipaId, type, interactive } = body
+  // Step 2: Log everything
+  console.log('PAYLOAD:', JSON.stringify(body))
 
-    if (!senderNumber) {
-      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+  // Step 3: Extract fields
+  // Confirmed payload format from LipaChat docs:
+  // { messageId, from, to, profileName, type: "TEXT", text }
+  const senderNumber: string = body.from || ''
+  const messageText: string  = body.text || body.message || ''
+  const messageType: string  = (body.type || '').toUpperCase()
+
+  console.log(`FROM=${senderNumber} TYPE=${messageType} TEXT="${messageText}"`)
+
+  if (!senderNumber) {
+    console.error('No sender in payload')
+    return NextResponse.json({ received: true })
+  }
+
+  // Step 4: Handle greetings — send menu
+  const lower = messageText.toLowerCase().trim()
+  const greetings = ['hi', 'hello', 'habari', 'mambo', 'menu', 'help', 'msaada',
+                     'sasa', 'niaje', 'hujambo', 'start', 'oya']
+  const isGreeting = !lower || greetings.some(g => lower.startsWith(g))
+
+  if (isGreeting) {
+    console.log('Greeting detected, sending main menu')
+    try {
+      await sendReply(senderNumber, mainMenuText())
+      console.log('Menu sent successfully')
+    } catch (err: any) {
+      console.error('Failed to send menu:', err.message)
     }
+    return NextResponse.json({ received: true })
+  }
 
-    // --- Handle Button Clicks ---
-    if (type === 'interactive' && interactive?.button_reply) {
-      const buttonId = interactive.button_reply.id
-      console.log('Button Clicked:', buttonId)
-      
-      if (buttonId === 'MENU_MAIN') {
-        await sendWhatsAppButtons(senderNumber, "Karibu! Ungependa kufanya nini leo?", [
-          { id: 'MENU_COFFEE', title: '☕ Coffee' },
-          { id: 'MENU_DAIRY', title: '🐄 Dairy' },
-          { id: 'MENU_GOATS', title: '🐏 Small Ruminants' }
-        ])
-        return NextResponse.json({ success: true })
-      }
+  // Step 5: Number shortcuts
+  if (lower === '1' || lower.includes('coffee') || lower.includes('kahawa')) {
+    try {
+      await sendReply(senderNumber,
+        `☕ *Coffee*\n\n` +
+        `Mfano wa maombi:\n` +
+        `• "Niliokota 50kg cherry kutoka Hillside"\n` +
+        `• "EUDR status ya Block A"\n` +
+        `• "Hillside plot ina CBD disease"`)
+    } catch (err: any) { console.error(err.message) }
+    return NextResponse.json({ received: true })
+  }
 
-      if (buttonId === 'MENU_COFFEE') {
-        await sendWhatsAppButtons(senderNumber, "Huduma za Kahawa (Coffee):", [
-          { id: 'MENU_COFFEE_HARVEST', title: '🍒 Record Harvest' },
-          { id: 'MENU_COFFEE_DISEASE', title: '🔬 Disease Check' },
-          { id: 'MENU_COFFEE_EUDR',    title: '🛡️ EUDR Status' }
-        ])
-        return NextResponse.json({ success: true })
-      }
+  if (lower === '2' || lower.includes('dairy') || lower.includes("ng'ombe") || lower.includes('maziwa')) {
+    try {
+      await sendReply(senderNumber,
+        `🐄 *Dairy*\n\n` +
+        `Mfano wa maombi:\n` +
+        `• "Cow 01 ametoa 15L asubuhi"\n` +
+        `• "Daisy ana tatizo la mastitis"\n` +
+        `• "AI warnings zangu"`)
+    } catch (err: any) { console.error(err.message) }
+    return NextResponse.json({ received: true })
+  }
 
-      if (buttonId === 'MENU_DAIRY') {
-        await sendWhatsAppButtons(senderNumber, "Huduma za Ng'ombe (Dairy):", [
-          { id: 'MENU_DAIRY_MILK',    title: '🍼 Record Milk' },
-          { id: 'MENU_DAIRY_WARNING', title: '🤖 AI Warnings' },
-          { id: 'MENU_DAIRY_HEALTH',  title: '💉 Health/Vet' }
-        ])
-        return NextResponse.json({ success: true })
-      }
+  if (lower === '3' || lower.includes('goat') || lower.includes('mbuzi') || lower.includes('kondoo')) {
+    try {
+      await sendReply(senderNumber,
+        `🐏 *Small Ruminants*\n\n` +
+        `Mfano wa maombi:\n` +
+        `• "Nanny 01 ana uzito 35kg"\n` +
+        `• "Buck 02 ana tatizo"\n` +
+        `• "Niuzie Nanny 01 kwa 8000"`)
+    } catch (err: any) { console.error(err.message) }
+    return NextResponse.json({ received: true })
+  }
 
-      if (buttonId === 'MENU_GOATS') {
-        await sendWhatsAppButtons(senderNumber, "Huduma za Small Ruminants (Mbuzi/Kondoo):", [
-          { id: 'MENU_GOATS_WEIGHT',  title: '⚖️ Record Weight' },
-          { id: 'MENU_GOATS_WARNING', title: '🤖 AI Warnings' },
-          { id: 'MENU_GOATS_SALES',   title: '💰 Sales' }
-        ])
-        return NextResponse.json({ success: true })
-      }
+  // Step 6: Resolve farmer in Supabase
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-      // Handle terminal actions (e.g. prompt for input)
-      if (buttonId === 'MENU_DAIRY_MILK') {
-        await sendWhatsAppMessage(senderNumber, "Sawa! Tafadhali tuma kiasi cha maziwa kwa lita (mfano: 'Cow 01 ametoa 10L asubuhi')")
-        return NextResponse.json({ success: true })
-      }
-      
-      // ... more terminal logic
-    }
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase env vars')
+    try { await sendReply(senderNumber, 'Samahani, tatizo la mfumo. Jaribu tena. 🙏') } catch {}
+    return NextResponse.json({ received: true })
+  }
 
-    if (!messageText) {
-      return NextResponse.json({ success: true, note: 'Empty text' })
-    }
+  const supabase = createClient(supabaseUrl, supabaseKey)
+  const formattedPhone = senderNumber.startsWith('+') ? senderNumber : `+${senderNumber}`
 
-    // --- Handle Greeting / Help ---
-    const greetings = ['hi', 'hello', 'habari', 'mambo', 'menu', 'help', 'msaada']
-    if (greetings.includes(messageText.toLowerCase().trim())) {
-      await sendWhatsAppButtons(senderNumber, "Jambo! Mimi ni framedInsight AI. Chagua huduma unayohitaji:", [
-        { id: 'MENU_COFFEE', title: '☕ Coffee' },
-        { id: 'MENU_DAIRY', title: '🐄 Dairy' },
-        { id: 'MENU_GOATS', title: '🐏 Small Ruminants' }
-      ])
-      return NextResponse.json({ success: true })
-    }
-
-    // 1. Resolve Farmer/Farm by Phone Number
-    // Numbers usually come as 254... from LipaChat
-    let formattedPhone = senderNumber
-    if (!formattedPhone.startsWith('+')) {
-      formattedPhone = '+' + formattedPhone
-    }
-
+  try {
     const { data: farm, error: farmError } = await supabase
       .from('farms')
       .select('id, farm_name, phone')
@@ -98,39 +159,26 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (farmError || !farm) {
-      console.error('Farmer not found for number:', formattedPhone)
-      // Optional: Handle unknown numbers (e.g. invite to sign up)
-      return NextResponse.json({ success: true, status: 'unrecognized_sender' })
+      console.log('Unregistered number:', formattedPhone, farmError?.message)
+      await sendReply(senderNumber,
+        `Karibu framedInsight! 🌿\n\n` +
+        `Hujasajiliwa bado. Tembelea:\n` +
+        `https://framed-insight-web.vercel.app\n` +
+        `kusajili shamba lako.`)
+      return NextResponse.json({ received: true })
     }
 
-    // 2. Process Intent using AI
+    console.log(`Farm: ${farm.farm_name} (${farm.id})`)
     const parsedIntent = await processFarmerIntent(messageText, farm.id)
-    
-    // 3. Execute Action (Database Update)
-    const confirmationText = await executeIntent(farm.id, parsedIntent)
+    console.log('Intent:', JSON.stringify(parsedIntent))
 
-    // 4. Respond to Farmer
-    await sendWhatsAppMessage(senderNumber, confirmationText)
+    const reply = await executeIntent(farm.id, parsedIntent)
+    await sendReply(senderNumber, reply)
 
-    // 5. Log the message (Optional - if tables existed)
-    /*
-    await supabase.from('whatsapp_messages').insert({
-      farm_id: farm.id,
-      direction: 'inbound',
-      content: messageText,
-      lipachat_message_id: lipaId
-    })
-    */
-
-    return NextResponse.json({ success: true })
-
-  } catch (error: any) {
-    console.error('Webhook Error:', error)
-    return NextResponse.json({ error: 'Internal Error', details: error.message }, { status: 500 })
+  } catch (err: any) {
+    console.error('Handler error:', err.message, err.stack)
+    try { await sendReply(senderNumber, 'Samahani, kuna tatizo kidogo. 😅 Jaribu tena.') } catch {}
   }
-}
 
-// Verification endpoint for some services (LipaChat usually doesn't require GET verification like Meta, but good to have)
-export async function GET(req: NextRequest) {
-  return NextResponse.json({ status: 'Webhook active' })
+  return NextResponse.json({ received: true })
 }
