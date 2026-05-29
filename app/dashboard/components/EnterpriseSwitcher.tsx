@@ -14,7 +14,7 @@ const enterprises = [
   { id: 'all'         as const, label: 'Overview', icon: LayoutGrid, show: () => true     },
   { id: 'dairy'       as const, label: 'Dairy',    icon: Milk,        show: (h: boolean) => h },
   { id: 'coffee'      as const, label: 'Coffee',   icon: Coffee,      show: (h: boolean) => h },
-  { id: 'sheep_goats' as const, label: 'SmallRuminats',icon: Rabbit,      show: (h: boolean) => h },
+  { id: 'sheep_goats' as const, label: 'SmallRuminants',icon: Rabbit,      show: (h: boolean) => h },
 ]
 
 export default function EnterpriseSwitcher({
