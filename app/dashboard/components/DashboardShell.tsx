@@ -24,7 +24,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard',  href: '/dashboard',               icon: LayoutDashboard },
   { label: 'Dairy',      href: '/dashboard/dairy',          icon: Milk            },
   { label: 'Coffee',     href: '/dashboard/coffee',         icon: Coffee          },
-  { label: 'Livestock',  href: '/dashboard/smallRuminants', icon: Rabbit          },
+  { label: 'SmallRuminants',  href: '/dashboard/smallRuminants', icon: Rabbit     },
   { label: 'Billing',    href: '/dashboard/billing',        icon: CreditCard      },
   { label: 'Settings',   href: '/dashboard/settings',       icon: Settings        },
 ]
