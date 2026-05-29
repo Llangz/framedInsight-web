@@ -544,7 +544,7 @@ export async function POST(req: NextRequest) {
   // ── AI intent processing for registered farmers
   try {
     console.log(`Farm: ${farm.farm_name} (${farm.id}) | lang: ${session.lang} | state: ${session.menuState}`)
-    const parsedIntent = await processFarmerIntent(rawText, farm.id)
+    const parsedIntent = await processFarmerIntent(rawText, farm.id, session.lastEnterprise)
     console.log('Intent:', JSON.stringify(parsedIntent))
     const reply = await executeIntent(farm.id, parsedIntent)
     await sendText(senderNumber, reply)
@@ -555,11 +555,12 @@ export async function POST(req: NextRequest) {
       const enterprise = ENTERPRISE_BY_MENU_ID.get(session.lastEnterprise)
       if (enterprise) {
         const s = t[session.lang]
+        const continuationPrompt = session.lang === 'sw' ? 'Unataka kufanya nini zaidi?' : 'What would you like to do next?'
         const continuationButtons: Button[] = [
-          { id: enterprise.menuId, title: '🔄 Continue here' },
-          { id: 'NAV_BACK',        title: '🏠 Main Menu' },
+          { id: enterprise.menuId, title: session.lang === 'sw' ? '🔄 Endelea hapa' : '🔄 Continue here' },
+          { id: 'NAV_BACK',        title: session.lang === 'sw' ? '🏠 Menyu Kuu' : '🏠 Main Menu' },
         ]
-        await sendMenu(senderNumber, `What would you like to do next?`, continuationButtons)
+        await sendMenu(senderNumber, continuationPrompt, continuationButtons)
       }
     }
   } catch (err: any) {
