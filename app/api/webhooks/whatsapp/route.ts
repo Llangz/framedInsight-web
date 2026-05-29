@@ -14,7 +14,7 @@ interface Button { id: string; title: string }
 // ─────────────────────────────────────────────
 const t = {
   en: {
-    langPrompt:    `Welcome to *framedInsight* 🌿\n\nPlease choose your language:`,
+    langPrompt:    `Welcome to *framedInsight* \n\nPlease choose your language:`,
     langButtons:   [{ id: 'LANG_EN', title: '🇬🇧 English' }, { id: 'LANG_SW', title: '🇰🇪 Kiswahili' }],
     langSet:       `Great! I'll reply in English from now on. 👍\n\nSend *menu* any time to see options.`,
     menuPrompt:    `Hello! 👋 I'm *framedInsight AI* — your farming assistant.\n\nWhat would you like to do?`,
