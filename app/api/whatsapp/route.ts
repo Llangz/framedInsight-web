@@ -16,7 +16,6 @@ async function sendMenuOrText(
   try {
     await sendWhatsAppButtons(to, text, buttons)
   } catch (err: any) {
-    // Buttons not supported (e.g. sandbox) — send as plain text menu instead
     const menuText = `${text}\n\n${buttons.map((b, i) => `${i + 1}. ${b.title}`).join('\n')}\n\nReply with the number or type your request.`
     await sendWhatsAppMessage(to, menuText)
   }
@@ -24,25 +23,45 @@ async function sendMenuOrText(
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role for backend lookups
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    console.log('WhatsApp Webhook Received:', body)
+    // ── RAW PAYLOAD LOGGER ──────────────────────────────────────────────────
+    // Logs the FULL body so we can see exactly what LipaChat sends.
+    // Remove this block once the payload shape is confirmed.
+    const rawBody = await req.text()
+    console.log('=== LIPACHAT RAW PAYLOAD ===')
+    console.log(rawBody)
+    console.log('=== END PAYLOAD ===')
 
-    const { from: senderNumber, text: messageText, messageId: lipaId, type, interactive } = body
+    let body: any
+    try {
+      body = JSON.parse(rawBody)
+    } catch {
+      console.error('Failed to parse JSON body:', rawBody)
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    }
+    // ── END RAW LOGGER ──────────────────────────────────────────────────────
+
+    // LipaChat may nest the message inside an 'entry' or 'messages' array
+    // (Meta-style), or send it flat. We handle both shapes here.
+    const normalised = normalisePayload(body)
+    console.log('Normalised payload:', JSON.stringify(normalised))
+
+    const { senderNumber, messageText, messageType, interactive } = normalised
 
     if (!senderNumber) {
-      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+      console.error('No sender number found in payload:', body)
+      return NextResponse.json({ error: 'Invalid payload — no sender' }, { status: 400 })
     }
 
     // --- Handle Button Clicks ---
-    if (type === 'interactive' && interactive?.button_reply) {
+    if (messageType === 'interactive' && interactive?.button_reply) {
       const buttonId = interactive.button_reply.id
       console.log('Button Clicked:', buttonId)
-      
+
       if (buttonId === 'MENU_MAIN') {
         await sendMenuOrText(senderNumber, "Karibu! Ungependa kufanya nini leo?", [
           { id: 'MENU_COFFEE', title: '☕ Coffee' },
@@ -51,7 +70,6 @@ export async function POST(req: NextRequest) {
         ])
         return NextResponse.json({ success: true })
       }
-
       if (buttonId === 'MENU_COFFEE') {
         await sendMenuOrText(senderNumber, "Huduma za Kahawa (Coffee):", [
           { id: 'MENU_COFFEE_HARVEST', title: '🍒 Record Harvest' },
@@ -60,7 +78,6 @@ export async function POST(req: NextRequest) {
         ])
         return NextResponse.json({ success: true })
       }
-
       if (buttonId === 'MENU_DAIRY') {
         await sendMenuOrText(senderNumber, "Huduma za Ng'ombe (Dairy):", [
           { id: 'MENU_DAIRY_MILK',    title: '🍼 Record Milk' },
@@ -69,7 +86,6 @@ export async function POST(req: NextRequest) {
         ])
         return NextResponse.json({ success: true })
       }
-
       if (buttonId === 'MENU_GOATS') {
         await sendMenuOrText(senderNumber, "Huduma za Small Ruminants (Mbuzi/Kondoo):", [
           { id: 'MENU_GOATS_WEIGHT',  title: '⚖️ Record Weight' },
@@ -78,18 +94,15 @@ export async function POST(req: NextRequest) {
         ])
         return NextResponse.json({ success: true })
       }
-
-      // Handle terminal actions (e.g. prompt for input)
       if (buttonId === 'MENU_DAIRY_MILK') {
         await sendWhatsAppMessage(senderNumber, "Sawa! Tafadhali tuma kiasi cha maziwa kwa lita (mfano: 'Cow 01 ametoa 10L asubuhi')")
         return NextResponse.json({ success: true })
       }
-      
-      // ... more terminal logic
     }
 
     if (!messageText) {
-      return NextResponse.json({ success: true, note: 'Empty text' })
+      console.log('No message text found — ignoring non-text message')
+      return NextResponse.json({ success: true, note: 'No text content' })
     }
 
     // --- Handle Greeting / Help ---
@@ -103,8 +116,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    // 1. Resolve Farmer/Farm by Phone Number
-    // Numbers usually come as 254... from LipaChat
+    // --- Resolve Farmer by Phone ---
     let formattedPhone = senderNumber
     if (!formattedPhone.startsWith('+')) {
       formattedPhone = '+' + formattedPhone
@@ -123,24 +135,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, status: 'unrecognized_sender' })
     }
 
-    // 2. Process Intent using AI
+    // --- AI Intent + DB Action ---
     const parsedIntent = await processFarmerIntent(messageText, farm.id)
-    
-    // 3. Execute Action (Database Update)
     const confirmationText = await executeIntent(farm.id, parsedIntent)
-
-    // 4. Respond to Farmer
     await sendWhatsAppMessage(senderNumber, confirmationText)
-
-    // 5. Log the message (Optional - if tables existed)
-    /*
-    await supabase.from('whatsapp_messages').insert({
-      farm_id: farm.id,
-      direction: 'inbound',
-      content: messageText,
-      lipachat_message_id: lipaId
-    })
-    */
 
     return NextResponse.json({ success: true })
 
@@ -150,7 +148,57 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Verification endpoint for some services (LipaChat usually doesn't require GET verification like Meta, but good to have)
+/**
+ * Normalises the incoming LipaChat payload into a consistent shape.
+ *
+ * LipaChat can send two formats:
+ *
+ * FORMAT A — Flat (simple/sandbox):
+ * { from: "254...", text: "hi", type: "text", messageId: "..." }
+ *
+ * FORMAT B — Meta-style nested:
+ * { entry: [{ changes: [{ value: { messages: [{ from, text: { body }, type }] } }] }] }
+ *
+ * We extract { senderNumber, messageText, messageType, interactive } from either.
+ */
+function normalisePayload(body: any) {
+  // Format A — flat payload (most likely for LipaChat)
+  if (body.from) {
+    return {
+      senderNumber: body.from,
+      messageText: body.text || body.body || body.message || null,
+      messageType: body.type || 'text',
+      interactive: body.interactive || null,
+    }
+  }
+
+  // Format B — Meta-style nested payload
+  try {
+    const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
+    if (message) {
+      return {
+        senderNumber: message.from,
+        messageText: message.text?.body || message.body || null,
+        messageType: message.type || 'text',
+        interactive: message.interactive || null,
+      }
+    }
+  } catch {}
+
+  // Format C — some providers wrap differently
+  if (body.message?.from || body.sender) {
+    return {
+      senderNumber: body.message?.from || body.sender,
+      messageText: body.message?.text || body.text || null,
+      messageType: body.type || 'text',
+      interactive: body.interactive || null,
+    }
+  }
+
+  // Unknown format — return empty so we can log and debug
+  return { senderNumber: null, messageText: null, messageType: null, interactive: null }
+}
+
 export async function GET(req: NextRequest) {
   return NextResponse.json({ status: 'Webhook active' })
 }
