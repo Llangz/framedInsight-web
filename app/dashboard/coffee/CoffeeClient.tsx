@@ -1,130 +1,231 @@
 'use client'
 
 import Link from 'next/link'
+import {
+  MapPin, Trees, Sprout, Package, Banknote,
+  ShieldCheck, ArrowRight, PlusCircle, Microscope,
+  BarChart3, Satellite, ChevronRight, CalendarDays,
+} from 'lucide-react'
 
 interface CoffeeClientProps {
-  stats: any
+  stats: {
+    total_plots: number
+    total_trees: number
+    mature_trees: number
+    season_harvest_kg: number
+    season_revenue: number
+    eudr_compliant: number
+    pending_payments: number
+    pending_payments_count?: number
+  }
 }
 
-export default function CoffeeClient({ stats }: CoffeeClientProps) {
-  const statCards = [
-    { label: 'Coffee Plots', value: stats?.total_plots || 0, icon: '📍', color: 'bg-coffee-50 border-coffee-200 text-coffee-700', link: '/dashboard/coffee/plots' },
-    { label: 'Total Trees', value: stats?.total_trees || 0, icon: '🌳', color: 'bg-green-50 border-green-200 text-green-700' },
-    { label: 'Mature Trees', value: stats?.mature_trees || 0, icon: '☕', color: 'bg-amber-50 border-amber-200 text-amber-700' },
-    { label: 'Season Harvest', value: `${stats?.season_harvest_kg || 0}kg`, icon: '🍒', color: 'bg-red-50 border-red-200 text-red-700', link: '/dashboard/coffee/harvest' },
-    { label: 'Season Revenue', value: `KES ${(stats?.season_revenue || 0).toLocaleString()}`, icon: '💰', color: 'bg-blue-50 border-blue-200 text-blue-700' },
-    { label: 'EUDR Compliant', value: `${stats?.eudr_compliant || 0}/${stats?.total_trees || 0}`, icon: '✓', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-  ]
+const statCards = [
+  {
+    label: 'Coffee plots',
+    valueKey: 'total_plots' as const,
+    sub: 'registered',
+    Icon: MapPin,
+    href: '/dashboard/coffee/plots',
+  },
+  {
+    label: 'Total trees',
+    valueKey: 'total_trees' as const,
+    sub: (s: CoffeeClientProps['stats']) => `${s.mature_trees} mature`,
+    Icon: Trees,
+    href: '/dashboard/coffee/plots',
+  },
+  {
+    label: 'Season harvest',
+    valueKey: (s: CoffeeClientProps['stats']) => `${s.season_harvest_kg.toLocaleString()} kg`,
+    sub: 'cherry weight',
+    Icon: Package,
+    href: '/dashboard/coffee/harvest',
+  },
+  {
+    label: 'Season revenue',
+    valueKey: (s: CoffeeClientProps['stats']) => `KES ${s.season_revenue.toLocaleString()}`,
+    sub: 'cooperative payments',
+    Icon: Banknote,
+    href: '/dashboard/coffee/finance',
+  },
+  {
+    label: 'EUDR compliant',
+    valueKey: (s: CoffeeClientProps['stats']) => s.eudr_compliant,
+    sub: (s: CoffeeClientProps['stats']) => `of ${s.total_trees} trees`,
+    Icon: ShieldCheck,
+    href: '/dashboard/coffee/eudr-check',
+  },
+  {
+    label: 'Seedlings / young',
+    valueKey: (s: CoffeeClientProps['stats']) => Math.max(0, s.total_trees - s.mature_trees),
+    sub: 'developing trees',
+    Icon: Sprout,
+    href: '/dashboard/coffee/plots',
+  },
+]
 
-  const quickActions = [
-    { label: 'Record Harvest', icon: '🍒', href: '/dashboard/coffee/harvest/record', color: 'bg-red-600 hover:bg-red-700' },
-    { label: 'Add Plot', icon: '📍', href: '/dashboard/coffee/plots/add', color: 'bg-green-600 hover:bg-green-700' },
-    { label: 'Disease Check', icon: '🔬', href: '/dashboard/coffee/disease', color: 'bg-amber-600 hover:bg-amber-700' },
-    { label: 'EUDR Compliance', icon: '🛡️', href: '/dashboard/coffee/eudr-check', color: 'bg-indigo-600 hover:bg-indigo-700' },
-  ]
+const quickActions = [
+  { label: 'Record harvest',   Icon: Package,     href: '/dashboard/coffee/harvest/record'  },
+  { label: 'Add plot',         Icon: PlusCircle,  href: '/dashboard/coffee/plots/add'        },
+  { label: 'Disease check',    Icon: Microscope,  href: '/dashboard/coffee/disease'          },
+  { label: 'EUDR compliance',  Icon: ShieldCheck, href: '/dashboard/coffee/eudr-check'       },
+  { label: 'Activities',       Icon: BarChart3,   href: '/dashboard/coffee/activities'       },
+  { label: 'Satellite view',   Icon: Satellite,   href: '/dashboard/coffee/satellite'        },
+]
+
+const seasons = [
+  {
+    label:  'Main season',
+    period: 'Oct – Dec',
+    sub:    'Peak harvest period',
+    color:  'bg-emerald-950/40 border-emerald-900/40 text-emerald-400',
+    dot:    'bg-emerald-500',
+  },
+  {
+    label:  'Fly season',
+    period: 'May – Jul',
+    sub:    'Early harvest period',
+    color:  'bg-sky-950/40 border-sky-900/40 text-sky-400',
+    dot:    'bg-sky-500',
+  },
+]
+
+export default function CoffeeClient({ stats }: CoffeeClientProps) {
+  const resolve = (v: any, s: CoffeeClientProps['stats']) =>
+    typeof v === 'function' ? v(s) : v
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Coffee Management</h1>
-            <p className="text-gray-600 mt-1">Manage your coffee plots and harvest</p>
+    <div className="min-h-screen bg-[#070809]">
+
+      {/* Sub-nav */}
+      <div className="border-b border-[#2A2D35] bg-[#0A0C10] sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="flex items-center justify-between h-12">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-white transition-colors"
+            >
+              <ChevronRight size={12} className="rotate-180" />
+              Dashboard
+            </Link>
+            <Link
+              href="/dashboard/coffee/harvest/record"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors"
+            >
+              <PlusCircle size={12} /> Record harvest
+            </Link>
           </div>
-          <Link 
-            href="/dashboard"
-            className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
-          >
-            ← Back to Dashboard
-          </Link>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        {statCards.map((stat, index) => (
-          <Link
-            key={index}
-            href={stat.link || '#'}
-            className={`
-              p-4 rounded-lg border-2 transition-all
-              ${stat.link ? 'hover:shadow-md cursor-pointer' : 'cursor-default'}
-              ${stat.color}
-            `}
-          >
-            <div className="text-2xl mb-1">{stat.icon}</div>
-            <div className="text-xl font-bold">{stat.value}</div>
-            <div className="text-xs font-medium opacity-80 mt-1">{stat.label}</div>
-          </Link>
-        ))}
-      </div>
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {quickActions.map((action, index) => (
+        {/* Header */}
+        <div>
+          <p className="text-xs font-medium text-[#4B5563] mb-1">Enterprise</p>
+          <h1 className="text-xl font-semibold text-white tracking-tight">Coffee</h1>
+          <p className="text-sm text-[#6B7280] mt-0.5">Plot management, harvest tracking and EUDR compliance</p>
+        </div>
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          {statCards.map(({ label, valueKey, sub, Icon, href }) => (
             <Link
-              key={index}
-              href={action.href}
-              className={`
-                p-4 rounded-lg text-white text-center transition-colors
-                ${action.color}
-              `}
+              key={label}
+              href={href}
+              className="group rounded-lg border border-[#2A2D35] bg-[#0D0F14] p-4 hover:border-[#3A3D45] transition-colors"
             >
-              <div className="text-3xl mb-2">{action.icon}</div>
-              <div className="text-sm font-medium">{action.label}</div>
+              <div className="flex items-start justify-between mb-3">
+                <Icon size={15} className="text-[#4B5563] group-hover:text-emerald-500 transition-colors" />
+                <ArrowRight size={12} className="text-[#2A2D35] group-hover:text-[#6B7280] transition-colors" />
+              </div>
+              <p className="text-2xl font-semibold text-white tracking-tight">
+                {resolve(valueKey, stats)}
+              </p>
+              <p className="text-xs font-medium text-[#6B7280] mt-0.5">{label}</p>
+              <p className="text-[11px] text-[#4B5563]">{resolve(sub, stats)}</p>
             </Link>
           ))}
         </div>
-      </div>
 
-      {/* Recent Activity & Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Harvest Season Info */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Harvest Season</h3>
-          <div className="space-y-3">
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <span className="text-xl">🍒</span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-900">Main Season (Oct-Dec)</p>
-                  <p className="text-xs text-green-700 mt-1">Peak harvest period</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <span className="text-xl">🌱</span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-900">Fly Season (May-Jul)</p>
-                  <p className="text-xs text-blue-700 mt-1">Early harvest period</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Main grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Pending Payments */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Cooperative Payments</h3>
-          {stats?.pending_payments > 0 ? (
-            <div className="space-y-3">
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <span className="text-xl">💰</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-amber-900">Payment Pending</p>
-                    <p className="text-xs text-amber-700 mt-1">{stats.pending_payments_count} delivery to cooperative</p>
+          {/* Quick actions */}
+          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+            <div className="px-4 py-3 border-b border-[#2A2D35]">
+              <h2 className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">Actions</h2>
+            </div>
+            <div className="p-2">
+              {quickActions.map(({ label, Icon, href }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-[#9CA3AF] hover:text-white hover:bg-white/5 transition-colors group"
+                >
+                  <Icon size={14} className="text-[#4B5563] group-hover:text-emerald-500 transition-colors flex-shrink-0" />
+                  <span className="flex-1">{label}</span>
+                  <ArrowRight size={12} className="text-[#2A2D35] group-hover:text-[#6B7280]" />
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          {/* Harvest seasons */}
+          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+            <div className="px-4 py-3 border-b border-[#2A2D35] flex items-center gap-2">
+              <CalendarDays size={13} className="text-[#6B7280]" />
+              <h2 className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">Harvest seasons</h2>
+            </div>
+            <div className="p-3 space-y-2">
+              {seasons.map(({ label, period, sub, color, dot }) => (
+                <div
+                  key={label}
+                  className={`flex items-start gap-3 px-3 py-3 rounded-md border ${color}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${dot} mt-1.5 flex-shrink-0`} />
+                  <div>
+                    <p className="text-xs font-semibold">{label}</p>
+                    <p className="text-xs font-medium text-white/70">{period}</p>
+                    <p className="text-[11px] opacity-70 mt-0.5">{sub}</p>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ) : (
-            <p className="text-gray-500 text-sm">No pending payments ✓</p>
-          )}
+          </section>
+
+          {/* Cooperative payments */}
+          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+            <div className="px-4 py-3 border-b border-[#2A2D35] flex items-center gap-2">
+              <Banknote size={13} className="text-[#6B7280]" />
+              <h2 className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">Cooperative payments</h2>
+            </div>
+            <div className="p-3">
+              {stats.pending_payments > 0 ? (
+                <div className="space-y-1">
+                  <div className="flex items-start gap-2.5 px-2 py-2 rounded-md">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-white">Payment pending</p>
+                      <p className="text-[11px] text-[#6B7280]">
+                        {stats.pending_payments_count ?? 1} deliver{(stats.pending_payments_count ?? 1) > 1 ? 'ies' : 'y'} to cooperative
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2.5 px-2 py-2 rounded-md">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-white">All settled</p>
+                    <p className="text-[11px] text-[#6B7280]">No pending payments</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
         </div>
       </div>
     </div>

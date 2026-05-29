@@ -44,10 +44,5 @@ export default async function CoffeePage() {
     pending_payments: 0,
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <CoffeeClient stats={stats} />
-    </div>
-  )
+  return <CoffeeClient stats={stats} />
 }
-
