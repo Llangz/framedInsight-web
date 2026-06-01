@@ -7,7 +7,8 @@ interface QuickActionsProps {
   hasDairy: boolean
   hasCoffee: boolean
   hasSheepGoats: boolean
-  selectedEnterprise: 'all' | 'dairy' | 'coffee' | 'sheep_goats'
+  hasPoultry?: boolean
+  selectedEnterprise: 'all' | 'dairy' | 'coffee' | 'sheep_goats' | 'poultry'
 }
 
 export default function QuickActions({

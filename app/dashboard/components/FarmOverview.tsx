@@ -6,7 +6,7 @@ import { Milk, Coffee, Rabbit, Layers, TrendingUp } from 'lucide-react'
 interface FarmOverviewProps {
   farmData: any
   farmStats: any
-  selectedEnterprise: 'all' | 'dairy' | 'coffee' | 'sheep_goats'
+  selectedEnterprise: 'all' | 'dairy' | 'coffee' | 'sheep_goats' | 'poultry'
 }
 
 export default function FarmOverview({ farmData, farmStats, selectedEnterprise }: FarmOverviewProps) {

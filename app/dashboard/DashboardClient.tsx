@@ -14,7 +14,7 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ farmData, farmStats }: DashboardClientProps) {
-  const [selectedEnterprise, setSelectedEnterprise] = useState<'all' | 'dairy' | 'coffee' | 'sheep_goats'>('all')
+  const [selectedEnterprise, setSelectedEnterprise] = useState<'all' | 'dairy' | 'coffee' | 'sheep_goats' | 'poultry'>('all')
 
   const farmDisplayName = farmData?.farm_name || 'your farm'
 
@@ -64,6 +64,7 @@ export default function DashboardClient({ farmData, farmStats }: DashboardClient
               hasDairy={farmData?.has_dairy || farmData?.farm_types?.includes('dairy')}
               hasCoffee={farmData?.has_coffee || farmData?.farm_types?.includes('coffee')}
               hasSheepGoats={farmData?.has_small_ruminants || farmData?.farm_types?.includes('small_ruminants')}
+              hasPoultry={farmData?.has_poultry || farmData?.farm_types?.includes('poultry')}
               selected={selectedEnterprise}
               onSelect={setSelectedEnterprise}
             />
@@ -89,6 +90,7 @@ export default function DashboardClient({ farmData, farmStats }: DashboardClient
               hasDairy={farmData?.has_dairy || farmData?.farm_types?.includes('dairy')}
               hasCoffee={farmData?.has_coffee || farmData?.farm_types?.includes('coffee')}
               hasSheepGoats={farmData?.has_small_ruminants || farmData?.farm_types?.includes('small_ruminants')}
+              hasPoultry={farmData?.has_poultry || farmData?.farm_types?.includes('poultry')}
               selectedEnterprise={selectedEnterprise}
             />
           </section>
