@@ -103,15 +103,15 @@ export default async function SmallRuminantsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <SmallRuminantsClient 
-        initialAnimals={animals as any}
-        initialVaccinations={vaccinations as any}
-        initialKiddings={kiddings as any}
-        initialWeights={initialWeights as any}
-        flockSummary={flockSummary}
-      />
-    </div>
-  )
+  <div className="min-h-screen bg-[#070809]">
+    <SmallRuminantsClient 
+      initialAnimals={animals as any}
+      initialVaccinations={vaccinations as any}
+      initialKiddings={kiddings as any}
+      initialWeights={initialWeights as any}
+      flockSummary={flockSummary}
+    />
+  </div>
+)
 }
 

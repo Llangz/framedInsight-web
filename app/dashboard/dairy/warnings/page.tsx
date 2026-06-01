@@ -1,9 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+export const dynamic = 'force-dynamic'
+
+import { useState } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
+import {
+  AlertCircle, AlertTriangle, Info, ChevronDown, ChevronUp,
+  ArrowLeft, Loader2, CheckCircle2, RefreshCw, Brain,
+} from 'lucide-react'
 
 type Severity = 'info' | 'warning' | 'critical'
 type WarningType =
@@ -11,76 +16,107 @@ type WarningType =
   | 'health_check_overdue' | 'pregnancy_check_due' | 'mastitis_risk'
 
 interface Warning {
-  cowId: string; cowTag: string; warningType: WarningType
-  severity: Severity; title: string; detail: string
-  actionRequired: string; predictedDate: string | null; confidence: number
+  cowId: string
+  cowTag: string
+  warningType: WarningType
+  severity: Severity
+  title: string
+  detail: string
+  actionRequired: string
+  predictedDate: string | null
+  confidence: number
 }
 
-const WARNING_CONFIG: Record<WarningType, { icon: string; color: string }> = {
-  heat_predicted:       { icon: '🔥', color: 'pink' },
-  milk_decline_anomaly: { icon: '📉', color: 'red' },
-  calving_due:          { icon: '🐄', color: 'blue' },
-  health_check_overdue: { icon: '🩺', color: 'slate' },
-  pregnancy_check_due:  { icon: '🔬', color: 'purple' },
-  mastitis_risk:        { icon: '⚠️', color: 'amber' },
+const SEV_STYLES: Record<Severity, {
+  row: string; badge: string; dot: string; icon: React.ElementType
+}> = {
+  critical: {
+    row:   'border-red-900/40 bg-red-950/20',
+    badge: 'text-red-400 bg-red-950/50 border-red-900/40',
+    dot:   'bg-red-500',
+    icon:  AlertCircle,
+  },
+  warning: {
+    row:   'border-amber-900/40 bg-amber-950/20',
+    badge: 'text-amber-400 bg-amber-950/50 border-amber-900/40',
+    dot:   'bg-amber-500',
+    icon:  AlertTriangle,
+  },
+  info: {
+    row:   'border-blue-900/40 bg-blue-950/20',
+    badge: 'text-blue-400 bg-blue-950/50 border-blue-900/40',
+    dot:   'bg-blue-400',
+    icon:  Info,
+  },
 }
 
-const SEVERITY_CONFIG: Record<Severity, { bg: string; border: string; badge: string; badgeBg: string; dot: string }> = {
-  critical: { bg: 'bg-red-950',    border: 'border-red-600',    badge: 'text-red-300',    badgeBg: 'bg-red-800',    dot: 'bg-red-500' },
-  warning:  { bg: 'bg-amber-950',  border: 'border-amber-600',  badge: 'text-amber-300',  badgeBg: 'bg-amber-800',  dot: 'bg-amber-500' },
-  info:     { bg: 'bg-blue-950',   border: 'border-blue-700',   badge: 'text-blue-300',   badgeBg: 'bg-blue-800',   dot: 'bg-blue-400' },
+const WARNING_LABELS: Record<WarningType, string> = {
+  heat_predicted:       'Heat predicted',
+  milk_decline_anomaly: 'Milk decline',
+  calving_due:          'Calving due',
+  health_check_overdue: 'Health overdue',
+  pregnancy_check_due:  'Pregnancy check',
+  mastitis_risk:        'Mastitis risk',
 }
+
+const HOW_IT_WORKS = [
+  { label: 'Heat prediction',    desc: '18–24 day cycle from last service date',      dot: 'bg-blue-400'   },
+  { label: 'Milk anomaly',       desc: 'Flags sustained >15% drop outside dry-off',   dot: 'bg-amber-500'  },
+  { label: 'Calving alert',      desc: 'Triggered 14 days before expected calving',    dot: 'bg-emerald-500' },
+  { label: 'Mastitis risk',      desc: 'Uneven AM/PM ratio + declining trend',         dot: 'bg-red-500'    },
+]
 
 function WarningCard({ w }: { w: Warning }) {
-  const [expanded, setExpanded] = useState(false)
-  const sev = SEVERITY_CONFIG[w.severity]
-  const wc = WARNING_CONFIG[w.warningType]
+  const [open, setOpen] = useState(false)
+  const s = SEV_STYLES[w.severity]
+  const SevIcon = s.icon
   return (
-    <div className={`rounded-xl border-2 ${sev.bg} ${sev.border} overflow-hidden`}>
-      <button className="w-full text-left p-4" onClick={() => setExpanded(v => !v)}>
-        <div className="flex items-start gap-3">
-          <span className="text-3xl flex-shrink-0">{wc.icon}</span>
+    <div className={`rounded-lg border ${s.row} overflow-hidden`}>
+      <button className="w-full text-left px-4 py-3" onClick={() => setOpen(v => !v)}>
+        <div className="flex items-center gap-3">
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-bold text-white text-base">{w.cowTag}</p>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${sev.badgeBg} ${sev.badge} uppercase`}>
+              <span className="text-sm font-medium text-white">{w.cowTag}</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border uppercase ${s.badge}`}>
                 {w.severity}
               </span>
+              <span className="text-[10px] text-[#6B7280] capitalize">
+                {WARNING_LABELS[w.warningType] ?? w.warningType}
+              </span>
             </div>
-            <p className="text-white text-sm font-semibold mt-0.5">{w.title}</p>
-            <p className="text-slate-300 text-xs mt-0.5 line-clamp-2">{w.detail}</p>
+            <p className="text-xs text-[#9CA3AF] mt-0.5">{w.title}</p>
           </div>
-          <span className="text-slate-500 text-sm flex-shrink-0 mt-1">{expanded ? '▲' : '▼'}</span>
+          <SevIcon size={13} className="text-[#6B7280] flex-shrink-0" />
+          {open
+            ? <ChevronUp size={13} className="text-[#6B7280]" />
+            : <ChevronDown size={13} className="text-[#6B7280]" />
+          }
         </div>
       </button>
 
-      {expanded && (
-        <div className="border-t border-slate-700 px-4 py-3 space-y-3">
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Detail</p>
-            <p className="text-slate-200 text-sm mt-1">{w.detail}</p>
+      {open && (
+        <div className="border-t border-[#2A2D35] px-4 py-3 space-y-3">
+          <p className="text-sm text-[#9CA3AF] leading-relaxed">{w.detail}</p>
+
+          <div className="rounded-md border border-[#2A2D35] bg-[#0D0F14] px-3 py-2.5">
+            <p className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-widest mb-1">
+              Action required
+            </p>
+            <p className="text-sm text-white">{w.actionRequired}</p>
           </div>
-          <div className="bg-slate-800 rounded-lg p-3 flex items-start gap-2">
-            <span className="text-lg">👉</span>
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Action Required</p>
-              <p className="text-white text-sm font-semibold mt-0.5">{w.actionRequired}</p>
-            </div>
-          </div>
+
           {w.predictedDate && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-slate-400">📅 Predicted date:</span>
-              <span className="text-white font-bold">
-                {new Date(w.predictedDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' })}
+            <p className="text-xs text-[#6B7280]">
+              Predicted date:{' '}
+              <span className="text-[#9CA3AF]">
+                {new Date(w.predictedDate).toLocaleDateString('en-KE', {
+                  day: 'numeric', month: 'short', year: 'numeric',
+                })}
               </span>
-            </div>
+              {' '}· Confidence: <span className="text-[#9CA3AF]">{w.confidence}%</span>
+            </p>
           )}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 bg-slate-700 rounded-full h-2">
-              <div className={`h-2 rounded-full ${sev.dot}`} style={{ width: `${w.confidence}%` }} />
-            </div>
-            <span className="text-xs text-slate-400 flex-shrink-0">{w.confidence}% confidence</span>
-          </div>
         </div>
       )}
     </div>
@@ -88,186 +124,193 @@ function WarningCard({ w }: { w: Warning }) {
 }
 
 export default function DairyWarningsPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [fetched, setFetched] = useState(false)
   const [warnings, setWarnings] = useState<Warning[]>([])
-  const [analyzedCount, setAnalyzedCount] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-  const [lastRun, setLastRun] = useState<string | null>(null)
-
-  const criticals = warnings.filter(w => w.severity === 'critical')
-  const warningsOnly = warnings.filter(w => w.severity === 'warning')
-  const infos = warnings.filter(w => w.severity === 'info')
-
-  const heatAlerts = warnings.filter(w => w.warningType === 'heat_predicted')
+  const [loading,  setLoading]  = useState(false)
+  const [fetched,  setFetched]  = useState(false)
+  const [analyzed, setAnalyzed] = useState(0)
+  const [error,    setError]    = useState('')
+  const [lastRun,  setLastRun]  = useState('')
 
   async function runAnalysis() {
-    setLoading(true); setError(null)
+    setLoading(true); setError('')
     try {
+      const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
+      if (!session) { window.location.href = '/auth/login'; return }
 
       const res = await fetch('/api/ai/livestock-warnings/dairy', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        }
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Analysis failed')
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `Analysis failed (${res.status})`)
       }
       const data = await res.json()
-      setWarnings(data.warnings || [])
-      setAnalyzedCount(data.analyzedCount || 0)
-      setLastRun(new Date().toLocaleTimeString('en-KE'))
+      setWarnings(data.warnings   ?? [])
+      setAnalyzed(data.analyzedCount ?? 0)
+      setLastRun(new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }))
       setFetched(true)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (e: any) {
+      setError(e.message || 'Analysis failed')
     } finally {
       setLoading(false)
     }
   }
 
-  const overallStatus = criticals.length > 0 ? 'critical' :
-    warningsOnly.length > 0 ? 'warning' :
-    fetched ? 'clear' : 'idle'
+  const critical  = warnings.filter(w => w.severity === 'critical')
+  const warningLv = warnings.filter(w => w.severity === 'warning')
+  const infoLv    = warnings.filter(w => w.severity === 'info')
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Link href="/dashboard/dairy" className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-300 hover:bg-slate-600 transition">←</Link>
-          <div className="flex-1">
-            <h1 className="text-base font-bold text-white leading-none">🐄 Dairy Early Warnings</h1>
-            <p className="text-xs text-slate-400 mt-0.5">AI-powered heat, health & calving alerts</p>
+    <div className="min-h-screen bg-[#070809]">
+
+      {/* Sub-nav */}
+      <div className="border-b border-[#2A2D35] bg-[#0A0C10] sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-6">
+          <div className="flex items-center justify-between h-12">
+            <Link
+              href="/dashboard/dairy"
+              className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-white transition-colors"
+            >
+              <ArrowLeft size={12} /> Dairy
+            </Link>
+            {lastRun && (
+              <span className="text-[10px] text-[#4B5563]">Last run {lastRun}</span>
+            )}
           </div>
-          {lastRun && <p className="text-xs text-slate-500">Last run: {lastRun}</p>}
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
+      <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
 
-        {/* Status Banner */}
-        {!fetched ? (
-          <div className="bg-slate-800 border-2 border-dashed border-slate-600 rounded-xl p-8 text-center">
-            <p className="text-5xl mb-3">🤖</p>
-            <p className="text-white font-bold text-lg">AI Early Warning System</p>
-            <p className="text-slate-400 text-sm mt-2 max-w-xs mx-auto">
-              Analyses milk trends, breeding records, and health history to predict heat cycles, illness, and calving.
+        {/* Header */}
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Brain size={15} className="text-[#6B7280]" />
+            <p className="text-xs font-medium text-[#4B5563]">AI Early Warnings</p>
+          </div>
+          <h1 className="text-xl font-semibold text-white tracking-tight">Dairy alerts</h1>
+          <p className="text-sm text-[#6B7280] mt-0.5">
+            Heat, mastitis, calving, and milk-decline predictions
+          </p>
+        </div>
+
+        {/* Idle state */}
+        {!fetched && !loading && (
+          <div className="rounded-lg border border-dashed border-[#2A2D35] p-10 text-center">
+            <Brain size={28} className="text-[#4B5563] mx-auto mb-3" />
+            <p className="text-sm font-medium text-white mb-1">AI analysis not yet run</p>
+            <p className="text-xs text-[#6B7280] max-w-xs mx-auto">
+              Analyses milk trends, breeding records, and health history
+              to surface actionable alerts before issues escalate.
             </p>
           </div>
-        ) : (
-          <div className={`rounded-xl px-5 py-4 ${
-            overallStatus === 'critical' ? 'bg-red-700' :
-            overallStatus === 'warning'  ? 'bg-amber-600' : 'bg-green-700'
+        )}
+
+        {/* Status banner (post-fetch) */}
+        {fetched && (
+          <div className={`rounded-lg border px-4 py-3 flex items-center gap-3 ${
+            critical.length  > 0 ? 'border-red-900/40 bg-red-950/20'    :
+            warningLv.length > 0 ? 'border-amber-900/40 bg-amber-950/20' :
+                                   'border-emerald-900/40 bg-emerald-950/20'
           }`}>
-            <div className="flex items-center gap-4">
-              <span className="text-4xl">
-                {overallStatus === 'critical' ? '🚨' : overallStatus === 'warning' ? '⚠️' : '✅'}
-              </span>
-              <div>
-                <p className="font-black text-white text-lg">
-                  {overallStatus === 'critical' ? `${criticals.length} CRITICAL ALERT${criticals.length > 1 ? 'S' : ''}` :
-                   overallStatus === 'warning'  ? `${warningsOnly.length} WARNING${warningsOnly.length > 1 ? 'S' : ''} DETECTED` :
-                   'ALL CLEAR — Herd Healthy'}
-                </p>
-                <p className="text-white opacity-80 text-sm">
-                  {analyzedCount} cows analysed · {warnings.length} total alert{warnings.length !== 1 ? 's' : ''}
-                </p>
-              </div>
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              critical.length  > 0 ? 'bg-red-500'    :
+              warningLv.length > 0 ? 'bg-amber-500'  : 'bg-emerald-500'
+            }`} />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-white">
+                {critical.length > 0
+                  ? `${critical.length} critical alert${critical.length > 1 ? 's' : ''}`
+                  : warningLv.length > 0
+                  ? `${warningLv.length} warning${warningLv.length > 1 ? 's' : ''} detected`
+                  : 'All clear — herd healthy'}
+              </p>
+              <p className="text-[11px] text-[#6B7280]">
+                {analyzed} cows analysed · {warnings.length} total alert{warnings.length !== 1 ? 's' : ''}
+              </p>
             </div>
           </div>
         )}
 
-        {/* Heat Calendar Strip */}
-        {heatAlerts.length > 0 && (
-          <div className="bg-pink-950 border-2 border-pink-700 rounded-xl p-4">
-            <p className="text-xs font-bold text-pink-300 uppercase tracking-widest mb-3">🔥 Predicted Heat Windows</p>
-            <div className="space-y-2">
-              {heatAlerts.map((w, i) => (
-                <div key={i} className="flex items-center justify-between bg-pink-900 rounded-lg px-3 py-2">
-                  <div>
-                    <p className="text-white font-bold text-sm">{w.cowTag}</p>
-                    <p className="text-pink-300 text-xs">{w.actionRequired}</p>
-                  </div>
-                  {w.predictedDate && (
-                    <div className="text-right">
-                      <p className="text-white font-black text-sm">
-                        {new Date(w.predictedDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })}
-                      </p>
-                      <p className="text-pink-400 text-xs">Heat window</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Run Button */}
+        {/* Run button */}
         <button
           onClick={runAnalysis}
           disabled={loading}
-          className="w-full bg-indigo-700 hover:bg-indigo-600 disabled:bg-slate-700 text-white font-black py-4 rounded-xl text-base flex items-center justify-center gap-2 transition"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? (
-            <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />Analysing herd with AI...</>
+            <><Loader2 size={14} className="animate-spin" /> Analysing herd…</>
           ) : (
-            <>{fetched ? '🔄 Re-run Analysis' : '🚀 Run AI Analysis Now'}</>
+            <><RefreshCw size={14} /> {fetched ? 'Re-run analysis' : 'Run AI analysis'}</>
           )}
         </button>
 
         {error && (
-          <div className="bg-red-950 border border-red-700 rounded-xl p-3 text-sm text-red-300">
-            ❌ {error}
+          <div className="flex items-start gap-2 p-3 rounded-md border border-red-900/40 bg-red-950/20">
+            <AlertCircle size={13} className="text-red-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-300">{error}</p>
           </div>
         )}
 
-        {/* Warnings List */}
+        {/* No alerts */}
         {fetched && warnings.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-4xl mb-2">🌿</p>
-            <p className="text-green-400 font-bold text-lg">All Clear!</p>
-            <p className="text-slate-400 text-sm mt-1">No anomalies detected in your herd.</p>
+          <div className="flex items-center gap-2 p-4 rounded-md border border-emerald-900/40 bg-emerald-950/20">
+            <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0" />
+            <p className="text-sm text-emerald-300">No anomalies detected. Your herd looks healthy.</p>
           </div>
         )}
 
-        {criticals.length > 0 && (
-          <div>
-            <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-2">🚨 Critical ({criticals.length})</p>
-            <div className="space-y-3">{criticals.map((w, i) => <WarningCard key={i} w={w} />)}</div>
+        {/* Critical */}
+        {critical.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">
+              Critical ({critical.length})
+            </p>
+            {critical.map((w, i) => <WarningCard key={i} w={w} />)}
           </div>
         )}
 
-        {warningsOnly.length > 0 && (
-          <div>
-            <p className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">⚠️ Warnings ({warningsOnly.length})</p>
-            <div className="space-y-3">{warningsOnly.map((w, i) => <WarningCard key={i} w={w} />)}</div>
+        {/* Warnings */}
+        {warningLv.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">
+              Warnings ({warningLv.length})
+            </p>
+            {warningLv.map((w, i) => <WarningCard key={i} w={w} />)}
           </div>
         )}
 
-        {infos.length > 0 && (
-          <div>
-            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">ℹ️ Reminders ({infos.length})</p>
-            <div className="space-y-3">{infos.map((w, i) => <WarningCard key={i} w={w} />)}</div>
+        {/* Info */}
+        {infoLv.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">
+              Reminders ({infoLv.length})
+            </p>
+            {infoLv.map((w, i) => <WarningCard key={i} w={w} />)}
           </div>
         )}
 
-        {/* Info Footer */}
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">How it works</p>
-          <div className="space-y-1.5 text-xs text-slate-400">
-            <p>🔥 <span className="text-white">Heat prediction</span> — Based on 18-24 day cycle from last service date</p>
-            <p>📉 <span className="text-white">Milk anomaly</span> — Flags sustained &gt;15% drop (not in dry-off period)</p>
-            <p>🐄 <span className="text-white">Calving alert</span> — Triggered 14 days before expected calving</p>
-            <p>⚠️ <span className="text-white">Mastitis risk</span> — Detects uneven AM/PM milk ratio + declining trend</p>
-          </div>
-        </div>
-        <div className="h-6" />
+        {/* How it works */}
+        <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] p-4 space-y-3">
+          <p className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">
+            How alerts work
+          </p>
+          {HOW_IT_WORKS.map(({ label, desc, dot }) => (
+            <div key={label} className="flex items-start gap-2.5">
+              <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${dot}`} />
+              <div>
+                <span className="text-xs font-medium text-[#9CA3AF]">{label}</span>
+                <span className="text-xs text-[#6B7280]"> — {desc}</span>
+              </div>
+            </div>
+          ))}
+        </section>
+
       </div>
     </div>
   )

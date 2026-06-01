@@ -1,27 +1,34 @@
+// 📁 FILE PATH: app/dashboard/components/EnterpriseSwitcher.tsx
 'use client'
 
-import { LayoutGrid, Milk, Coffee, Rabbit } from 'lucide-react'
+import { LayoutGrid, Milk, Coffee, Rabbit, Bird } from 'lucide-react'
 
 interface EnterpriseSwitcherProps {
   hasDairy: boolean
   hasCoffee: boolean
   hasSheepGoats: boolean
-  selected: 'all' | 'dairy' | 'coffee' | 'sheep_goats'
-  onSelect: (enterprise: 'all' | 'dairy' | 'coffee' | 'sheep_goats') => void
+  hasPoultry: boolean
+  selected: 'all' | 'dairy' | 'coffee' | 'sheep_goats' | 'poultry'
+  onSelect: (enterprise: 'all' | 'dairy' | 'coffee' | 'sheep_goats' | 'poultry') => void
 }
 
 const enterprises = [
-  { id: 'all'         as const, label: 'Overview', icon: LayoutGrid, show: () => true     },
-  { id: 'dairy'       as const, label: 'Dairy',    icon: Milk,        show: (h: boolean) => h },
-  { id: 'coffee'      as const, label: 'Coffee',   icon: Coffee,      show: (h: boolean) => h },
-  { id: 'sheep_goats' as const, label: 'SmallRuminants',icon: Rabbit,      show: (h: boolean) => h },
+  { id: 'all'         as const, label: 'Overview',       icon: LayoutGrid },
+  { id: 'dairy'       as const, label: 'Dairy',          icon: Milk       },
+  { id: 'coffee'      as const, label: 'Coffee',         icon: Coffee     },
+  { id: 'sheep_goats' as const, label: 'SmallRuminants', icon: Rabbit     },
+  { id: 'poultry'     as const, label: 'Poultry',        icon: Bird       },
 ]
 
 export default function EnterpriseSwitcher({
-  hasDairy, hasCoffee, hasSheepGoats, selected, onSelect,
+  hasDairy, hasCoffee, hasSheepGoats, hasPoultry, selected, onSelect,
 }: EnterpriseSwitcherProps) {
   const shows: Record<string, boolean> = {
-    all: true, dairy: hasDairy, coffee: hasCoffee, sheep_goats: hasSheepGoats,
+    all: true,
+    dairy:       hasDairy,
+    coffee:      hasCoffee,
+    sheep_goats: hasSheepGoats,
+    poultry:     hasPoultry,
   }
 
   const visible = enterprises.filter((e) => shows[e.id])

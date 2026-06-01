@@ -2630,6 +2630,365 @@ export type Database = {
         }
         Relationships: []
       }
+      poultry_batches: {
+        Row: {
+          batch_name: string
+          bird_type: string
+          created_at: string | null
+          current_count: number
+          date_of_placement: string
+          farm_id: string
+          id: string
+          notes: string | null
+          purpose: string | null
+          source: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          batch_name: string
+          bird_type: string
+          created_at?: string | null
+          current_count: number
+          date_of_placement: string
+          farm_id: string
+          id?: string
+          notes?: string | null
+          purpose?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          batch_name?: string
+          bird_type?: string
+          created_at?: string | null
+          current_count?: number
+          date_of_placement?: string
+          farm_id?: string
+          id?: string
+          notes?: string | null
+          purpose?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poultry_batches_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_batches_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "v_farm_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poultry_egg_records: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          eggs_collected: number
+          farm_id: string
+          id: string
+          notes: string | null
+          record_date: string
+          total_eggs: number | null
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          eggs_collected: number
+          farm_id: string
+          id?: string
+          notes?: string | null
+          record_date: string
+          total_eggs?: number | null
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          eggs_collected?: number
+          farm_id?: string
+          id?: string
+          notes?: string | null
+          record_date?: string
+          total_eggs?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poultry_egg_records_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "poultry_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_egg_records_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_egg_records_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "v_farm_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poultry_feed_records: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          days_remaining: number | null
+          farm_id: string
+          feed_type: string | null
+          id: string
+          notes: string | null
+          quantity_kg: number
+          record_date: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          days_remaining?: number | null
+          farm_id: string
+          feed_type?: string | null
+          id?: string
+          notes?: string | null
+          quantity_kg: number
+          record_date: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          days_remaining?: number | null
+          farm_id?: string
+          feed_type?: string | null
+          id?: string
+          notes?: string | null
+          quantity_kg?: number
+          record_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poultry_feed_records_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "poultry_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_feed_records_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_feed_records_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "v_farm_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poultry_health_records: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          event_type: string
+          farm_id: string
+          id: string
+          next_due_date: string | null
+          notes: string | null
+          record_date: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          event_type: string
+          farm_id: string
+          id?: string
+          next_due_date?: string | null
+          notes?: string | null
+          record_date: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          event_type?: string
+          farm_id?: string
+          id?: string
+          next_due_date?: string | null
+          notes?: string | null
+          record_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poultry_health_records_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "poultry_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_health_records_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_health_records_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "v_farm_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poultry_mortality: {
+        Row: {
+          batch_id: string
+          count_dead: number
+          created_at: string | null
+          farm_id: string
+          id: string
+          notes: string | null
+          record_date: string
+        }
+        Insert: {
+          batch_id: string
+          count_dead: number
+          created_at?: string | null
+          farm_id: string
+          id?: string
+          notes?: string | null
+          record_date: string
+        }
+        Update: {
+          batch_id?: string
+          count_dead?: number
+          created_at?: string | null
+          farm_id?: string
+          id?: string
+          notes?: string | null
+          record_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poultry_mortality_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "poultry_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_mortality_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_mortality_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "v_farm_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poultry_sales: {
+        Row: {
+          batch_id: string
+          buyer_contact: string | null
+          buyer_name: string | null
+          created_at: string | null
+          farm_id: string
+          id: string
+          market: string | null
+          notes: string | null
+          payment_method: string
+          price_per_unit: number
+          quantity: number
+          sale_date: string
+          sale_type: string
+          total_price: number | null
+          unit: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          batch_id: string
+          buyer_contact?: string | null
+          buyer_name?: string | null
+          created_at?: string | null
+          farm_id: string
+          id?: string
+          market?: string | null
+          notes?: string | null
+          payment_method: string
+          price_per_unit: number
+          quantity: number
+          sale_date: string
+          sale_type: string
+          total_price?: number | null
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          batch_id?: string
+          buyer_contact?: string | null
+          buyer_name?: string | null
+          created_at?: string | null
+          farm_id?: string
+          id?: string
+          market?: string | null
+          notes?: string | null
+          payment_method?: string
+          price_per_unit?: number
+          quantity?: number
+          sale_date?: string
+          sale_type?: string
+          total_price?: number | null
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poultry_sales_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "poultry_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_sales_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poultry_sales_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "v_farm_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       small_ruminant_breeding: {
         Row: {
           actual_delivery_date: string | null
