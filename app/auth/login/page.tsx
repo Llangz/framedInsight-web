@@ -115,7 +115,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all ${error ? 'border-red-300' : 'border-gray-300'}`}
+                    className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all ${error ? 'border-red-300' : 'border-gray-300'}`}
                     required={loginMethod === 'password'}
                   />
                   <button
@@ -133,7 +133,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg disabled:opacity-50 transition-all shadow-md shadow-primary-500/20"
+              className="w-full px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg disabled:opacity-50 transition-all shadow-md shadow-emerald-500/20"
             >
               {loading ? 'Processing...' : loginMethod === 'password' ? 'Login' : 'Send SMS OTP'}
             </button>
@@ -146,7 +146,7 @@ export default function LoginPage() {
                 setError('')
               }}
               type="button"
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium hover:underline"
+              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
             >
               {loginMethod === 'password' ? 'Forgot Password? Login with SMS OTP' : 'I remember my password. Login with Password'}
             </button>
@@ -155,7 +155,7 @@ export default function LoginPage() {
             
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
-              <Link href="/auth/signup" className="text-primary-600 hover:text-primary-700 font-bold hover:underline">
+              <Link href="/auth/signup" className="text-emerald-600 hover:text-emerald-700 font-bold hover:underline">
                 Sign up
               </Link>
             </p>

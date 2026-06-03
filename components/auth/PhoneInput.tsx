@@ -42,11 +42,11 @@ export function PhoneInput({ value, onChange, error, label = 'Phone number', req
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor="phone" className="block text-sm font-medium text-[#9CA3AF]">
+      <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       <div className="relative">
-        <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4B5563]" />
+        <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="tel"
           id="phone"
@@ -57,12 +57,12 @@ export function PhoneInput({ value, onChange, error, label = 'Phone number', req
           onKeyUp={handleKeyUp}
           placeholder="0712 345 678"
           required={required}
-          className={`block w-full pl-9 pr-3 py-3 rounded-lg border bg-[#0D0F14] text-white
-            placeholder-[#4B5563] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600
+          className={`block w-full pl-9 pr-3 py-3 rounded-lg border bg-white text-gray-900
+            placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500
             focus:border-transparent transition-all ${
               showError
                 ? 'border-red-500'
-                : 'border-[#2A2D35] focus:border-emerald-600'
+                : 'border-gray-300 focus:border-emerald-500'
             }`}
         />
       </div>
@@ -72,7 +72,7 @@ export function PhoneInput({ value, onChange, error, label = 'Phone number', req
         </p>
       )}
       {!showError && value && !focused && (
-        <p className="text-xs text-[#4B5563]">Format: +254 XXX XXX XXX</p>
+        <p className="text-xs text-gray-400">Format: +254 XXX XXX XXX</p>
       )}
     </div>
   )

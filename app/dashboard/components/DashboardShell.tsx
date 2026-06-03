@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  LayoutDashboard, Milk, Coffee, Rabbit,
+  LayoutDashboard, Milk, Coffee, Rabbit, Bird,
   Settings, User, Bell, Menu, X, LogOut, Leaf,
   CreditCard, AlertTriangle, Lock,
 } from 'lucide-react'
@@ -21,12 +21,13 @@ interface Props {
 }
 
 const NAV_ITEMS = [
-  { label: 'Dashboard',  href: '/dashboard',               icon: LayoutDashboard },
-  { label: 'Dairy',      href: '/dashboard/dairy',          icon: Milk            },
-  { label: 'Coffee',     href: '/dashboard/coffee',         icon: Coffee          },
-  { label: 'SmallRuminants',  href: '/dashboard/smallRuminants', icon: Rabbit     },
-  { label: 'Billing',    href: '/dashboard/billing',        icon: CreditCard      },
-  { label: 'Settings',   href: '/dashboard/settings',       icon: Settings        },
+  { label: 'Dashboard',      href: '/dashboard',                icon: LayoutDashboard },
+  { label: 'Dairy',          href: '/dashboard/dairy',          icon: Milk            },
+  { label: 'Coffee',         href: '/dashboard/coffee',         icon: Coffee          },
+  { label: 'SmallRuminants', href: '/dashboard/smallRuminants', icon: Rabbit          },
+  { label: 'Poultry',        href: '/dashboard/poultry',        icon: Bird            },
+  { label: 'Billing',        href: '/dashboard/billing',        icon: CreditCard      },
+  { label: 'Settings',       href: '/dashboard/settings',       icon: Settings        },
 ]
 
 // Routes that are always accessible regardless of subscription status
