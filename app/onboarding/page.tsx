@@ -283,7 +283,8 @@ export default function OnboardingPage() {
                 {[
                   { id: 'coffee' as const, label: 'Coffee', desc: 'Plot mapping, EUDR compliance, & harvest tracking', icon: '☕' },
                   { id: 'dairy' as const, label: 'Dairy Cattle', desc: 'Milk production, breeding cycles, & health monitoring', icon: '🐄' },
-                  { id: 'small_ruminants' as const, label: 'Sheep & Goats', desc: 'Weight tracking, kidding, & market sales', icon: '🐐' }
+                  { id: 'small_ruminants' as const, label: 'Sheep & Goats', desc: 'Weight tracking, kidding, & market sales', icon: '🐐' },
+                  { id: 'poultry' as const, label: 'Poultry', desc: 'Egg production, flock management, & bird health', icon: '🐔' }
                 ].map(item => (
                   <label
                     key={item.id}

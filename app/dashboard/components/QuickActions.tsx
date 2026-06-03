@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Milk, PlusCircle, Stethoscope, Wheat, MapPin, Rabbit, ArrowRight } from 'lucide-react'
+import { Milk, PlusCircle, Stethoscope, Wheat, MapPin, Rabbit, Bird, Egg, ArrowRight } from 'lucide-react'
 
 interface QuickActionsProps {
   hasDairy: boolean
@@ -12,7 +12,7 @@ interface QuickActionsProps {
 }
 
 export default function QuickActions({
-  hasDairy, hasCoffee, hasSheepGoats, selectedEnterprise,
+  hasDairy, hasCoffee, hasSheepGoats, hasPoultry, selectedEnterprise,
 }: QuickActionsProps) {
   const actions = [
     {
@@ -50,6 +50,24 @@ export default function QuickActions({
       icon: Rabbit,
       href: '/dashboard/smallRuminants/add',
       show: hasSheepGoats && (selectedEnterprise === 'all' || selectedEnterprise === 'sheep_goats'),
+    },
+    {
+      label: 'Record Eggs',
+      icon: Egg,
+      href: '/dashboard/poultry/eggs',
+      show: hasPoultry && (selectedEnterprise === 'all' || selectedEnterprise === 'poultry'),
+    },
+    {
+      label: 'Add Batch',
+      icon: Bird,
+      href: '/dashboard/poultry/add-batch',
+      show: hasPoultry && (selectedEnterprise === 'all' || selectedEnterprise === 'poultry'),
+    },
+    {
+      label: 'Poultry Health',
+      icon: Stethoscope,
+      href: '/dashboard/poultry/health',
+      show: hasPoultry && (selectedEnterprise === 'all' || selectedEnterprise === 'poultry'),
     },
   ].filter((a) => a.show)
 

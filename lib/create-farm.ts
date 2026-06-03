@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Database } from './database.types'
 
-export type Enterprise = 'dairy' | 'coffee' | 'small_ruminants'
+export type Enterprise = 'dairy' | 'coffee' | 'small_ruminants' | 'poultry'
 
 export interface CreateFarmParams {
   userId: string

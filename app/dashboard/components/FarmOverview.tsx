@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Milk, Coffee, Rabbit, Layers, TrendingUp } from 'lucide-react'
+import { Milk, Coffee, Rabbit, Layers, TrendingUp, Bird, Egg } from 'lucide-react'
 
 interface FarmOverviewProps {
   farmData: any
@@ -10,41 +10,61 @@ interface FarmOverviewProps {
 }
 
 export default function FarmOverview({ farmData, farmStats, selectedEnterprise }: FarmOverviewProps) {
+  // Derive enterprise flags from farm_types array
+  const hasDairy = farmData?.farm_types?.includes('dairy') || farmData?.has_dairy
+  const hasCoffee = farmData?.farm_types?.includes('coffee') || farmData?.has_coffee
+  const hasSmallRuminants = farmData?.farm_types?.includes('small_ruminants') || farmData?.has_small_ruminants
+  const hasPoultry = farmData?.farm_types?.includes('poultry') || farmData?.has_poultry
+
   const stats = [
     {
       label: 'Total Cows',
       value: farmData?.total_cows ?? farmStats?.total_cows ?? 0,
       icon: Milk,
       enterprise: 'dairy',
-      show: farmData?.has_dairy && (selectedEnterprise === 'all' || selectedEnterprise === 'dairy'),
+      show: hasDairy && (selectedEnterprise === 'all' || selectedEnterprise === 'dairy'),
     },
     {
       label: "Today's Milk",
       value: `${farmStats?.today_milk_liters ?? 0} L`,
       icon: TrendingUp,
       enterprise: 'dairy',
-      show: farmData?.has_dairy && (selectedEnterprise === 'all' || selectedEnterprise === 'dairy'),
+      show: hasDairy && (selectedEnterprise === 'all' || selectedEnterprise === 'dairy'),
     },
     {
       label: 'Coffee Acres',
       value: farmStats?.total_coffee_acres ?? 0,
       icon: Coffee,
       enterprise: 'coffee',
-      show: farmData?.has_coffee && (selectedEnterprise === 'all' || selectedEnterprise === 'coffee'),
+      show: hasCoffee && (selectedEnterprise === 'all' || selectedEnterprise === 'coffee'),
     },
     {
       label: 'Season Harvest',
       value: `${farmStats?.season_harvest_kg ?? 0} kg`,
       icon: Layers,
       enterprise: 'coffee',
-      show: farmData?.has_coffee && (selectedEnterprise === 'all' || selectedEnterprise === 'coffee'),
+      show: hasCoffee && (selectedEnterprise === 'all' || selectedEnterprise === 'coffee'),
     },
     {
       label: 'Total Animals',
       value: farmStats?.total_small_ruminants ?? 0,
       icon: Rabbit,
       enterprise: 'sheep_goats',
-      show: farmData?.has_small_ruminants && (selectedEnterprise === 'all' || selectedEnterprise === 'sheep_goats'),
+      show: hasSmallRuminants && (selectedEnterprise === 'all' || selectedEnterprise === 'sheep_goats'),
+    },
+    {
+      label: 'Total Birds',
+      value: farmStats?.total_poultry_birds ?? 0,
+      icon: Bird,
+      enterprise: 'poultry',
+      show: hasPoultry && (selectedEnterprise === 'all' || selectedEnterprise === 'poultry'),
+    },
+    {
+      label: "Today's Eggs",
+      value: farmStats?.today_eggs ?? 0,
+      icon: Egg,
+      enterprise: 'poultry',
+      show: hasPoultry && (selectedEnterprise === 'all' || selectedEnterprise === 'poultry'),
     },
   ].filter((s) => s.show)
 

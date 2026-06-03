@@ -16,6 +16,12 @@ interface DashboardClientProps {
 export default function DashboardClient({ farmData, farmStats }: DashboardClientProps) {
   const [selectedEnterprise, setSelectedEnterprise] = useState<'all' | 'dairy' | 'coffee' | 'sheep_goats' | 'poultry'>('all')
 
+  // Derive enterprise flags from farm_types array (farms table doesn't have has_* boolean columns)
+  const hasDairy = farmData?.farm_types?.includes('dairy')
+  const hasCoffee = farmData?.farm_types?.includes('coffee')
+  const hasSmallRuminants = farmData?.farm_types?.includes('small_ruminants')
+  const hasPoultry = farmData?.farm_types?.includes('poultry')
+
   const farmDisplayName = farmData?.farm_name || 'your farm'
 
   return (
@@ -61,10 +67,10 @@ export default function DashboardClient({ farmData, farmStats }: DashboardClient
               Enterprise selector
             </p>
             <EnterpriseSwitcher
-              hasDairy={farmData?.has_dairy || farmData?.farm_types?.includes('dairy')}
-              hasCoffee={farmData?.has_coffee || farmData?.farm_types?.includes('coffee')}
-              hasSheepGoats={farmData?.has_small_ruminants || farmData?.farm_types?.includes('small_ruminants')}
-              hasPoultry={farmData?.has_poultry || farmData?.farm_types?.includes('poultry')}
+              hasDairy={hasDairy}
+              hasCoffee={hasCoffee}
+              hasSheepGoats={hasSmallRuminants}
+              hasPoultry={hasPoultry}
               selected={selectedEnterprise}
               onSelect={setSelectedEnterprise}
             />
@@ -87,10 +93,10 @@ export default function DashboardClient({ farmData, farmStats }: DashboardClient
               Quick actions
             </h2>
             <QuickActions
-              hasDairy={farmData?.has_dairy || farmData?.farm_types?.includes('dairy')}
-              hasCoffee={farmData?.has_coffee || farmData?.farm_types?.includes('coffee')}
-              hasSheepGoats={farmData?.has_small_ruminants || farmData?.farm_types?.includes('small_ruminants')}
-              hasPoultry={farmData?.has_poultry || farmData?.farm_types?.includes('poultry')}
+              hasDairy={hasDairy}
+              hasCoffee={hasCoffee}
+              hasSheepGoats={hasSmallRuminants}
+              hasPoultry={hasPoultry}
               selectedEnterprise={selectedEnterprise}
             />
           </section>
