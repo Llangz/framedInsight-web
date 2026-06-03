@@ -55,6 +55,7 @@ const navItems = [
   { label: 'Health',      href: '/dashboard/poultry/health'        },
   { label: 'Mortality',   href: '/dashboard/poultry/mortality'     },
   { label: 'Sales',       href: '/dashboard/poultry/sales'         },
+  { label: 'Finance',     href: '/dashboard/poultry/finance'       },
   { label: 'AI Warnings', href: '/dashboard/poultry/warnings'      },
 ]
 

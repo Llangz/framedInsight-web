@@ -77,19 +77,18 @@ const ENTERPRISES: EnterpriseConfig[] = [
       ACT_GOATS_SALES:  'goatsSales',
     },
   },
-  // ─── ADD NEW ENTERPRISE HERE ────────────────────────────────────────────
-  // {
-  //   menuId:     'MENU_POULTRY',
-  //   state:      'POULTRY',
-  //   promptKey:  'poultryPrompt',
-  //   buttonsKey: 'poultryButtons',
-  //   actions: {
-  //     ACT_POULTRY_EGGS:   'poultryEggs',
-  //     ACT_POULTRY_HEALTH: 'poultryHealth',
-  //     ACT_POULTRY_FEED:   'poultryFeed',
-  //   },
-  // },
-  // ────────────────────────────────────────────────────────────────────────
+  {
+    menuId:     'MENU_POULTRY',
+    state:      'POULTRY',
+    promptKey:  'poultryPrompt',
+    buttonsKey: 'poultryButtons',
+    actions: {
+      ACT_POULTRY_EGGS:   'poultryEggs',
+      ACT_POULTRY_HEALTH: 'poultryHealth',
+      ACT_POULTRY_FEED:   'poultryFeed',
+      ACT_POULTRY_WARN:   'poultryWarn',
+    },
+  },
 ]
 
 // ─────────────────────────────────────────────
@@ -125,12 +124,13 @@ type Strings = {
   notRegistered: string
   error:         string
   fallbackMenu:  string
-  // Poultry (uncomment when enterprise is added above)
-  // poultryPrompt:  string
-  // poultryButtons: Button[]
-  // poultryEggs:    string
-  // poultryHealth:  string
-  // poultryFeed:    string
+  // Poultry
+  poultryPrompt:  string
+  poultryButtons: Button[]
+  poultryEggs:    string
+  poultryHealth:  string
+  poultryFeed:    string
+  poultryWarn:    string
 }
 
 const t: Record<Lang, Strings> = {
@@ -143,7 +143,7 @@ const t: Record<Lang, Strings> = {
       { id: 'MENU_COFFEE', title: '☕ Coffee' },
       { id: 'MENU_DAIRY',  title: '🐄 Dairy' },
       { id: 'MENU_GOATS',  title: '🐏 Goats & Sheep' },
-      // { id: 'MENU_POULTRY', title: '🐔 Poultry' }, // Uncomment when enterprise is added
+      { id: 'MENU_POULTRY', title: '🐔 Poultry' },
     ],
     coffeePrompt:  `☕ *Coffee*\n\nChoose an action:`,
     coffeeButtons: [
@@ -172,6 +172,17 @@ const t: Record<Lang, Strings> = {
     goatsWeight:   `⚖️ *Record Weight*\n\nType naturally, e.g:\n_"Nanny 01 weighs 38kg"_\n_"Buck 02 is 55kg"_\n\nOr send *back* to go back.`,
     goatsHealth:   `💉 *Health Issue*\n\nDescribe the problem, e.g:\n_"Nanny 03 has diarrhoea"_\n_"Buck 01 is not eating"_\n\nOr send *back* to go back.`,
     goatsSales:    `💰 *Record Sale*\n\nType naturally, e.g:\n_"Sold Nanny 02 for KES 9,000"_\n\nOr send *back* to go back.`,
+    poultryPrompt:  `🐔 *Poultry*\n\nChoose an action:`,
+    poultryButtons: [
+      { id: 'ACT_POULTRY_EGGS',   title: '🥚 Record Eggs' },
+      { id: 'ACT_POULTRY_HEALTH', title: '💉 Health Issue' },
+      { id: 'ACT_POULTRY_FEED',   title: '🌾 Record Feed' },
+      { id: 'ACT_POULTRY_WARN',   title: '🤖 AI Warnings' },
+    ],
+    poultryEggs:    `🥚 *Record Eggs*\n\nType naturally, e.g:\n_"Batch A collected 320 eggs today"_\n_"House 2 got 280 eggs this morning"_\n\nOr send *back* to go back.`,
+    poultryHealth:  `💉 *Health Issue*\n\nDescribe what you see, e.g:\n_"Batch B has Newcastle symptoms — 5 birds down"_\n_"House 1 showing respiratory problems"_\n\nOr send *back* to go back.`,
+    poultryFeed:    `🌾 *Record Feed*\n\nType naturally, e.g:\n_"Fed 50kg layers mash to Batch A today, KES 3,500"_\n_"House 2 used 30kg broiler finisher"_\n\nOr send *back* to go back.`,
+    poultryWarn:    `🤖 *AI Warnings*\n\nType:\n_"Show my poultry alerts"_\nor\n_"Any warnings for my flocks?"_\n\nOr send *back* to go back.`,
     backButton:    { id: 'NAV_BACK', title: '⬅️ Back' },
     notRegistered: `Welcome to framedInsight! 🌿\n\nYou're not registered yet. Visit:\nhttps://framed-insight-web.vercel.app\nto set up your farm and start using AI-powered farming tools.`,
     error:         `Sorry, something went wrong 😅 Please try again or send *menu*.`,
@@ -186,7 +197,7 @@ const t: Record<Lang, Strings> = {
       { id: 'MENU_COFFEE', title: '☕ Kahawa' },
       { id: 'MENU_DAIRY',  title: '🐄 Ng\'ombe' },
       { id: 'MENU_GOATS',  title: '🐏 Mbuzi/Kondoo' },
-      // { id: 'MENU_POULTRY', title: '🐔 Kuku' }, // Uncomment when enterprise is added
+      { id: 'MENU_POULTRY', title: '🐔 Kuku' },
     ],
     coffeePrompt:  `☕ *Kahawa*\n\nChagua hatua:`,
     coffeeButtons: [
@@ -215,6 +226,17 @@ const t: Record<Lang, Strings> = {
     goatsWeight:   `⚖️ *Rekodi Uzito*\n\nAndika kwa kawaida, k.m:\n_"Nanny 01 ana uzito 38kg"_\n\nAu tuma *rudi* kurudi nyuma.`,
     goatsHealth:   `💉 *Tatizo la Afya*\n\nElezea tatizo, k.m:\n_"Nanny 03 ana kuhara"_\n\nAu tuma *rudi* kurudi nyuma.`,
     goatsSales:    `💰 *Rekodi Mauzo*\n\nAndika kwa kawaida, k.m:\n_"Nilimuuza Nanny 02 kwa KES 9,000"_\n\nAu tuma *rudi* kurudi nyuma.`,
+    poultryPrompt:  `🐔 *Kuku*\n\nChagua hatua:`,
+    poultryButtons: [
+      { id: 'ACT_POULTRY_EGGS',   title: '🥚 Rekodi Mayai' },
+      { id: 'ACT_POULTRY_HEALTH', title: '💉 Tatizo la Afya' },
+      { id: 'ACT_POULTRY_FEED',   title: '🌾 Rekodi Chakula' },
+      { id: 'ACT_POULTRY_WARN',   title: '🤖 Tahadhari za AI' },
+    ],
+    poultryEggs:    `🥚 *Rekodi Mayai*\n\nAndika kwa kawaida, k.m:\n_"Batch A walitoa mayai 320 leo"_\n_"Nyumba 2 ilitoa mayai 280 asubuhi"_\n\nAu tuma *rudi* kurudi nyuma.`,
+    poultryHealth:  `💉 *Tatizo la Afya*\n\nElezea unachokiona, k.m:\n_"Batch B wana dalili za Newcastle — ndege 5 wameshuka"_\n_"Nyumba 1 inaonyesha matatizo ya kupumua"_\n\nAu tuma *rudi* kurudi nyuma.`,
+    poultryFeed:    `🌾 *Rekodi Chakula*\n\nAndika kwa kawaida, k.m:\n_"Nilipa 50kg layers mash kwa Batch A leo, KES 3,500"_\n_"Nyumba 2 ilitumia 30kg broiler finisher"_\n\nAu tuma *rudi* kurudi nyuma.`,
+    poultryWarn:    `🤖 *Tahadhari za AI*\n\nAndika:\n_"Nionyeshe tahadhari za kuku zangu"_\n\nAu tuma *rudi* kurudi nyuma.`,
     backButton:    { id: 'NAV_BACK', title: '⬅️ Rudi' },
     notRegistered: `Karibu framedInsight! 🌿\n\nHujasajiliwa bado. Tembelea:\nhttps://framed-insight-web.vercel.app\nkusajili shamba lako.`,
     error:         `Samahani, kuna tatizo kidogo 😅 Tafadhali jaribu tena au tuma *menu*.`,

@@ -19,7 +19,7 @@ export interface TierInfo {
 }
 
 export interface EnterpriseTier {
-  enterprise: 'dairy' | 'coffee' | 'small_ruminants'
+  enterprise: 'dairy' | 'coffee' | 'small_ruminants' | 'poultry'
   tier: TierLevel
   level: number
   details: string
@@ -226,6 +226,87 @@ export function getSmallRuminantTier(stats: SmallRuminantStats): EnterpriseTier 
 }
 
 // ============================================================================
+// POULTRY TIER CALCULATION
+// ============================================================================
+//
+// Kenyan poultry market context:
+//   Smallholder  : 1–499 birds  (backyard / kienyeji household flocks)
+//   Commercial   : 500–4,999    (semi-commercial layer or broiler unit)
+//   Enterprise   : 5,000–19,999 (commercial farm, regular market supply)
+//   Enterprise+  : 20,000+      (large integrator / cooperative supply)
+//
+// We also consider whether the farm has layers, broilers, or kienyeji because
+// the biological risk profile and management intensity differ.
+// ============================================================================
+
+export interface PoultryStats {
+  totalBirds:   number
+  layers:       number
+  broilers:     number
+  kienyeji:     number
+  activeBatches: number
+}
+
+export function getPoultryTier(stats: PoultryStats): EnterpriseTier {
+  const { totalBirds, layers, broilers, kienyeji } = stats
+
+  if (totalBirds === 0) {
+    return {
+      enterprise: 'poultry',
+      tier:       'smallholder',
+      level:      0,
+      details:    'No poultry registered',
+    }
+  }
+
+  const breakdown = [
+    layers   > 0 ? `${layers.toLocaleString()} layers`   : null,
+    broilers > 0 ? `${broilers.toLocaleString()} broilers` : null,
+    kienyeji > 0 ? `${kienyeji.toLocaleString()} kienyeji` : null,
+  ].filter(Boolean).join(', ')
+
+  const detailLabel = breakdown || `${totalBirds.toLocaleString()} birds`
+
+  // Smallholder: < 500 birds
+  if (totalBirds < 500) {
+    return {
+      enterprise: 'poultry',
+      tier:       'smallholder',
+      level:      1,
+      details:    `${totalBirds.toLocaleString()} birds (${detailLabel})`,
+    }
+  }
+
+  // Commercial: 500–4,999 birds
+  if (totalBirds < 5000) {
+    return {
+      enterprise: 'poultry',
+      tier:       'commercial',
+      level:      2,
+      details:    `${totalBirds.toLocaleString()} birds (${detailLabel})`,
+    }
+  }
+
+  // Enterprise: 5,000–19,999 birds
+  if (totalBirds < 20000) {
+    return {
+      enterprise: 'poultry',
+      tier:       'enterprise',
+      level:      3,
+      details:    `${totalBirds.toLocaleString()} birds (${detailLabel})`,
+    }
+  }
+
+  // Enterprise Plus: 20,000+ birds
+  return {
+    enterprise: 'poultry',
+    tier:       'enterprise_plus',
+    level:      4,
+    details:    `${totalBirds.toLocaleString()} birds (${detailLabel})`,
+  }
+}
+
+// ============================================================================
 // MULTI-ENTERPRISE DISCOUNT
 // ============================================================================
 
@@ -244,6 +325,7 @@ export interface FarmStats {
   dairy?: DairyStats
   coffee?: CoffeeStats
   smallRuminants?: SmallRuminantStats
+  poultry?: PoultryStats
 }
 
 export function calculateFarmTier(stats: FarmStats): TierInfo {
@@ -260,6 +342,10 @@ export function calculateFarmTier(stats: FarmStats): TierInfo {
 
   if (stats.smallRuminants && stats.smallRuminants.totalAnimals > 0) {
     tiers.push(getSmallRuminantTier(stats.smallRuminants))
+  }
+
+  if (stats.poultry && stats.poultry.totalBirds > 0) {
+    tiers.push(getPoultryTier(stats.poultry))
   }
 
   // Filter out enterprises with level 0 (not registered)
@@ -365,6 +451,7 @@ function formatEnterpriseName(enterprise: string): string {
     dairy: 'Dairy',
     coffee: 'Coffee',
     small_ruminants: 'Sheep/Goats',
+    poultry: 'Poultry',
   }
   return names[enterprise] || enterprise
 }
@@ -444,6 +531,16 @@ export function getNextMilestone(currentTier: TierInfo): string | null {
         suggestions.push('Add 6 more sheep/goats to reach Commercial tier')
       } else if (ent.tier === 'commercial') {
         suggestions.push('Grow to 71+ sheep/goats for Enterprise tier')
+      }
+    }
+
+    if (ent.enterprise === 'poultry') {
+      if (ent.tier === 'smallholder') {
+        suggestions.push('Grow to 500+ birds to reach Commercial tier')
+      } else if (ent.tier === 'commercial') {
+        suggestions.push('Grow to 5,000+ birds for Enterprise tier')
+      } else if (ent.tier === 'enterprise') {
+        suggestions.push('Grow to 20,000+ birds for Enterprise Plus tier')
       }
     }
   })
