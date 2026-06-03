@@ -1,263 +1,258 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-// ============================================================================
-// Edge Function: Offline Sync with CRDT Conflict Resolution
-//
-// Invoked by: OfflineSyncManager.syncPendingChanges()
-// Responsibility: Merge offline events into server state using CRDT rules
-// ============================================================================
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!
+const supabaseUrl        = Deno.env.get("SUPABASE_URL")!
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 
-interface OfflineEvent {
-  id: string
-  device_id: string
-  operation_type: "create" | "update" | "delete"
-  entity_type: string
-  entity_id: string
+interface PoultryOfflineEvent {
+  eventId: string
+  entityType:
+    | "poultry_egg_record"
+    | "poultry_feed_record"
+    | "poultry_mortality"
+    | "poultry_health_record"
+    | "poultry_sale"
+    | "poultry_batch_update"
+
+  farmId: string
+  batchId: string
   payload: Record<string, any>
-  timestamp: string
-  lamport_clock: number
+  isoTimestamp: string
+}
+
+interface Result {
+  eventId: string
+  status: "synced" | "skipped" | "failed"
+  reason?: string
 }
 
 serve(async (req) => {
-  // Only POST
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-    })
+    return json({ error: "Method not allowed" }, 405)
   }
 
   try {
-    const { device_id, user_id, events } = await req.json()
+    const body = await req.json()
+    const { user_id, poultryEvents } = body
 
-    if (!user_id || !events || !Array.isArray(events)) {
-      return new Response(JSON.stringify({ error: "Invalid payload" }), {
-        status: 400,
-      })
+    if (!user_id || !Array.isArray(poultryEvents)) {
+      return json({ error: "Invalid payload" }, 400)
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get user's farm
-    const { data: fm } = await supabase
+    // ── Get farm context ─────────────────────────────
+    const { data: fm, error } = await supabase
       .from("farm_managers")
       .select("farm_id")
       .eq("user_id", user_id)
       .single()
 
-    if (!fm) {
-      return new Response(JSON.stringify({ error: "User not associated with farm" }), {
-        status: 403,
+    if (error || !fm) {
+      return json({ error: "User not associated with farm" }, 403)
+    }
+
+    const farmId = fm.farm_id
+
+    const results: Result[] = []
+
+    // ── Process events in deterministic order ────────
+    const sorted = [...poultryEvents].sort(
+      (a, b) => new Date(a.isoTimestamp).getTime() - new Date(b.isoTimestamp).getTime()
+    )
+
+    for (const event of sorted) {
+      const res = await processPoultryEvent(supabase, farmId, event)
+      results.push({
+        eventId: event.eventId,
+        status: res ? "synced" : "failed",
       })
     }
 
-    const syncedEventIds: string[] = []
-    const conflicts: ConflictResolution[] = []
-
-    // Process each offline event
-    for (const event of events as OfflineEvent[]) {
-      const result = await processEvent(supabase, fm.farm_id, event)
-
-      if (result.status === "synced") {
-        syncedEventIds.push(event.id)
-      } else if (result.status === "conflict") {
-        conflicts.push(result.conflict!)
-      }
-    }
-
-    // Log this sync operation
+    // ── Log sync audit trail ─────────────────────────
     await supabase.from("farm_events").insert({
       id: crypto.randomUUID(),
-      farm_id: fm.farm_id,
-      event_type: "offline_data_synced",
+      farm_id: farmId,
+      event_type: "offline_sync_poultry_v2",
       actor_id: user_id,
       actor_type: "farmer",
       created_at: new Date().toISOString(),
       event_data: {
-        device_id,
-        events_synced: syncedEventIds.length,
-        sync_duration_ms: 0,
-        conflicts_resolved: conflicts.length,
-        sync_method: "crdt",
+        total: poultryEvents.length,
+        synced: results.filter(r => r.status === "synced").length,
+        failed: results.filter(r => r.status === "failed").length,
       },
     })
 
-    return new Response(
-      JSON.stringify({
-        synced_event_ids: syncedEventIds,
-        conflicts: conflicts,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
-    )
-  } catch (error) {
-    console.error(error)
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 }
-    )
+    return json({ results })
+  } catch (e) {
+    return json({
+      error: e instanceof Error ? e.message : "Unknown error",
+    }, 500)
   }
 })
 
-/**
- * Process a single offline event, applying CRDT rules
- */
-async function processEvent(
+/* ─────────────────────────────────────────────── */
+/* CORE CRDT POULTRY SYNC ENGINE                  */
+/* ─────────────────────────────────────────────── */
+
+async function processPoultryEvent(
   supabase: any,
   farmId: string,
-  event: OfflineEvent
-): Promise<
-  | { status: "synced" }
-  | {
-      status: "conflict"
-      conflict: ConflictResolution
-    }
-> {
-  const { operation_type, entity_type, entity_id, payload, timestamp } = event
+  event: PoultryOfflineEvent
+): Promise<boolean> {
+  const { entityType, batchId, payload, eventId, isoTimestamp } = event
 
-  switch (entity_type) {
-    // ─── HARVEST RECORDS ──────────────────────────────────────────────────
-    case "harvest": {
-      // Check if this harvest already exists
-      const { data: existing } = await supabase
-        .from("coffee_harvests")
-        .select("*")
-        .eq("id", entity_id)
-        .maybeSingle()
+  const ts = new Date(isoTimestamp).getTime()
 
-      if (operation_type === "create" && !existing) {
-        // New harvest, just insert
-        await supabase.from("coffee_harvests").insert({
-          id: entity_id,
-          farm_id: farmId,
-          ...payload,
-        })
-        return { status: "synced" }
-      } else if (operation_type === "update" && existing) {
-        // Update exists → check for conflicts on numeric fields
-        const conflicts = []
+  try {
+    switch (entityType) {
 
-        // CRDT Rule: For counters (cherry_kg, parchment_kg), use LWW
-        if (payload.cherry_kg !== undefined && payload.cherry_kg !== existing.cherry_kg) {
-          const localTimestamp = new Date(timestamp)
-          const remoteTimestamp = new Date(existing.updated_at)
+      /* ───────────── EGGS (LWW per day) ───────────── */
+      case "poultry_egg_record": {
+        const { data: existing } = await supabase
+          .from("poultry_egg_records")
+          .select("id, created_at")
+          .eq("batch_id", batchId)
+          .eq("record_date", payload.record_date)
+          .maybeSingle()
 
-          if (localTimestamp > remoteTimestamp) {
-            // Local is newer, apply
-            await supabase
-              .from("coffee_harvests")
-              .update({ cherry_kg: payload.cherry_kg })
-              .eq("id", entity_id)
-          } else {
-            // Conflict: both modified
-            conflicts.push({
-              field: "cherry_kg",
-              local_value: payload.cherry_kg,
-              remote_value: existing.cherry_kg,
-              local_timestamp: timestamp,
-              remote_timestamp: existing.updated_at,
+        if (!existing) {
+          await supabase.from("poultry_egg_records").insert({
+            id: eventId,
+            farm_id: farmId,
+            batch_id: batchId,
+            ...payload,
+          })
+        } else if (ts > new Date(existing.created_at).getTime()) {
+          await supabase
+            .from("poultry_egg_records")
+            .update(payload)
+            .eq("id", existing.id)
+        }
+        return true
+      }
+
+      /* ───────────── FEED (append-only) ───────────── */
+      case "poultry_feed_record": {
+        const { data: exists } = await supabase
+          .from("poultry_feed_records")
+          .select("id")
+          .eq("id", eventId)
+          .maybeSingle()
+
+        if (!exists) {
+          await supabase.from("poultry_feed_records").insert({
+            id: eventId,
+            farm_id: farmId,
+            batch_id: batchId,
+            ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── MORTALITY (append-only + side effect) ───────────── */
+      case "poultry_mortality": {
+        const { data: exists } = await supabase
+          .from("poultry_mortality")
+          .select("id")
+          .eq("id", eventId)
+          .maybeSingle()
+
+        if (!exists) {
+          await supabase.from("poultry_mortality").insert({
+            id: eventId,
+            farm_id: farmId,
+            batch_id: batchId,
+            ...payload,
+          })
+
+          // safe decrement
+          await supabase.rpc("decrement_batch_count", {
+            batch_id: batchId,
+            amount: payload.count_dead ?? 0,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── HEALTH (append-only) ───────────── */
+      case "poultry_health_record": {
+        const { data: exists } = await supabase
+          .from("poultry_health_records")
+          .select("id")
+          .eq("id", eventId)
+          .maybeSingle()
+
+        if (!exists) {
+          await supabase.from("poultry_health_records").insert({
+            id: eventId,
+            farm_id: farmId,
+            batch_id: batchId,
+            ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── SALES (append-only) ───────────── */
+      case "poultry_sale": {
+        const { data: exists } = await supabase
+          .from("poultry_sales")
+          .select("id")
+          .eq("id", eventId)
+          .maybeSingle()
+
+        if (!exists) {
+          await supabase.from("poultry_sales").insert({
+            id: eventId,
+            farm_id: farmId,
+            batch_id: batchId,
+            ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── BATCH UPDATE (LWW) ───────────── */
+      case "poultry_batch_update": {
+        const { data: batch } = await supabase
+          .from("poultry_batches")
+          .select("updated_at")
+          .eq("id", batchId)
+          .single()
+
+        if (!batch) return false
+
+        if (ts > new Date(batch.updated_at).getTime()) {
+          await supabase
+            .from("poultry_batches")
+            .update({
+              ...payload,
+              updated_at: isoTimestamp,
             })
-          }
+            .eq("id", batchId)
         }
 
-        if (conflicts.length > 0) {
-          return {
-            status: "conflict",
-            conflict: conflicts[0],
-          }
-        }
-
-        return { status: "synced" }
+        return true
       }
-      break
+
+      default:
+        console.warn("Unknown event type:", entityType)
+        return true
     }
-
-    // ─── MILK RECORDS ─────────────────────────────────────────────────────
-    case "milk_record": {
-      const { data: existing } = await supabase
-        .from("dairy_records")
-        .select("*")
-        .eq("id", entity_id)
-        .maybeSingle()
-
-      if (operation_type === "create" && !existing) {
-        await supabase.from("dairy_records").insert({
-          id: entity_id,
-          farm_id: farmId,
-          ...payload,
-        })
-        return { status: "synced" }
-      } else if (operation_type === "update" && existing) {
-        // CRDT: LWW for milk_liters
-        if (
-          payload.milk_liters !== undefined &&
-          payload.milk_liters !== existing.milk_liters
-        ) {
-          const localTs = new Date(timestamp)
-          const remoteTs = new Date(existing.updated_at)
-
-          if (localTs > remoteTs) {
-            await supabase
-              .from("dairy_records")
-              .update({ milk_liters: payload.milk_liters })
-              .eq("id", entity_id)
-            return { status: "synced" }
-          } else {
-            // Conflict
-            return {
-              status: "conflict",
-              conflict: {
-                field: "milk_liters",
-                local_value: payload.milk_liters,
-                remote_value: existing.milk_liters,
-                local_timestamp: timestamp,
-                remote_timestamp: existing.updated_at,
-                entity_id,
-              },
-            }
-          }
-        }
-        return { status: "synced" }
-      }
-      break
-    }
-
-    // ─── PHOTOS ───────────────────────────────────────────────────────────
-    case "photo_evidence": {
-      // CRDT Rule: Photos are append-only
-      // Just add new photos, never remove or modify
-      if (operation_type === "create") {
-        await supabase.from("eudr_evidence_photos").insert({
-          id: entity_id,
-          farm_id: farmId,
-          ...payload,
-        })
-        return { status: "synced" }
-      }
-      break
-    }
-
-    // ─── DEFAULT ──────────────────────────────────────────────────────────
-    default:
-      console.warn(`Unknown entity type: ${entity_type}`)
-      return { status: "synced" } // Don't block sync
+  } catch (err) {
+    console.error("Sync error:", err)
+    return false
   }
-
-  return { status: "synced" }
 }
 
-interface ConflictResolution {
-  entity_id: string
-  field: string
-  local_value: any
-  remote_value: any
-  local_timestamp: string
-  remote_timestamp: string
+/* ─────────────────────────────────────────────── */
+
+function json(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  })
 }

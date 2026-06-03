@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { queuePoultryEvent } from '@/lib/offline-db'
 import { Syringe, ArrowLeft, AlertCircle, CheckCircle2, Shield } from 'lucide-react'
 
 interface Batch { id: string; batch_name: string; bird_type: string; current_count: number }
@@ -88,16 +89,47 @@ export default function HealthClient({ farmId, initialBatches, initialEvents }: 
     if (!form.batch_id) { setError('Select a batch'); return }
     setLoading(true)
 
-    const { data, error: err } = await (supabase.from('poultry_health_records' as any) as any)
-      .insert({
-        farm_id:        farmId,
-        batch_id:       form.batch_id,
-        record_date:    form.event_date,
-        event_type:     form.event_type,
-        notes:          form.notes || null,
-        next_due_date:  form.next_due_date || null,
-      } as any)
-      .select('*, poultry_batches(batch_name)')
+    const healthPayload = {
+  id:            crypto.randomUUID(),
+  farm_id:       farmId,
+  batch_id:      form.batch_id,
+  record_date:   form.event_date,
+  event_type:    form.event_type,
+  notes:         form.notes || null,
+  next_due_date: form.next_due_date || null,
+}
+
+if (!navigator.onLine) {
+  await queuePoultryEvent({
+    eventId:    crypto.randomUUID(),
+    entityType: 'poultry_health_record',
+    farmId,
+    batchId:    form.batch_id,
+    payload:    healthPayload,
+  })
+
+  setSuccess('Saved offline — will sync when connected.')
+
+  setForm(f => ({
+    ...f,
+    vaccine_name: '',
+    disease: '',
+    drug_name: '',
+    dosage: '',
+    vet_name: '',
+    cost: '',
+    next_due_date: '',
+    notes: '',
+  }))
+
+  setLoading(false)
+  setTimeout(() => setSuccess(''), 4000)
+  return
+}
+
+const { data, error: err } = await (supabase.from('poultry_health_records' as any) as any)
+  .insert(healthPayload as any)
+  .select('*, poultry_batches(batch_name)')
 
     setLoading(false)
     if (err) { setError(err.message); return }

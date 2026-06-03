@@ -1,4 +1,3 @@
-// 📁 FILE PATH: app/dashboard/poultry/PoultryClient.tsx
 'use client'
 
 import Link from 'next/link'
@@ -56,6 +55,7 @@ const navItems = [
   { label: 'Health',      href: '/dashboard/poultry/health'        },
   { label: 'Mortality',   href: '/dashboard/poultry/mortality'     },
   { label: 'Sales',       href: '/dashboard/poultry/sales'         },
+  { label: 'AI Warnings', href: '/dashboard/poultry/warnings'      },
 ]
 
 const BIRD_TYPE_LABEL: Record<string, string> = {
