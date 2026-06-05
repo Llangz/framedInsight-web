@@ -1,7 +1,7 @@
 // 📁 FILE PATH: app/dashboard/poultry/finance/page.tsx
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import FinanceClient from './FinanceClient'
+import FinanceClientComponent from './FinanceClientComponent'
 
 
 export default async function PoultryFinancePage() {
@@ -29,7 +29,7 @@ export default async function PoultryFinancePage() {
 
   if (!allBatchIds.length) {
     return (
-      <FinanceClient
+      <FinanceClientComponent
         farmId={farmId}
         batches={[]}
         sales={[]}
@@ -74,7 +74,7 @@ export default async function PoultryFinancePage() {
   ])
 
   return (
-    <FinanceClient
+    <FinanceClientComponent
       farmId={farmId}
       batches={batches || []}
       sales={sales || []}
