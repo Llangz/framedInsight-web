@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import FinanceClient from './FinanceClient'
 
+
 export default async function PoultryFinancePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -66,7 +67,7 @@ export default async function PoultryFinancePage() {
       .order('record_date', { ascending: false }),
 
     (supabase as any)
-      .from('poultry_mortality_records')
+      .from('poultry_mortality')
       .select('id, batch_id, record_date, count_dead, cause, poultry_batches(batch_name, initial_count)')
       .in('batch_id', allBatchIds)
       .order('record_date', { ascending: false }),

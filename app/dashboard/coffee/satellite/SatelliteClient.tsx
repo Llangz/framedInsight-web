@@ -420,7 +420,7 @@ export default function SatelliteClient({
   const refreshPlot = async (plotId: string) => {
     setRefreshingPlot(plotId);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession();
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fetch-plot-indices`,
         {
@@ -445,7 +445,7 @@ export default function SatelliteClient({
   const refreshAll = async () => {
     setRefreshingAll(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession();
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fetch-farm-indices`,
         {

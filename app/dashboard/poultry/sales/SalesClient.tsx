@@ -4,6 +4,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { queuePoultryEvent } from '@/lib/offline-db'
 import { ShoppingCart, ArrowLeft, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react'
 
 interface Batch { id: string; batch_name: string; bird_type: string; current_count: number }
@@ -81,23 +82,42 @@ export default function SalesClient({ farmId, initialBatches, initialSales }: Pr
 
     const qty  = parseFloat(form.quantity)
     const ppu  = parseFloat(form.price_per_unit)
+
+    const salePayload = {
+      id:             crypto.randomUUID(),
+      farm_id:        farmId,
+      batch_id:       form.batch_id,
+      sale_date:      form.sale_date,
+      sale_type:      form.sale_type,
+      quantity:       qty,
+      unit:           selectedType?.unit || 'units',
+      price_per_unit: ppu,
+      total_price:    qty * ppu,
+      buyer_name:     form.buyer_name || null,
+      buyer_contact:  form.buyer_contact || null,
+      payment_method: form.payment_method,
+      market:         form.market || null,
+      notes:          form.notes || null,
+    }
+
+    if (!navigator.onLine) {
+      await queuePoultryEvent({
+        eventId:    crypto.randomUUID(),
+        entityType: 'poultry_sale',
+        farmId,
+        batchId:    form.batch_id,
+        payload:    salePayload,
+      })
+      setSuccess('Saved offline — will sync when connected.')
+      setForm(f => ({ ...f, quantity: '', price_per_unit: '', buyer_name: '', buyer_contact: '', market: '', notes: '' }))
+      setLoading(false)
+      setTimeout(() => setSuccess(''), 4000)
+      return
+    }
+
     const { data, error: err } = await (supabase as any)
       .from('poultry_sales')
-      .insert({
-        farm_id:        farmId,
-        batch_id:       form.batch_id,
-        sale_date:      form.sale_date,
-        sale_type:      form.sale_type,
-        quantity:       qty,
-        unit:           selectedType?.unit || 'units',
-        price_per_unit: ppu,
-        total_price:    qty * ppu,
-        buyer_name:     form.buyer_name || null,
-        buyer_contact:  form.buyer_contact || null,
-        payment_method: form.payment_method,
-        market:         form.market || null,
-        notes:          form.notes || null,
-      })
+      .insert(salePayload)
       .select('*, poultry_batches(batch_name, bird_type)')
 
     // If live birds sold, reduce batch count

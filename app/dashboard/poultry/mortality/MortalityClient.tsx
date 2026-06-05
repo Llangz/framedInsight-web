@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { queuePoultryEvent } from '@/lib/offline-db'
 import { Skull, ArrowLeft, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react'
 
 interface Batch { id: string; batch_name: string; bird_type: string; current_count: number }
@@ -86,20 +87,53 @@ export default function MortalityClient({ farmId, initialBatches, initialRecords
     const batch = initialBatches.find(b => b.id === form.batch_id)
 
     // Insert mortality record
-    const { data, error: err } = await (supabase as any).from('poultry_mortality').insert({
-      farm_id:        farmId,
-      batch_id:       form.batch_id,
-      record_date:    form.record_date,
-      count_dead:     count,
-      notes:          form.notes || null,
-    }).select('*, poultry_batches(batch_name)')
+    const mortalityPayload = {
+  id: crypto.randomUUID(),
+  farm_id: farmId,
+  batch_id: form.batch_id,
+  record_date: form.record_date,
+  count_dead: count,
+  notes: form.notes || null,
+}
 
-    if (!err && batch) {
-      // Update batch current count
-      await (supabase as any).from('poultry_batches')
-        .update({ current_count: Math.max(0, batch.current_count - count) })
-        .eq('id', form.batch_id)
-    }
+// Offline path
+if (!navigator.onLine) {
+  await queuePoultryEvent({
+    eventId: crypto.randomUUID(),
+    entityType: 'poultry_mortality',
+    farmId,
+    batchId: form.batch_id,
+    payload: mortalityPayload,
+  })
+
+  setSuccess('Saved offline — will sync when connected.')
+  setForm(f => ({
+    ...f,
+    count_dead: '1',
+    cause: '',
+    symptoms: '',
+    culling_reason: '',
+    notes: '',
+  }))
+  setLoading(false)
+  setTimeout(() => setSuccess(''), 4000)
+  return
+}
+
+// Insert mortality record
+const { data, error: err } = await (supabase as any)
+  .from('poultry_mortality')
+  .insert(mortalityPayload)
+  .select('*, poultry_batches(batch_name)')
+
+if (!err && batch) {
+  await (supabase as any)
+    .from('poultry_batches')
+    .update({
+      current_count: Math.max(0, batch.current_count - count),
+    })
+    .eq('id', form.batch_id)
+}
 
     setLoading(false)
     if (err) { setError(err.message); return }

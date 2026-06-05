@@ -2,9 +2,13 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import {
+  TreePine, FlaskConical, Scissors, Leaf, Package, Activity,
+  Plus, ArrowLeft, Users, Calendar, ChevronRight,
+} from 'lucide-react'
 import type { Tables } from '@/lib/database.types'
 
-interface Activity {
+interface ActivityItem {
   id: string
   activity_type: string
   activity_date: string
@@ -34,61 +38,74 @@ interface CalendarRec {
 
 type SeasonCost = Tables<'v_season_cost_summary'>
 
-const ACTIVITY_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
-  weeding: { icon: '🌿', label: 'Weeding', color: 'bg-green-100 text-green-800 border-green-200' },
-  fertilizer: { icon: '🌱', label: 'Fertilizer', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-  spraying: { icon: '💧', label: 'Spraying', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
-  pruning: { icon: '✂️', label: 'Pruning', color: 'bg-amber-100 text-amber-800 border-amber-200' },
-  mulching: { icon: '🍂', label: 'Mulching', color: 'bg-orange-100 text-orange-800 border-orange-200' },
-  other: { icon: '📋', label: 'Other', color: 'bg-gray-100 text-gray-800 border-gray-200' },
+// ── Config ────────────────────────────────────────────────────────────────────
+
+const ACTIVITY_CONFIG: Record<string, {
+  icon: React.ElementType
+  label: string
+}> = {
+  weeding:    { icon: Leaf,        label: 'Weeding'    },
+  fertilizer: { icon: Package,     label: 'Fertilizer' },
+  spraying:   { icon: FlaskConical,label: 'Spraying'   },
+  pruning:    { icon: Scissors,    label: 'Pruning'    },
+  mulching:   { icon: TreePine,    label: 'Mulching'   },
+  other:      { icon: Activity,    label: 'Other'      },
 }
 
-const PRIORITY_COLOR = {
-  high: 'bg-red-50 border-red-200 text-red-800',
-  medium: 'bg-amber-50 border-amber-200 text-amber-800',
-  low: 'bg-gray-50 border-gray-200 text-gray-600',
+const PRIORITY_CLASSES = {
+  high:   'border-red-900/40 bg-red-950/20',
+  medium: 'border-amber-900/40 bg-amber-950/20',
+  low:    'border-[#2A2D35] bg-[#0D0F14]',
+}
+const PRIORITY_DOT = {
+  high:   'bg-red-500',
+  medium: 'bg-amber-400',
+  low:    'bg-[#4B5563]',
 }
 
-function getActivitySummary(a: Activity): string {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getActivitySummary(a: ActivityItem): string {
   if (a.activity_type === 'weeding') {
-    const methods: Record<string, string> = {
+    const m: Record<string, string> = {
       herbicide: 'Herbicide', manual_jembe: 'Jembe (manual)',
-      slashing: 'Slashing', combined: 'Combined'
+      slashing: 'Slashing', combined: 'Combined',
     }
-    return methods[a.weeding_method || ''] || 'Weeding'
+    return m[a.weeding_method || ''] || 'Weeding'
   }
   if (a.activity_type === 'fertilizer') return a.product_name || a.fertilizer_type || 'Fertilizer'
   if (a.activity_type === 'spraying') return a.product_name || a.spray_type || 'Spraying'
   if (a.activity_type === 'pruning') {
-    const types: Record<string, string> = {
+    const t: Record<string, string> = {
       frame_pruning: 'Frame Pruning', de_suckering: 'De-suckering',
-      stumping: 'Stumping', tipping: 'Tipping', selective_pruning: 'Selective'
+      stumping: 'Stumping', tipping: 'Tipping', selective_pruning: 'Selective',
     }
-    return types[a.pruning_type || ''] || 'Pruning'
+    return t[a.pruning_type || ''] || 'Pruning'
   }
   return a.product_name || a.activity_type
 }
 
-function getLabourSummary(a: Activity): string {
+function getLabourSummary(a: ActivityItem): string {
   if (a.labour_mode === 'own_labour') return 'Own labour'
-  if (a.labour_mode === 'piece_work') return `Piece work`
-  if (a.num_workers && a.days_worked && a.rate_per_day) {
+  if (a.labour_mode === 'piece_work') return 'Piece work'
+  if (a.num_workers && a.days_worked && a.rate_per_day)
     return `${a.num_workers} worker${a.num_workers > 1 ? 's' : ''} × ${a.days_worked}d @ KES ${a.rate_per_day}/day`
-  }
-  return '—'
+  return ''
 }
 
-function fmtDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
 }
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ActivitiesClient({
   initialActivities,
   calendarRecs,
   seasonCosts,
-  currentYear
+  currentYear,
 }: {
-  initialActivities: Activity[]
+  initialActivities: ActivityItem[]
   calendarRecs: CalendarRec[]
   seasonCosts: SeasonCost[]
   currentYear: number
@@ -96,68 +113,84 @@ export default function ActivitiesClient({
   const [filterType, setFilterType] = useState<string>('all')
   const currentMonthName = new Date().toLocaleString('en-KE', { month: 'long' })
 
-  const filteredActivities = useMemo(() =>
+  const filtered = useMemo(() =>
     filterType === 'all'
       ? initialActivities
       : initialActivities.filter(a => a.activity_type === filterType),
     [initialActivities, filterType]
   )
 
-  const totalSeasonCost = seasonCosts.reduce((s, c) => s + (c.total_cost ?? 0), 0)
-  const totalInputCost = seasonCosts.reduce((s, c) => s + (c.total_input_cost ?? 0), 0)
-  const totalLabourCost = seasonCosts.reduce((s, c) => s + (c.total_labour_cost ?? 0), 0)
-  const highPriorityRecs = calendarRecs.filter(r => r.priority === 'high')
+  const totalCost   = seasonCosts.reduce((s, c) => s + (c.total_cost ?? 0), 0)
+  const inputCost   = seasonCosts.reduce((s, c) => s + (c.total_input_cost ?? 0), 0)
+  const labourCost  = seasonCosts.reduce((s, c) => s + (c.total_labour_cost ?? 0), 0)
+  const highPrio    = calendarRecs.filter(r => r.priority === 'high')
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="min-h-screen bg-obsidian">
+      <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Farm Activities</h1>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest mb-2">Coffee</p>
+            <h1 className="text-xl font-semibold text-white tracking-tight">Farm Activities</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">
               {initialActivities.length} recorded · {currentYear} season
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/dashboard/coffee" className="text-sm text-gray-500 hover:text-gray-800">
-              ← Coffee
+            <Link
+              href="/dashboard/coffee"
+              className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-white transition-colors mt-1"
+            >
+              <ArrowLeft size={13} />
+              Coffee
             </Link>
             <Link
               href="/dashboard/coffee/activities/record"
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-1"
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-colors"
             >
-              + Record Activity
+              <Plus size={12} strokeWidth={2.5} />
+              Record
             </Link>
           </div>
         </div>
 
+        {/* Monthly recommendations */}
         {calendarRecs.length > 0 && (
-          <div className="mb-5 bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                📅 {currentMonthName} Recommendations
-              </h2>
-              {highPriorityRecs.length > 0 && (
-                <span className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                  {highPriorityRecs.length} urgent
+          <div className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] divide-y divide-[#1F2128]">
+            <div className="px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Calendar size={14} className="text-[#6B7280]" strokeWidth={1.5} />
+                <p className="text-sm font-semibold text-white">{currentMonthName} Recommendations</p>
+              </div>
+              {highPrio.length > 0 && (
+                <span className="text-xs font-medium text-red-400 bg-red-950/50 border border-red-900/50 px-2 py-0.5 rounded-md">
+                  {highPrio.length} urgent
                 </span>
               )}
             </div>
-            <div className="space-y-2">
+            <div className="divide-y divide-[#1F2128]">
               {calendarRecs.map((rec, i) => {
                 const cfg = ACTIVITY_CONFIG[rec.type] || ACTIVITY_CONFIG.other
+                const Icon = cfg.icon
                 return (
-                  <div key={i} className={`p-3 rounded-lg border ${PRIORITY_COLOR[rec.priority]} flex gap-3`}>
-                    <span className="text-lg shrink-0 mt-0.5">{cfg.icon}</span>
+                  <div key={i} className={`flex items-start gap-4 px-5 py-4 border-l-2 ${
+                    rec.priority === 'high' ? 'border-l-red-500' :
+                    rec.priority === 'medium' ? 'border-l-amber-400' : 'border-l-transparent'
+                  }`}>
+                    <div className="mt-0.5 p-2 rounded-md bg-[#17191F] border border-[#2A2D35] flex-shrink-0">
+                      <Icon size={12} className="text-[#6B7280]" strokeWidth={1.5} />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">{rec.label}</p>
-                      <p className="text-xs opacity-80 mt-0.5">{rec.notes}</p>
+                      <p className="text-sm font-medium text-white">{rec.label}</p>
+                      <p className="text-xs text-[#6B7280] mt-0.5 leading-relaxed">{rec.notes}</p>
                     </div>
                     <Link
                       href={`/dashboard/coffee/activities/record?type=${rec.type}`}
-                      className="shrink-0 text-xs font-medium underline opacity-70 hover:opacity-100 mt-1"
+                      className="flex-shrink-0 flex items-center gap-1 text-xs text-[#6B7280] hover:text-white transition-colors mt-0.5"
                     >
-                      Record →
+                      Record <ChevronRight size={11} />
                     </Link>
                   </div>
                 )
@@ -166,48 +199,49 @@ export default function ActivitiesClient({
           </div>
         )}
 
+        {/* Season cost breakdown */}
         {seasonCosts.length > 0 && (
-          <div className="mb-5 bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-base font-semibold text-gray-800 mb-3">
-              {currentYear} Season Costs
-            </h2>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500">Total Spent</p>
-                <p className="text-lg font-bold text-gray-900">KES {totalSeasonCost.toLocaleString()}</p>
-              </div>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <p className="text-xs text-blue-600">Inputs</p>
-                <p className="text-lg font-bold text-blue-800">KES {totalInputCost.toLocaleString()}</p>
-              </div>
-              <div className="text-center p-3 bg-amber-50 rounded-lg">
-                <p className="text-xs text-amber-600">Labour</p>
-                <p className="text-lg font-bold text-amber-800">KES {totalLabourCost.toLocaleString()}</p>
-              </div>
+          <div className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] divide-y divide-[#1F2128]">
+            <div className="px-5 py-4">
+              <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest">{currentYear} Season Costs</p>
             </div>
-
-            <div className="space-y-2">
-              {seasonCosts
+            {/* Summary cells */}
+            <div className="grid grid-cols-3 gap-px bg-[#1F2128]">
+              {[
+                { label: 'Total',   value: totalCost,  accent: 'text-white' },
+                { label: 'Inputs',  value: inputCost,  accent: 'text-[#9CA3AF]' },
+                { label: 'Labour',  value: labourCost, accent: 'text-[#9CA3AF]' },
+              ].map(({ label, value, accent }) => (
+                <div key={label} className="bg-[#0D0F14] px-5 py-4">
+                  <p className="text-[11px] text-[#4B5563] uppercase tracking-wider mb-1">{label}</p>
+                  <p className={`text-base font-semibold tabular-nums ${accent}`}>
+                    KES {value.toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {/* Per-activity breakdown */}
+            <div className="px-5 py-4 space-y-3">
+              {[...seasonCosts]
                 .sort((a, b) => (b.total_cost ?? 0) - (a.total_cost ?? 0))
                 .map(cost => {
                   const cfg = ACTIVITY_CONFIG[cost.activity_type ?? 'other'] || ACTIVITY_CONFIG.other
-                  const pct = totalSeasonCost > 0 ? ((cost.total_cost ?? 0) / totalSeasonCost) * 100 : 0
+                  const Icon = cfg.icon
+                  const pct = totalCost > 0 ? ((cost.total_cost ?? 0) / totalCost) * 100 : 0
                   return (
                     <div key={cost.activity_type ?? 'unknown'}>
-                      <div className="flex items-center justify-between text-sm mb-1">
-                        <span className="flex items-center gap-1.5 text-gray-700">
-                          {cfg.icon} {cfg.label}
-                          <span className="text-xs text-gray-400">({cost.activity_count ?? 0}×)</span>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="flex items-center gap-2 text-sm text-[#9CA3AF]">
+                          <Icon size={12} className="text-[#4B5563]" strokeWidth={1.5} />
+                          {cfg.label}
+                          <span className="text-xs text-[#4B5563]">({cost.activity_count ?? 0}×)</span>
                         </span>
-                        <span className="font-medium text-gray-900">
+                        <span className="text-sm font-medium text-white tabular-nums">
                           KES {(cost.total_cost ?? 0).toLocaleString()}
                         </span>
                       </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-green-500 rounded-full"
-                          style={{ width: `${pct}%` }}
-                        />
+                      <div className="h-px bg-[#1F2128] rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-600/60 rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   )
@@ -216,104 +250,94 @@ export default function ActivitiesClient({
           </div>
         )}
 
-        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+        {/* Filter tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
           <button
             onClick={() => setFilterType('all')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filterType === 'all'
-                ? 'bg-gray-900 text-white'
-                : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
-              }`}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors border ${
+              filterType === 'all'
+                ? 'bg-[#17191F] border-[#3A3D45] text-white'
+                : 'border-[#2A2D35] text-[#6B7280] hover:text-[#9CA3AF]'
+            }`}
           >
-            All ({initialActivities.length})
+            All · {initialActivities.length}
           </button>
           {Object.entries(ACTIVITY_CONFIG).map(([type, cfg]) => {
             const count = initialActivities.filter(a => a.activity_type === type).length
-            if (count === 0) return null
+            if (!count) return null
+            const Icon = cfg.icon
             return (
               <button
                 key={type}
                 onClick={() => setFilterType(type)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1 ${filterType === type
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
-                  }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors border ${
+                  filterType === type
+                    ? 'bg-[#17191F] border-[#3A3D45] text-white'
+                    : 'border-[#2A2D35] text-[#6B7280] hover:text-[#9CA3AF]'
+                }`}
               >
-                {cfg.icon} {cfg.label} ({count})
+                <Icon size={11} strokeWidth={1.5} />
+                {cfg.label} · {count}
               </button>
             )
           })}
         </div>
 
-        {filteredActivities.length === 0 ? (
-          <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
-            <div className="text-5xl mb-4">🌿</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No activities recorded yet</h3>
-            <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
-              Start tracking your farm activities to monitor costs and follow seasonal recommendations.
-            </p>
+        {/* Activity list */}
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4 border border-dashed border-[#2A2D35] rounded-lg">
+            <Activity size={20} className="text-[#2A2D35]" strokeWidth={1} />
+            <p className="text-sm text-[#4B5563]">No activities recorded yet</p>
             <Link
               href="/dashboard/coffee/activities/record"
-              className="inline-block px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+              className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
             >
-              Record First Activity
+              Record first activity →
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredActivities.map(activity => {
-              const cfg = ACTIVITY_CONFIG[activity.activity_type] || ACTIVITY_CONFIG.other
+          <div className="rounded-lg border border-[#2A2D35] overflow-hidden divide-y divide-[#1F2128]">
+            {filtered.map(a => {
+              const cfg = ACTIVITY_CONFIG[a.activity_type] || ACTIVITY_CONFIG.other
+              const Icon = cfg.icon
+              const labour = getLabourSummary(a)
               return (
-                <div
-                  key={activity.id}
-                  className="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors"
-                >
+                <div key={a.id} className="bg-[#0D0F14] px-5 py-4 hover:bg-[#111318] transition-colors">
                   <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0 border ${cfg.color}`}>
-                      {cfg.icon}
+                    <div className="mt-0.5 p-2 rounded-md bg-[#17191F] border border-[#2A2D35] flex-shrink-0">
+                      <Icon size={13} className="text-[#6B7280]" strokeWidth={1.5} />
                     </div>
-
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-gray-900 text-sm">
-                            {getActivitySummary(activity)}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {activity.plot_name && `${activity.plot_name} · `}
-                            {fmtDate(activity.activity_date)}
+                          <p className="text-sm font-medium text-white">{getActivitySummary(a)}</p>
+                          <p className="text-xs text-[#4B5563] mt-0.5">
+                            {a.plot_name ? `${a.plot_name} · ` : ''}{fmtDate(a.activity_date)}
                           </p>
                         </div>
-                        <div className="text-right shrink-0">
-                          {activity.total_cost > 0 && (
-                            <p className="text-sm font-bold text-gray-900">
-                              KES {activity.total_cost.toLocaleString()}
+                        {a.total_cost > 0 && (
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-semibold text-white tabular-nums">
+                              KES {a.total_cost.toLocaleString()}
                             </p>
-                          )}
-                          <p className="text-xs text-gray-400">total</p>
-                        </div>
+                            {(a.cost_inputs > 0 || a.cost_labour > 0) && (
+                              <p className="text-[11px] text-[#4B5563] mt-0.5">
+                                {a.cost_inputs > 0 && `I: ${a.cost_inputs.toLocaleString()}`}
+                                {a.cost_inputs > 0 && a.cost_labour > 0 && ' · '}
+                                {a.cost_labour > 0 && `L: ${a.cost_labour.toLocaleString()}`}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
-
-                      {(activity.cost_inputs > 0 || activity.cost_labour > 0) && (
-                        <div className="flex gap-3 mt-2 text-xs text-gray-500">
-                          {activity.cost_inputs > 0 && (
-                            <span>Inputs: KES {activity.cost_inputs.toLocaleString()}</span>
-                          )}
-                          {activity.cost_labour > 0 && (
-                            <span>Labour: KES {activity.cost_labour.toLocaleString()}</span>
-                          )}
-                        </div>
-                      )}
-
-                      {activity.labour_mode && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          👷 {getLabourSummary(activity)}
+                      {labour && (
+                        <p className="flex items-center gap-1.5 text-xs text-[#6B7280] mt-1.5">
+                          <Users size={10} strokeWidth={1.5} />
+                          {labour}
                         </p>
                       )}
-
-                      {activity.notes && (
-                        <p className="text-xs text-gray-500 mt-1.5 italic truncate">
-                          "{activity.notes}"
-                        </p>
+                      {a.notes && (
+                        <p className="text-xs text-[#4B5563] mt-1 truncate italic">{a.notes}</p>
                       )}
                     </div>
                   </div>
@@ -323,20 +347,26 @@ export default function ActivitiesClient({
           </div>
         )}
 
-        <div className="mt-6 mb-8">
-          <p className="text-xs text-gray-400 mb-2">Quick record:</p>
+        {/* Quick record links */}
+        <div>
+          <p className="text-[11px] font-medium text-[#4B5563] uppercase tracking-widest mb-3">Quick Record</p>
           <div className="flex gap-2 flex-wrap">
-            {Object.entries(ACTIVITY_CONFIG).map(([type, cfg]) => (
-              <Link
-                key={type}
-                href={`/dashboard/coffee/activities/record?type=${type}`}
-                className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-green-400 hover:text-green-700 flex items-center gap-1 transition-colors"
-              >
-                {cfg.icon} {cfg.label}
-              </Link>
-            ))}
+            {Object.entries(ACTIVITY_CONFIG).map(([type, cfg]) => {
+              const Icon = cfg.icon
+              return (
+                <Link
+                  key={type}
+                  href={`/dashboard/coffee/activities/record?type=${type}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#2A2D35] rounded-md text-xs text-[#6B7280] hover:text-white hover:border-[#3A3D45] transition-colors"
+                >
+                  <Icon size={11} strokeWidth={1.5} />
+                  {cfg.label}
+                </Link>
+              )
+            })}
           </div>
         </div>
+
       </div>
     </div>
   )

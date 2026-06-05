@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       { data: healthRecords },
     ] = await Promise.all([
       supabase
-        .from('poultry_mortality_records' as any)
+        .from('poultry_mortality' as any)
         .select('batch_id, record_date, count_dead, cause')
         .in('batch_id', batchIds)
         .gte('record_date', ninetyDaysAgo)

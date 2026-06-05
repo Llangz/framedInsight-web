@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { queuePoultryEvent } from '@/lib/offline-db'
 import { Egg, ArrowLeft, TrendingUp, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 interface Batch { id: string; batch_name: string; bird_type: string; current_count: number }
@@ -51,17 +52,43 @@ export default function EggsClient({ farmId, initialBatches, initialRecords }: P
     if (!form.batch_id || !form.total_eggs) { setError('Select batch and enter egg count'); return }
     setLoading(true)
 
-    const { data, error: err } = await supabase
-      .from('poultry_egg_records' as any)
-      .upsert({
-        farm_id:        farmId,
-        batch_id:       form.batch_id,
-        record_date:    form.record_date,
-        eggs_collected: parseInt(form.total_eggs),
-        total_eggs:     parseInt(form.total_eggs),
-        notes:          form.notes || null,
-      } as any, { onConflict: 'batch_id,record_date' })
-      .select('*, poultry_batches(batch_name, bird_type)')
+    const payload = {
+  farm_id: farmId,
+  batch_id: form.batch_id,
+  record_date: form.record_date,
+  eggs_collected: parseInt(form.total_eggs),
+  total_eggs: parseInt(form.total_eggs),
+  notes: form.notes || null,
+}
+
+// Offline-first support
+if (!navigator.onLine) {
+  await queuePoultryEvent({
+    eventId: crypto.randomUUID(),
+    entityType: 'poultry_egg_record',
+    farmId,
+    batchId: form.batch_id,
+    payload,
+  })
+
+  setSuccess('Saved offline — will sync when connected.')
+  setForm(f => ({
+    ...f,
+    total_eggs: '',
+    broken_eggs: '0',
+    notes: '',
+  }))
+  setLoading(false)
+  setTimeout(() => setSuccess(''), 4000)
+  return
+}
+
+const { data, error: err } = await supabase
+  .from('poultry_egg_records' as any)
+  .upsert(payload as any, {
+    onConflict: 'batch_id,record_date',
+  })
+  .select('*, poultry_batches(batch_name, bird_type)')
 
     setLoading(false)
     if (err) { setError(err.message); return }

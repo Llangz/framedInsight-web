@@ -80,6 +80,7 @@ export default async function PoultryPage() {
       .in('batch_id', batchIds)
       .gte('record_date', weekAgoStr)
     mortalityCount = (data as any[] || []).reduce((s: number, r: any) => s + (r.count_dead || 0), 0)
+
   }
 
   // Feed stock - get latest feed stock record

@@ -50,7 +50,7 @@ export default function ReportDiseasePage() {
 
   async function loadPlots() {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) throw new Error('Not authenticated')
 
       const { data: farmManager, error: fmError } = await supabase
@@ -101,7 +101,7 @@ export default function ReportDiseasePage() {
     setError('')
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) throw new Error('Not authenticated')
 
       const response = await fetch('/api/ai/diagnose', {
@@ -149,7 +149,7 @@ export default function ReportDiseasePage() {
       if (!formData.diseaseName) throw new Error('Disease name is required')
       if (!formData.affectedPercentage) throw new Error('Affected percentage is required')
 
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) throw new Error('Not authenticated')
 
       const { data: farmManager } = await supabase

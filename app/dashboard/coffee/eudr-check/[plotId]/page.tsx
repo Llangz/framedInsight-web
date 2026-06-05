@@ -102,7 +102,7 @@ export default function EUDRPlotDetailPage() {
 
   async function loadData() {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) { router.push('/login'); return }
 
       const [plotRes, eudrRes, satRes, auditRes] = await Promise.all([
@@ -125,7 +125,7 @@ export default function EUDRPlotDetailPage() {
     if (!file) return
     setUploading(true); setUploadMsg('')
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) throw new Error('Not authenticated')
 
       const path = `eudr-evidence/${plotId}/${Date.now()}_${file.name}`
@@ -174,7 +174,7 @@ export default function EUDRPlotDetailPage() {
   async function handleRevalidate() {
     setValidating(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) throw new Error('Not authenticated')
 
       // Call revalidation service

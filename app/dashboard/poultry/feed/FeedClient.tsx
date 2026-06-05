@@ -1,10 +1,10 @@
-// 📁 FILE PATH: app/dashboard/poultry/feed/FeedClient.tsx
 'use client'
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { queuePoultryEvent } from '@/lib/offline-db'
 import { Wheat, ArrowLeft, AlertCircle, CheckCircle2, Info } from 'lucide-react'
 
 interface Batch { id: string; batch_name: string; bird_type: string; current_count: number }
@@ -73,20 +73,60 @@ export default function FeedClient({ farmId, initialBatches, initialRecords }: P
     if (!form.batch_id || !form.quantity_kg) { setError('Select batch and enter quantity'); return }
     setLoading(true)
 
-    const qty  = parseFloat(form.quantity_kg)
-    const cpu  = form.cost_per_kg ? parseFloat(form.cost_per_kg) : 0
-    const { data, error: err } = await supabase
-      .from('poultry_feed_records' as any)
-      .insert({
-        farm_id:       farmId,
-        batch_id:      form.batch_id,
-        record_date:   form.record_date,
-        feed_type:     form.feed_type,
-        quantity_kg:   qty,
-        days_remaining: form.days_remaining ? parseInt(form.days_remaining) : null,
-        notes:         form.notes || null,
-      } as any)
-      .select('*, poultry_batches(batch_name)')
+    const qty = parseFloat(form.quantity_kg)
+const cpu = form.cost_per_kg ? parseFloat(form.cost_per_kg) : 0
+
+const feedPayload = {
+  id: crypto.randomUUID(),
+  farm_id: farmId,
+  batch_id: form.batch_id,
+  record_date: form.record_date,
+  feed_type: form.feed_type,
+  quantity_kg: qty,
+  days_remaining: form.days_remaining
+    ? parseInt(form.days_remaining)
+    : null,
+  notes: form.notes || null,
+}
+
+if (!navigator.onLine) {
+  await queuePoultryEvent({
+    eventId: crypto.randomUUID(),
+    entityType: 'poultry_feed_record',
+    farmId,
+    batchId: form.batch_id,
+    payload: feedPayload,
+  })
+
+  setSuccess('Saved offline — will sync when connected.')
+  setRecords(prev => [
+  {
+    ...feedPayload,
+    poultry_batches: {
+      batch_name: selectedBatch?.batch_name || 'Offline Record',
+    },
+    total_cost: 0,
+  } as any,
+  ...prev,
+])
+
+  setForm(f => ({
+    ...f,
+    quantity_kg: '',
+    cost_per_kg: '',
+    days_remaining: '',
+    notes: '',
+  }))
+
+  setLoading(false)
+  setTimeout(() => setSuccess(''), 4000)
+  return
+}
+
+const { data, error: err } = await supabase
+  .from('poultry_feed_records' as any)
+  .insert(feedPayload as any)
+  .select('*, poultry_batches(batch_name)')
 
     setLoading(false)
     if (err) { setError(err.message); return }

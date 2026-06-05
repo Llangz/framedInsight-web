@@ -47,7 +47,7 @@ export default function RecordHarvestPage() {
 
   async function loadPlots() {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) throw new Error('Not authenticated')
 
       const { data: farmManager, error: fmError } = await supabase
@@ -98,7 +98,7 @@ export default function RecordHarvestPage() {
       if (!formData.cherryKg) throw new Error('Cherry weight is required')
       if (!formData.harvestDate) throw new Error('Harvest date is required')
 
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) throw new Error('Not authenticated')
 
       const { data: farmManager } = await supabase

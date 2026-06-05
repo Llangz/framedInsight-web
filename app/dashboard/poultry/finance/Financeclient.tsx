@@ -1,4 +1,4 @@
-// 📁 FILE PATH: app/dashboard/poultry/finance/FinanceClient.tsx
+// app/dashboard/poultry/finance/FinanceClient.tsx
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -330,7 +330,7 @@ export default function FinanceClient({
             {profitable ? '+' : ''}{KES(pnl.netProfit)}
           </p>
           <p className="text-xs text-[#6B7280] mt-1">
-            After feed, health & mortality losses
+            After feed, health &amp; mortality losses
           </p>
         </div>
         <div className="text-right">
@@ -381,11 +381,11 @@ export default function FinanceClient({
               .sort((a, b) => b[1] - a[1])
               .map(([type, amount]) => {
                 const pct = pnl.totalRevenue > 0 ? (amount / pnl.totalRevenue) * 100 : 0
-                const label = {
+                const label = ({
                   eggs: 'Eggs (trays)', eggs_loose: 'Eggs (loose)',
                   live_birds: 'Live birds', dressed: 'Dressed carcass',
                   day_old_chicks: 'DOC / chicks', manure: 'Manure',
-                }[type] || type
+                } as Record<string, string>)[type] || type
                 return (
                   <div key={type} className="flex items-center gap-3">
                     <span className="text-xs text-[#9CA3AF] w-32 shrink-0">{label}</span>
@@ -509,7 +509,7 @@ export default function FinanceClient({
           <div className="flex items-center gap-3 rounded-xl bg-[#0D0F14] border border-[#2A2D35] p-4">
             <Info className="w-4 h-4 text-[#4B5563] shrink-0" />
             <p className="text-sm text-[#6B7280]">
-              No transactions in the selected period. Record sales and feed purchases to see your P&L.
+              No transactions in the selected period. Record sales and feed purchases to see your P&amp;L.
             </p>
           </div>
         )}

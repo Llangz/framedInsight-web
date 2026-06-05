@@ -30,6 +30,7 @@ export default async function MortalityPage() {
       .eq('farm_id', farmId)
       .gte('record_date', thirtyAgo.toISOString().split('T')[0])
       .order('record_date', { ascending: false }),
+
   ])
 
   // Map null notes to undefined for type compatibility
