@@ -6,8 +6,8 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 // Monthly prices in KES — matches lib/tiers.ts
 const TIER_MONTHLY_PRICES: Record<string, number> = {
   smallholder:    0,
-  commercial:   500,
-  enterprise:  2500,
+  commercial:   799,
+  enterprise:  2999,
   enterprise_plus: 5000,
 }
 

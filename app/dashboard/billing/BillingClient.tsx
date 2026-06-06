@@ -213,7 +213,7 @@ export default function BillingClient({ farm, subInfo, transactions, tierPrices,
         </section>
 
         {/* ── Payment widget ───────────────────────────────────────────── */}
-        {subInfo.tier !== 'enterprise' && (
+        {subInfo.tier !== 'enterprise_plus' && (
           <section className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
             <div className="p-6 border-b border-zinc-800">
               <div className="flex items-center gap-3 mb-1">

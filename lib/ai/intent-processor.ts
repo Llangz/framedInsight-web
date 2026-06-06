@@ -464,7 +464,6 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         record_date: entities.date || today(),
         quantity_kg: entities.amount,
         feed_type:   'unknown', // default type since intent doesn't extract feed type yet
-        total_cost:  0,
       })
 
       return `✓ Nime-record ${entities.amount}kg za chakula kwa ${batch.batch_name}.`
@@ -483,10 +482,10 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
       await supabase.from('poultry_health_records').insert({
         farm_id:     farmId,
         batch_id:    batch.id,
-        record_date: entities.date || today(),
+        event_date:  entities.date || today(),
         event_type:  'illness',
         disease:     entities.disease ?? entities.issue,
-        cost:        0,
+        symptoms:    entities.issue,
       })
 
       return `✓ Nime-record ugonjwa kwa ${batch.batch_name} ("${entities.issue}"). Wasiliana na daktari ukiona hali inazidi.`
