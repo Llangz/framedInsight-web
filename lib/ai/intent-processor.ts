@@ -34,6 +34,11 @@ const intentSchema = z.object({
     'record_goat_weight',
     'report_goat_health',
     'record_goat_sale',
+    // Poultry
+    'record_egg',
+    'record_poultry_feed',
+    'report_poultry_health',
+    'record_poultry_mortality',
     // Cross-enterprise
     'query_ai_warnings',
     'query_farm_stats',
@@ -68,7 +73,7 @@ export async function processFarmerIntent(
   const supabase = getSupabaseClient()
 
   try {
-    const [{ data: cows }, { data: plots }, { data: ruminants }] = await Promise.all([
+    const [{ data: cows }, { data: plots }, { data: ruminants }, { data: poultry }] = await Promise.all([
       supabase.from('cows')
         .select('cow_tag, name')
         .eq('farm_id', farmId)
@@ -82,12 +87,18 @@ export async function processFarmerIntent(
         .select('animal_tag, name, species')
         .eq('farm_id', farmId)
         .eq('status', 'active'),
+        
+      supabase.from('poultry_batches')
+        .select('id, batch_name, bird_type')
+        .eq('farm_id', farmId)
+        .eq('status', 'active'),
     ])
 
     const contextStr = [
       `Dairy cows: ${cows?.map(c => `${c.cow_tag}${c.name ? ` (${c.name})` : ''}`).join(', ') || 'None'}`,
       `Coffee plots: ${plots?.map(p => `${p.plot_name}${p.eudr_risk_level ? ` [EUDR: ${p.eudr_risk_level}]` : ''}`).join(', ') || 'None'}`,
       `Small ruminants: ${ruminants?.map(r => `${r.animal_tag}${r.name ? ` (${r.name})` : ''} [${r.species}]`).join(', ') || 'None'}`,
+      `Poultry batches: ${poultry?.map(b => `${b.batch_name} [${b.bird_type}]`).join(', ') || 'None'}`,
     ].join('\n')
 
     const model = getLanguageModel('openai')
@@ -114,6 +125,10 @@ Intent classification rules:
 - Goat/sheep weight in kg → record_goat_weight
 - Goat/sheep illness, diarrhoea, not eating, limping → report_goat_health
 - Sold goat/sheep for KES amount → record_goat_sale
+- Eggs collected or trays from a poultry batch → record_egg
+- Feed given to a poultry batch in kg → record_poultry_feed
+- Poultry illness, symptoms, sneezing, disease → report_poultry_health
+- Dead birds or mortality in a poultry batch → record_poultry_mortality
 - AI warnings, alerts, predictions, health alerts → query_ai_warnings
 - Stats, totals, how much milk, harvest summary → query_farm_stats
 
@@ -175,6 +190,17 @@ async function findPlot(supabase: ReturnType<typeof getSupabaseClient>, farmId: 
     .select('id, plot_name, eudr_risk_level, total_trees')
     .eq('farm_id', farmId)
     .ilike('plot_name', `%${target}%`)
+    .limit(1).maybeSingle()
+  return data
+}
+
+async function findPoultryBatch(supabase: ReturnType<typeof getSupabaseClient>, farmId: string, target?: string) {
+  if (!target) return null
+  const { data } = await supabase
+    .from('poultry_batches')
+    .select('id, batch_name, bird_type')
+    .eq('farm_id', farmId)
+    .ilike('batch_name', `%${target}%`)
     .limit(1).maybeSingle()
   return data
 }
@@ -398,6 +424,93 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
 
       const animalLabel = animal ? `${animal.name || animal.animal_tag}` : 'mnyama'
       return `✓ Mauzo ya ${animalLabel} yame-record — KES ${entities.amount.toLocaleString()}. Pesa njema!`
+    }
+
+    // ── POULTRY: Record eggs ──────────────────────────────────────────────
+    if (intent === 'record_egg') {
+      const batch = await findPoultryBatch(supabase, farmId, entities.target)
+      if (!batch) {
+        return entities.target
+          ? `Sijaona batch inayoitwa "${entities.target}". Angalia jina vizuri.`
+          : `Taja batch ya kuku, e.g. "Batch A wametaga mayai 320".`
+      }
+      if (!entities.amount) {
+        return `Batch "${batch.batch_name}" wametaga mayai mangapi leo?`
+      }
+
+      await supabase.from('poultry_egg_records').insert({
+        farm_id:     farmId,
+        batch_id:    batch.id,
+        record_date: entities.date || today(),
+        total_eggs:  entities.amount,
+      })
+
+      return `✓ Nime-record mayai ${entities.amount} kutoka kwa ${batch.batch_name}. Kazi nzuri!`
+    }
+
+    // ── POULTRY: Record feed ──────────────────────────────────────────────
+    if (intent === 'record_poultry_feed') {
+      const batch = await findPoultryBatch(supabase, farmId, entities.target)
+      if (!batch) {
+        return `Taja batch ya kuku na kiasi cha chakula, e.g. "Batch B wamekula 50kg".`
+      }
+      if (!entities.amount) {
+        return `Uliwapa ${batch.batch_name} kilo ngapi za chakula?`
+      }
+
+      await supabase.from('poultry_feed_records').insert({
+        farm_id:     farmId,
+        batch_id:    batch.id,
+        record_date: entities.date || today(),
+        quantity_kg: entities.amount,
+        feed_type:   'unknown', // default type since intent doesn't extract feed type yet
+        total_cost:  0,
+      })
+
+      return `✓ Nime-record ${entities.amount}kg za chakula kwa ${batch.batch_name}.`
+    }
+
+    // ── POULTRY: Report health ────────────────────────────────────────────
+    if (intent === 'report_poultry_health') {
+      const batch = await findPoultryBatch(supabase, farmId, entities.target)
+      if (!batch) {
+        return `Taja batch ya kuku wenye shida, e.g. "Batch C wanakohoa".`
+      }
+      if (!entities.issue) {
+        return `Elezea ugonjwa/dalili kwa ${batch.batch_name} — wana shida gani?`
+      }
+
+      await supabase.from('poultry_health_records').insert({
+        farm_id:     farmId,
+        batch_id:    batch.id,
+        record_date: entities.date || today(),
+        event_type:  'illness',
+        disease:     entities.disease ?? entities.issue,
+        cost:        0,
+      })
+
+      return `✓ Nime-record ugonjwa kwa ${batch.batch_name} ("${entities.issue}"). Wasiliana na daktari ukiona hali inazidi.`
+    }
+
+    // ── POULTRY: Record mortality ─────────────────────────────────────────
+    if (intent === 'record_poultry_mortality') {
+      const batch = await findPoultryBatch(supabase, farmId, entities.target)
+      if (!batch) {
+        return `Taja batch ya kuku, e.g. "Kuku 3 wamekufa Batch A".`
+      }
+      if (!entities.amount) {
+        return `Kuku wangapi wamekufa kwa ${batch.batch_name}?`
+      }
+
+      await supabase.from('poultry_mortality').insert({
+        farm_id:     farmId,
+        batch_id:    batch.id,
+        record_date: entities.date || today(),
+        count_dead:  entities.amount,
+        cause:       entities.issue ?? 'unknown',
+      })
+
+      return `✓ Nime-record vifo ${entities.amount} kwa ${batch.batch_name}. Fuatilia kwa karibu kuzuia maambukizi zaidi.`
     }
 
     // ── AI Warnings ───────────────────────────────────────────────────────

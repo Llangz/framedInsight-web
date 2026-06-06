@@ -94,11 +94,13 @@ export const TIER_NAMES: Record<string, string> = {
   smallholder:    'Smallholder (Free)',
   commercial:     'Commercial',
   enterprise:     'Enterprise',
+  enterprise_plus:'Enterprise Plus',
 }
 
 // Monthly prices in KES — single source across the app
 export const TIER_MONTHLY_PRICES: Record<string, number> = {
   smallholder:    0,
-  commercial:   500,
-  enterprise:  2500,
+  commercial:   799,
+  enterprise:  2999,
+  enterprise_plus: 5000,
 }

@@ -31,9 +31,9 @@ export interface EnterpriseTier {
 
 const TIER_PRICES: Record<TierLevel, number> = {
   smallholder: 0,
-  commercial: 500,
-  enterprise: 2500,
-  enterprise_plus: 5000, // For cooperatives
+  commercial: 799,
+  enterprise: 2999,
+  enterprise_plus: 5000, // For multi-farm/agribusiness
 }
 
 const TIER_LEVELS: Record<TierLevel, number> = {
@@ -311,9 +311,10 @@ export function getPoultryTier(stats: PoultryStats): EnterpriseTier {
 // ============================================================================
 
 function calculateDiscount(enterpriseCount: number): number {
-  if (enterpriseCount === 1) return 0      // No discount
-  if (enterpriseCount === 2) return 0.1    // 10% off
-  if (enterpriseCount >= 3) return 0.2     // 20% off
+  if (enterpriseCount <= 1) return 0       // No discount
+  if (enterpriseCount === 2) return 0.15   // 15% off
+  if (enterpriseCount === 3) return 0.25   // 25% off
+  if (enterpriseCount >= 4) return 0.30    // 30% off
   return 0
 }
 
