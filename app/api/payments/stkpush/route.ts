@@ -86,7 +86,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Farm not found.' }, { status: 404 })
   }
 
-  const monthlyPrice = TIER_MONTHLY_PRICES[farm.subscription_tier] ?? 500
+  // If they are on smallholder, they are upgrading to commercial
+  const targetTier = farm.subscription_tier === 'smallholder' ? 'commercial' : farm.subscription_tier
+  const monthlyPrice = TIER_MONTHLY_PRICES[targetTier] ?? 500
+
   if (monthlyPrice === 0) {
     return NextResponse.json(
       { error: 'Your current plan is free — no payment required.' },
