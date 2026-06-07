@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { auditLog } from '@/lib/security'
 
 /**
  * Normalise to E.164 format WITH the leading +.
@@ -18,20 +19,18 @@ function normalisePhone(phone: string): string {
 }
 
 function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
+  // Use crypto.randomInt for cryptographically secure random numbers
+  const { randomInt } = require('crypto')
+  return String(randomInt(100000, 999999))
 }
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
   const { phone, metadata } = await req.json()
 
-  // ADD THIS DEBUG BLOCK
-  console.log('🔧 Environment Check:', {
-    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
-    serviceKeyPrefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) || 'MISSING'
-  })
+  // Get client IP for rate limiting and audit
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
+  const userAgent = req.headers.get('user-agent') || 'unknown'
 
   if (!phone) {
     return NextResponse.json({ error: 'Phone is required' }, { status: 400 })
@@ -45,8 +44,6 @@ export async function POST(req: NextRequest) {
   }
 
   // Use raw supabase-js client for service role to ensure RLS bypass.
-  // Do NOT use createServerClient from @supabase/ssr with the service role key,
-  // as it will read the user's cookies and override the service role token with an anon/user token.
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -69,6 +66,15 @@ export async function POST(req: NextRequest) {
       console.error('Rate limit check failed:', rateLimitError)
       // Fail open — don't block user if rate limit check itself errors
     } else if (!withinLimit) {
+      auditLog({
+        action: 'OTP_RATE_LIMITED',
+        actorId: null,
+        farmId: null,
+        resource: 'phone_otp_codes',
+        resourceId: normalisedPhone.slice(0, 7) + '***',
+        details: { ip, userAgent },
+        ip,
+      })
       return NextResponse.json(
         { error: 'Too many OTP requests. Please wait an hour before trying again.' },
         { status: 429 }
@@ -95,26 +101,31 @@ export async function POST(req: NextRequest) {
     if (dbError) {
       console.error('Error storing OTP:', dbError)
       return NextResponse.json(
-        { error: `Failed to generate OTP: ${dbError.message}` },
+        { error: `Failed to generate verification code. Please try again.` },
         { status: 500 }
       )
     }
 
-    console.log('✅ OTP STORED:', {
-      phone_number: normalisedPhone,
-      otp_code: otp,
-      expires_at: expiresAt,
-      timestamp: new Date().toISOString()
-    })
-
     // Call Supabase Edge Function to send SMS via Tiara Connect
+    // Use INTERNAL_API_SECRET instead of the public anon key for cross-service auth
+    const internalSecret = process.env.INTERNAL_API_SECRET
+    if (!internalSecret) {
+      console.error('INTERNAL_API_SECRET not configured')
+      // Still consider OTP "sent" since it's stored — SMS is best-effort
+      console.log('✅ OTP STORED for:', normalisedPhone.slice(0, 7) + '***')
+      return NextResponse.json({ 
+        success: true, 
+        warning: 'SMS delivery currently unavailable, but OTP is stored. Contact support.'
+      })
+    }
+
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-otp`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'x-internal-secret': internalSecret,
         },
         body: JSON.stringify({ phone: normalisedPhone, otp }),
       }
@@ -140,12 +151,41 @@ export async function POST(req: NextRequest) {
         errorMessage = data.error
       }
 
+      auditLog({
+        action: 'OTP_SEND_FAILED',
+        actorId: null,
+        farmId: null,
+        resource: 'sms',
+        resourceId: normalisedPhone.slice(0, 7) + '***',
+        details: { error: errorMessage, statusCode: response.status, ip, userAgent },
+        ip,
+      })
+
       return NextResponse.json({ error: errorMessage }, { status: response.status })
     }
+
+    auditLog({
+      action: 'OTP_SENT',
+      actorId: null,
+      farmId: null,
+      resource: 'phone_otp_codes',
+      resourceId: normalisedPhone.slice(0, 7) + '***',
+      details: { ip, userAgent },
+      ip,
+    })
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Unexpected error in send-otp route:', error)
-    return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 })
+    auditLog({
+      action: 'OTP_SEND_ERROR',
+      actorId: null,
+      farmId: null,
+      resource: 'phone_otp_codes',
+      resourceId: normalisedPhone?.slice(0, 7) + '***' || 'unknown',
+      details: { error: error.message, ip, userAgent },
+      ip,
+    })
+    return NextResponse.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 })
   }
 }

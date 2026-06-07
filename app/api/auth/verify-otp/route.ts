@@ -11,13 +11,53 @@ function normalisePhone(phone: string): string {
   return '+' + digits
 }
 
+// ---- RATE LIMITER (global + per-phone) ----
+const verifyRateLimit = new Map<string, { count: number; resetAt: number }>()
+// Clean up every minute
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now()
+    for (const [key, entry] of verifyRateLimit) {
+      if (entry.resetAt < now) verifyRateLimit.delete(key)
+    }
+  }, 60_000)
+}
+
+function checkVerifyRateLimit(phone: string, ip: string): boolean {
+  const now = Date.now()
+  
+  // Per-phone limit: 10 attempts per minute
+  const phoneKey = `verify:phone:${phone}`
+  const phoneEntry = verifyRateLimit.get(phoneKey)
+  if (phoneEntry && phoneEntry.resetAt > now && phoneEntry.count >= 10) return false
+  
+  // Global IP limit: 30 attempts per minute (basic DDoS protection)
+  const ipKey = `verify:ip:${ip}`
+  const ipEntry = verifyRateLimit.get(ipKey)
+  if (ipEntry && ipEntry.resetAt > now && ipEntry.count >= 30) return false
+  
+  // Update counters
+  const updateCounter = (key: string) => {
+    const entry = verifyRateLimit.get(key)
+    if (!entry || entry.resetAt < now) {
+      verifyRateLimit.set(key, { count: 1, resetAt: now + 60_000 })
+    } else {
+      entry.count++
+    }
+  }
+  
+  updateCounter(phoneKey)
+  updateCounter(ipKey)
+  return true
+}
+
 export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !serviceKey || !anonKey) {
-    console.error('[verify-otp] Missing env vars:', { hasUrl: !!supabaseUrl, hasServiceKey: !!serviceKey, hasAnonKey: !!anonKey })
+    console.error('[verify-otp] Missing env vars')
     return NextResponse.json({ error: 'Server misconfiguration.' }, { status: 500 })
   }
 
@@ -43,14 +83,36 @@ export async function POST(req: NextRequest) {
   })
 
   let body: any
-  try { body = await req.json() } catch { body = {} }
+  try { body = await req.json() } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
   const { phone, otp } = body
 
-  if (!phone || !otp) return NextResponse.json({ error: 'Phone and OTP are required.' }, { status: 400 })
+  if (!phone || !otp) {
+    return NextResponse.json({ error: 'Phone and OTP are required.' }, { status: 400 })
+  }
+
+  // Validate OTP format (must be exactly 6 digits)
+  if (!/^\d{6}$/.test(String(otp).trim())) {
+    return NextResponse.json(
+      { error: 'Invalid OTP format. Please enter a 6-digit code.' },
+      { status: 400 }
+    )
+  }
 
   let normalisedPhone: string
   try { normalisedPhone = normalisePhone(phone) }
   catch { return NextResponse.json({ error: 'Invalid phone number format.' }, { status: 400 }) }
+
+  // ---- RATE LIMIT CHECK ----
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
+  if (!checkVerifyRateLimit(normalisedPhone, ip)) {
+    console.warn('[verify-otp] Rate limited:', normalisedPhone.slice(0, 7) + '***', 'IP:', ip)
+    return NextResponse.json(
+      { error: 'Too many attempts. Please wait a moment before trying again.' },
+      { status: 429 }
+    )
+  }
 
   const phoneTag = normalisedPhone.slice(0, 7) + '***'
 
@@ -79,11 +141,24 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── 3. Validate the code ──────────────────────────────────────────────────
-    if (record.otp_code !== String(otp).trim()) {
+    // ── 3. Validate the code (timing-safe comparison) ─────────────────────────
+    const submittedOtp = String(otp).trim()
+    const storedOtp = String(record.otp_code).trim()
+    
+    // Use timing-safe comparison to prevent timing attacks
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(submittedOtp),
+      Buffer.from(storedOtp)
+    )
+
+    if (!isValid) {
+      // Increment failed attempts
       const { data: attempts } = await admin.rpc('increment_otp_attempts', { p_phone: normalisedPhone })
       console.warn('[verify-otp] Wrong code for:', phoneTag, '| attempts:', attempts)
-      if (attempts >= 5) {
+      
+      if (attempts && attempts >= 5) {
+        // Delete the OTP record after 5 failed attempts
+        await admin.from('phone_otp_codes').delete().eq('phone_number', normalisedPhone)
         return NextResponse.json(
           { error: 'Too many failed attempts. Please request a new code.' },
           { status: 429 }
@@ -102,7 +177,6 @@ export async function POST(req: NextRequest) {
     const randomPassword = crypto.randomBytes(32).toString('hex')
 
     // ── 4. Find or create auth user ───────────────────────────────────────────
-    // Strategy: attempt createUser first. If email already exists, find and update.
     let userId: string
 
     const { data: newUserData, error: createErr } = await admin.auth.admin.createUser({
@@ -117,9 +191,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (createErr) {
-      // User already exists — find them and update password
       if (createErr.message.includes('already') || createErr.message.includes('exists')) {
-        // Query our own DB for the user_id we may have stored, or fall back to listUsers
         const { data: { users }, error: listErr } = await admin.auth.admin.listUsers({
           page: 1, perPage: 1000,
         })
@@ -140,7 +212,7 @@ export async function POST(req: NextRequest) {
 
         const { error: updErr } = await admin.auth.admin.updateUserById(existing.id, {
           password: randomPassword,
-          email_confirm: true,  // force-confirm in case user was created before this flag existed
+          email_confirm: true,
         })
         if (updErr) {
           console.error('[verify-otp] updateUserById failed:', updErr.message)
@@ -149,7 +221,7 @@ export async function POST(req: NextRequest) {
 
         userId = existing.id
       } else {
-        console.error('[verify-otp] createUser unexpected error:', createErr.message)
+        console.error('[verify-otp] createUser error:', createErr.message)
         return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
       }
     } else {
@@ -170,6 +242,25 @@ export async function POST(req: NextRequest) {
     // ── 6. Delete the used OTP ────────────────────────────────────────────────
     await admin.from('phone_otp_codes').delete().eq('phone_number', normalisedPhone)
 
+    // ── 7. Audit log ──────────────────────────────────────────────────────────
+    try {
+      await admin.from('audit_logs').insert({
+        action: 'USER_VERIFIED_OTP',
+        actor_id: userId,
+        resource: 'auth',
+        resource_id: userId,
+        details: {
+          method: 'phone_otp',
+          phone_masked: phoneTag,
+        },
+        ip_address: ip,
+        created_at: new Date().toISOString(),
+      })
+    } catch (auditErr) {
+      // Non-critical: audit logging failure shouldn't break the auth flow
+      console.warn('[verify-otp] Audit log failure:', auditErr)
+    }
+
     console.log('[verify-otp] Success:', phoneTag, 'userId:', userId)
 
     return NextResponse.json({
@@ -179,7 +270,7 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (err: any) {
-    console.error('[verify-otp] Unhandled error for:', phoneTag, '|', err.message)
+    console.error('[verify-otp] Error for:', phoneTag, '|', err.message)
     return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
   }
 }
