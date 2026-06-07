@@ -1,4 +1,4 @@
-// ============================================================================
+"// ============================================================================
 // framedInsight Security Utilities
 // ============================================================================
 // Centralized security: rate limiting, CSRF, input validation, audit logging
@@ -17,7 +17,8 @@ export const PoultryBatchSchema = z.object({
   current_count: z.number().int().positive(),
   date_of_placement: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   house_number: z.string().max(50).nullable().optional(),
-  status: z.enum(['active', 'sold', 'culled']).optional(),
+  status: z.enum(['active', 'sold', 'culled']).optional().default('active'),
+  notes: z.string().max(2000).nullable().optional(),
 })
 
 export const PoultryMortalitySchema = z.object({
@@ -29,7 +30,6 @@ export const PoultryMortalitySchema = z.object({
 })
 
 export const PoultryHealthSchema = z.object({
-  farm_id: z.string().uuid().optional(), // Will be overridden server-side
   batch_id: z.string().uuid(),
   event_type: z.string().max(100),
   vaccine_name: z.string().max(200).nullable().optional(),
@@ -50,11 +50,9 @@ export const PoultryFeedSchema = z.object({
 })
 
 export const PoultrySaleSchema = z.object({
-  farm_id: z.string().uuid().optional(),
   batch_id: z.string().uuid(),
   quantity: z.number().int().positive(),
   price_per_unit: z.number().nonnegative(),
-  total_price: z.number().nonnegative(),
   sale_type: z.enum(['eggs', 'birds']),
   buyer_name: z.string().max(200).nullable().optional(),
   buyer_phone: z.string().max(20).nullable().optional(),
@@ -87,10 +85,6 @@ if (typeof setInterval !== 'undefined') {
 
 /**
  * Simple in-memory rate limiter
- * @param key - Unique identifier (IP, phone, user ID)
- * @param maxRequests - Max requests allowed in window
- * @param windowMs - Time window in milliseconds
- * @returns boolean - true if allowed, false if rate limited
  */
 export function checkRateLimit(
   key: string,
@@ -123,12 +117,11 @@ export interface AuditLogEntry {
   resourceId: string | null
   details: Record<string, any>
   ip: string | null
-  timestamp: string
+  timestamp?: string
 }
 
 /**
  * Log security-relevant events
- * In production, send to a dedicated logging service (DataDog, CloudWatch, etc.)
  */
 export function auditLog(entry: Omit<AuditLogEntry, 'timestamp'>): void {
   const log = {
@@ -142,11 +135,6 @@ export function auditLog(entry: Omit<AuditLogEntry, 'timestamp'>): void {
   if (log.details?.token) log.details.token = '[REDACTED]'
 
   console.log('[AUDIT]', JSON.stringify(log))
-
-  // TODO: In production, send to:
-  // 1. Database audit_logs table
-  // 2. External logging service
-  // 3. Slack/email for critical events
 }
 
 // ============================================================================
@@ -187,38 +175,25 @@ export function validateCsrfToken(token: string, sessionId: string): boolean {
 // ============================================================================
 
 /**
- * Sanitize a value for use in raw SQL queries (if you must use them)
- * Prefer Supabase query builder over raw SQL
- */
-export function sanitizeForRawSql(value: any): any {
-  if (typeof value === 'string') {
-    // Remove SQL injection patterns
-    return value
-      .replace(/'/g, "''") // Escape single quotes
-      .replace(/--/g, '')  // Remove comment injection
-      .replace(/;\s*$/g, '') // Remove trailing semicolons
-      .trim()
-  }
-  return value
-}
-
-/**
  * Recursively strip dangerous keys from objects before DB operations
+ * Only removes keys that could be used for privilege escalation
  */
-export function stripDangerousKeys(obj: Record<string, any>): Record<string, any> {
-  const dangerousKeys = [
-    'role', 'is_admin', 'is_superuser', 'password_hash', 
-    'service_role', 'supabase_secret', // Never allow these
+export function stripDangerousKeys<T extends Record<string, any>>(obj: T): T {
+  const dangerousPatterns = [
+    'role', 'is_admin', 'is_superuser', 'password', 'password_hash', 
+    'service_role', 'supabase_secret', 'api_key', 'secret',
   ]
   
   const sanitized = { ...obj }
   for (const key of Object.keys(sanitized)) {
-    if (dangerousKeys.some(dk => key.toLowerCase().includes(dk.toLowerCase()))) {
-      delete sanitized[key]
+    const keyLower = key.toLowerCase()
+    if (dangerousPatterns.some(pattern => keyLower.includes(pattern))) {
+      delete sanitized[key as keyof T]
     }
+    // Recursively sanitize nested objects (but not arrays)
     if (typeof sanitized[key] === 'object' && sanitized[key] !== null && !Array.isArray(sanitized[key])) {
-      sanitized[key] = stripDangerousKeys(sanitized[key])
+      sanitized[key] = stripDangerousKeys(sanitized[key] as Record<string, any>) as any
     }
   }
   return sanitized
-}
+}"
