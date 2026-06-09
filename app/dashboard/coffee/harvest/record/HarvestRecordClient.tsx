@@ -134,7 +134,7 @@ function HarvestModal({
   const [error, setError] = useState('')
   
   const [form, setForm] = useState({
-    plot_id: plots[0]?.id || '',
+    plot_name: plots[0]?.plot_name || '',
     harvest_date: new Date().toISOString().split('T')[0],
     cherry_kg: '',
     quality_grade: 'AB' as Grade,
@@ -152,7 +152,7 @@ function HarvestModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.plot_id) { setError('Select a plot'); return }
+    if (!form.plot_name) { setError('Select a plot'); return }
     if (!form.cherry_kg || parseFloat(form.cherry_kg) <= 0) { setError('Enter a valid weight'); return }
     
     setLoading(true)
@@ -161,9 +161,10 @@ function HarvestModal({
     try {
       await recordHarvest({
         farm_id: farmId,
-        plot_id: form.plot_id,
+        plot_name: form.plot_name,
         harvest_date: form.harvest_date,
         cherry_kg: parseFloat(form.cherry_kg),
+        produce_kg: parseFloat(form.cherry_kg),
         quality_grade: form.quality_grade,
         price_per_kg: parseFloat(form.price_per_kg),
         total_value: parseFloat(form.total_value || '0'),
@@ -196,14 +197,14 @@ function HarvestModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Select Plot *</label>
             <select 
-              value={form.plot_id} 
-              onChange={e => setForm({ ...form, plot_id: e.target.value })}
+              value={form.plot_name} 
+              onChange={e => setForm({ ...form, plot_name: e.target.value })}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               required
             >
               <option value="">Choose plot...</option>
               {plots.map(p => (
-                <option key={p.id} value={p.id}>{p.plot_name}</option>
+                <option key={p.id} value={p.plot_name}>{p.plot_name}</option>
               ))}
             </select>
             {plots.length === 0 && (
