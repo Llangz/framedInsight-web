@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { Database } from "@/lib/database.types";
+import { checkChemicalCompliance, getComplianceSeverity } from "@/lib/agrochemical-compliance";
 
 type CoffeeActivityInsert = Database['public']['Tables']['coffee_activities']['Insert'];
 
@@ -49,6 +50,21 @@ export async function recordActivity(formData: ActivityFormData) {
   if (!manager) throw new Error("Farm manager record not found");
 
   const { plot_ids, ...rest } = formData;
+
+  // ── Server-side agrochemical compliance guard ───────────────────────────
+  // Belt-and-braces check: the UI blocks banned products, but we also guard
+  // at the server action level so the DB is never written to with violations.
+  if (rest.product_name) {
+    const compliance = checkChemicalCompliance(rest.product_name, 'coffee')
+    if (compliance) {
+      const severity = getComplianceSeverity(compliance.entry, 'coffee')
+      if (severity === 'critical') {
+        throw new Error(
+          `Compliance violation: ${compliance.entry.activeIngredient} is ${compliance.entry.kenyaStatus.replace('_', ' ')} and cannot be recorded. ${compliance.entry.reason}`
+        )
+      }
+    }
+  }
 
   const records: CoffeeActivityInsert[] = plot_ids.map((plot_id: string) => ({
     farm_id: manager.farm_id,

@@ -1,4 +1,4 @@
-"// 📁 FILE PATH: app/api/poultry/batches-secure/route.ts
+// 📁 FILE PATH: app/api/poultry/batches-secure/route.ts
 // ✅ SECURE VERSION with input validation, audit logging, and proper error handling
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -41,7 +41,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ batches: data })
   } catch (err: any) {
-    console.error('GET /api/poultry/batches error:', err)}
+    console.error('GET /api/poultry/batches error:', err)
+    return NextResponse.json({ error: 'Failed to fetch batches' }, { status: 500 })
+  }
 }
 
 // POST /api/poultry/batches — create a new batch
@@ -83,8 +85,6 @@ export async function POST(req: NextRequest) {
     // Strip dangerous keys and build insert object
     const safeBody = stripDangerousKeys(validation.data)
     
-    // Type assertion to bypass strict TypeScript checking
-    // The Zod validation already ensures data integrity
     const insertData: any = {
       batch_name: safeBody.batch_name,
       bird_type: safeBody.bird_type,
@@ -132,4 +132,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }
-"

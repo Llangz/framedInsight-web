@@ -1,4 +1,4 @@
-"// ============================================================================
+// ============================================================================
 // framedInsight Security Utilities
 // ============================================================================
 // Centralized security: rate limiting, CSRF, input validation, audit logging
@@ -63,7 +63,6 @@ export const PoultrySaleSchema = z.object({
 
 // ============================================================================
 // RATE LIMITING (In-Memory Fallback)
-// For production, use Redis or Supabase-based rate limiting
 // ============================================================================
 
 interface RateLimitEntry {
@@ -73,7 +72,6 @@ interface RateLimitEntry {
 
 const rateLimitStore = new Map<string, RateLimitEntry>()
 
-// Clean up expired entries every 5 minutes
 if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now()
@@ -83,9 +81,6 @@ if (typeof setInterval !== 'undefined') {
   }, 5 * 60 * 1000)
 }
 
-/**
- * Simple in-memory rate limiter
- */
 export function checkRateLimit(
   key: string,
   maxRequests: number = 10,
@@ -120,16 +115,12 @@ export interface AuditLogEntry {
   timestamp?: string
 }
 
-/**
- * Log security-relevant events
- */
 export function auditLog(entry: Omit<AuditLogEntry, 'timestamp'>): void {
   const log = {
     ...entry,
     timestamp: new Date().toISOString(),
   }
 
-  // Redact sensitive fields
   if (log.details?.password) log.details.password = '[REDACTED]'
   if (log.details?.otp) log.details.otp = '[REDACTED]'
   if (log.details?.token) log.details.token = '[REDACTED]'
@@ -143,8 +134,13 @@ export function auditLog(entry: Omit<AuditLogEntry, 'timestamp'>): void {
 
 import crypto from 'crypto'
 
+// 🔴 CRITICAL: Assert CSRF_SECRET is set
+if (!process.env.CSRF_SECRET || process.env.CSRF_SECRET === 'change-me-in-production') {
+  throw new Error('CSRF_SECRET must be set in environment variables.')
+}
+
 export function generateCsrfToken(sessionId: string): string {
-  const secret = process.env.CSRF_SECRET || 'change-me-in-production'
+  const secret = process.env.CSRF_SECRET!
   const payload = `${sessionId}:${Date.now()}`
   const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex')
   return `${Buffer.from(payload).toString('base64')}.${hmac}`
@@ -158,7 +154,7 @@ export function validateCsrfToken(token: string, sessionId: string): boolean {
     
     if (sid !== sessionId) return false
     
-    const secret = process.env.CSRF_SECRET || 'change-me-in-production'
+    const secret = process.env.CSRF_SECRET!
     const expectedSignature = crypto
       .createHmac('sha256', secret)
       .update(payload)
@@ -174,26 +170,24 @@ export function validateCsrfToken(token: string, sessionId: string): boolean {
 // SQL INJECTION PREVENTION HELPERS
 // ============================================================================
 
-/**
- * Recursively strip dangerous keys from objects before DB operations
- * Only removes keys that could be used for privilege escalation
- */
 export function stripDangerousKeys<T extends Record<string, any>>(obj: T): T {
   const dangerousPatterns = [
     'role', 'is_admin', 'is_superuser', 'password', 'password_hash', 
     'service_role', 'supabase_secret', 'api_key', 'secret',
   ]
   
-  const sanitized = { ...obj }
+  // Cast to mutable Record to allow property assignment
+  const sanitized = { ...obj } as Record<string, any>
+  
   for (const key of Object.keys(sanitized)) {
     const keyLower = key.toLowerCase()
     if (dangerousPatterns.some(pattern => keyLower.includes(pattern))) {
-      delete sanitized[key as keyof T]
+      delete sanitized[key]
     }
-    // Recursively sanitize nested objects (but not arrays)
     if (typeof sanitized[key] === 'object' && sanitized[key] !== null && !Array.isArray(sanitized[key])) {
-      sanitized[key] = stripDangerousKeys(sanitized[key] as Record<string, any>) as any
+      sanitized[key] = stripDangerousKeys(sanitized[key])
     }
   }
-  return sanitized
-}"
+  
+  return sanitized as T
+}
