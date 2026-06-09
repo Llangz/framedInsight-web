@@ -20,11 +20,24 @@ export default async function CoffeeHarvestPage() {
     redirect("/onboarding");
   }
 
-  const { data: records } = await supabase
-    .from("coffee_harvests")
-    .select("*")
-    .eq("farm_id", manager.farm_id)
-    .order("harvest_date", { ascending: false });
+  const [recordsResponse, plotsResponse] = await Promise.all([
+    supabase
+      .from("coffee_harvests")
+      .select("*")
+      .eq("farm_id", manager.farm_id)
+      .order("harvest_date", { ascending: false }),
+    supabase
+      .from("coffee_plots")
+      .select("id, plot_name")
+      .eq("farm_id", manager.farm_id)
+      .order("plot_name"),
+  ]);
 
-  return <HarvestRecordClient initialRecords={records || []} farmId={manager.farm_id} />;
+  return (
+    <HarvestRecordClient 
+      initialRecords={recordsResponse.data || []} 
+      farmId={manager.farm_id}
+      plots={plotsResponse.data || []}
+    />
+  );
 }
