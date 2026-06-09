@@ -51,9 +51,14 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b sticky top-0 z-10 px-4 py-4 flex items-center gap-3">
-        <Link href="/dashboard/smallRuminants/breeding" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">←</Link>
-        <h1 className="text-lg font-bold text-slate-900">Record Birth</h1>
+      <div className="bg-white border-b sticky top-0 z-10 px-4 py-4">
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
+          <Link href="/dashboard/smallRuminants/breeding" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors">←</Link>
+          <div>
+            <h1 className="text-lg font-bold text-slate-900">Record Birth</h1>
+            <p className="text-xs text-slate-500 mt-0.5">Register kidding or lambing event</p>
+          </div>
+        </div>
       </div>
       <div className="max-w-2xl mx-auto px-4 py-4">
         <form onSubmit={handleSubmit} className="space-y-4">

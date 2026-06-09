@@ -126,15 +126,86 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
           </div>
           {eventType === "vaccination" && (
             <div className="bg-white rounded-xl border p-4 space-y-3">
-              <select value={vaccineType} onChange={e => setVaccineType(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" required>
-                <option value="">Choose vaccine...</option><option value="PPR">PPR</option><option value="CCPP">CCPP</option>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Vaccine Type *</label>
+                <select value={vaccineType} onChange={e => setVaccineType(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" required>
+                <option value="">Choose vaccine...</option>
+                  <option value="PPR">PPR (Peste des Petits Ruminants)</option>
+                  <option value="CCPP">CCPP (Contagious Caprine Pleuropneumonia)</option>
+                  <option value="Foot Rot">Foot Rot Vaccine</option>
+                  <option value="Anthrax">Anthrax Vaccine</option>
+                  <option value="Rift Valley Fever">Rift Valley Fever Vaccine</option>
+                  <option value="Enterotoxemia">Enterotoxemia (Overeating)</option>
+                  <option value="Other">Other</option>
               </select>
+              <p className="text-xs text-slate-500 mt-1">PPR and CCPP are critical vaccines in Kenya.</p>
+            </div>
             </div>
           )}
+
+          {(eventType === "treatment" || eventType === "deworming") && (
+            <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{eventType === "deworming" ? "Deworming" : "Treatment"} Details</p>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Condition / Disease</label>
+                <input type="text" value={disease} onChange={e => setDisease(e.target.value)} placeholder="e.g. Worms, Pneumonia, Diarrhea" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Drug Name</label>
+                  <input type="text" value={drugName} onChange={e => setDrugName(e.target.value)} placeholder="e.g. Albendazole" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Dosage</label>
+                  <input type="text" value={dosage} onChange={e => setDosage(e.target.value)} placeholder="e.g. 5ml per animal" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Withdrawal (meat, days)</label>
+                  <input type="number" value={withdrawalMeat} onChange={e => setWithdrawalMeat(e.target.value)} placeholder="7" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Withdrawal (milk, days)</label>
+                  <input type="number" value={withdrawalMilk} onChange={e => setWithdrawalMilk(e.target.value)} placeholder="3" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                </div>
+              </div>
+              <p className="text-xs text-amber-600">Withdrawal periods ensure meat/milk is safe for consumption.</p>
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Event Details</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Event Date *</label>
+                <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} max={new Date().toISOString().split('T')[0]} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Vet / Agrovet Name</label>
+                <input type="text" value={vetName} onChange={e => setVetName(e.target.value)} placeholder="Optional" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Total Cost (KES)</label>
+                <input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="e.g. 500" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Next Due Date</label>
+                <input type="date" value={nextDueDate} onChange={e => setNextDueDate(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Notes</label>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any observations, batch numbers, etc." rows={2} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            </div>
+          </div>
+
           {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>}
           <div className="flex gap-3">
             <Link href="/dashboard/smallRuminants/health" className="flex-1 px-4 py-3 rounded-lg border text-sm text-center">Cancel</Link>
-            <button type="submit" disabled={loading} className="flex-1 px-4 py-3 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50">
+            <button type="submit" disabled={loading || selectedAnimals.size === 0} className="flex-1 px-4 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-semibold disabled:opacity-50 transition-colors">
               {loading ? "Saving..." : `Record for ${selectedAnimals.size} Animals`}
             </button>
           </div>
