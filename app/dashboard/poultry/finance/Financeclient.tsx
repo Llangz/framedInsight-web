@@ -234,7 +234,7 @@ export default function FinanceClient({
       {/* ── Filters */}
       <div className="flex flex-wrap gap-3 items-end">
         <div className="flex-1 min-w-[160px]">
-          <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Batch</label>
+          <label className="block text-xs font-bold text-[#D1D5DB] mb-1">Batch</label>
           <div className="relative">
             <select
               className={FIELD + ' appearance-none pr-8'}
@@ -253,7 +253,7 @@ export default function FinanceClient({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Period</label>
+          <label className="block text-xs font-bold text-[#D1D5DB] mb-1">Period</label>
           <div className="flex gap-1">
             {(['30', '90', '180', 'ALL'] as const).map(p => (
               <button
@@ -409,7 +409,7 @@ export default function FinanceClient({
       {pnl.batchBreakdown.length > 1 && (
         <div className="rounded-xl bg-[#0D0F14] border border-[#2A2D35] overflow-hidden">
           <div className="p-4 border-b border-[#2A2D35]">
-            <p className="text-xs font-medium text-[#9CA3AF]">Profitability by Batch</p>
+            <p className="text-xs font-bold text-[#D1D5DB]">Profitability by Batch</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">

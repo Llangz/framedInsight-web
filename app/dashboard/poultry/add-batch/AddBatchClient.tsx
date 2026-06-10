@@ -26,7 +26,7 @@ const SOURCES = ['Hatchery', 'Cooperative', 'Private breeder', 'Own hatching', '
 const HOUSING = ['Deep litter', 'Battery cage', 'Free range', 'Semi-intensive', 'Pasture', 'Open shed']
 
 const FIELD = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#4B5563] focus:outline-none focus:border-[#4B5563] transition-colors'
-const LABEL = 'block text-xs font-medium text-[#9CA3AF] mb-1'
+const LABEL = 'block text-xs font-bold text-[#D1D5DB] mb-1'
 
 export default function AddBatchClient({ farmId }: Props) {
   const router = useRouter()

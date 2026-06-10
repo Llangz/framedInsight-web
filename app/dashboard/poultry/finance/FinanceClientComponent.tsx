@@ -234,7 +234,7 @@ export default function FinanceClientComponent({
       {/* ── Filters */}
       <div className="flex flex-wrap gap-3 items-end">
         <div className="flex-1 min-w-[160px]">
-          <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Batch</label>
+          <label className="block text-xs font-bold text-[#D1D5DB] mb-1">Batch</label>
           <div className="relative">
             <select
               className={FIELD + ' appearance-none pr-8'}
@@ -253,7 +253,7 @@ export default function FinanceClientComponent({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Period</label>
+          <label className="block text-xs font-bold text-[#D1D5DB] mb-1">Period</label>
           <div className="flex gap-1">
             {(['30', '90', '180', 'ALL'] as const).map(p => (
               <button
