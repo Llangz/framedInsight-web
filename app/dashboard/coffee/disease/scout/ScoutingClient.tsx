@@ -536,7 +536,7 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                   )}
 
                   {/* Generic insect count */}
-                  {!["cbd", "clr"].includes(form.observation_type as string) && form.observation_type !== "healthy" && (
+                  {! ["cbd", "clr"].includes(form.observation_type) && (
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
