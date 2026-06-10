@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { PlusCircle, Bell, Syringe, Baby, ArrowRight } from 'lucide-react'
-import { AnimalCard } from '@/components/features/small-ruminants/AnimalCard'
+import { AnimalCard, type Animal } from '@/components/features/small-ruminants/AnimalCard'
 import { FilterBar, type Filters } from '@/components/features/small-ruminants/FilterBar'
 
 interface DashboardAnimal {
@@ -13,6 +13,24 @@ interface DashboardAnimal {
   sex: 'male' | 'female'; birth_date: string; status: string; purpose: string | null
   ear_notch_pattern: string | null; qr_code: string | null; notes: string | null
 }
+
+// Map DashboardAnimal to Animal interface expected by AnimalCard
+function mapToAnimal(a: DashboardAnimal): Animal {
+  return {
+    id: a.id,
+    animal_tag: a.animal_tag,
+    name: a.name,
+    species: a.species,
+    sex: a.sex,
+    breed: a.breed,
+    upgrade_level: a.upgrade_level,
+    purpose: a.purpose as Animal['purpose'],
+    ear_notch_pattern: a.ear_notch_pattern,
+    qr_code: a.qr_code,
+    birth_date: a.birth_date,
+  }
+}
+
 interface VaccinationDue {
   id: string; animal_id: string; animal_tag: string; animal_name: string | null
   species: string; vaccine_type: string | null; vaccine_name: string | null
@@ -201,7 +219,7 @@ export default function SmallRuminantsClient({
             <FilterBar filters={filters} onChange={setFilters} total={initialAnimals.length} />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {filtered.map(a => (
-                <AnimalCard key={a.id} animal={a as any} latestWeight={weightMap[a.id] ?? null} />
+                <AnimalCard key={a.id} animal={mapToAnimal(a)} latestWeight={weightMap[a.id] ?? null} />
               ))}
             </div>
             {filtered.length === 0 && (
