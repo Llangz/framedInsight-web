@@ -41,7 +41,7 @@ const COMMON_DRUGS = [
 const EVENT_TYPES = ['vaccination', 'treatment', 'deworming', 'vitamin_supplement', 'biosecurity_check', 'other']
 
 const FIELD = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#4B5563] focus:outline-none focus:border-[#4B5563] transition-colors'
-const LABEL = 'block text-xs font-medium text-[#9CA3AF] mb-1'
+const LABEL = 'block text-xs font-bold text-[#D1D5DB] mb-1'
 
 function fmt(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })

@@ -634,9 +634,9 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                 ["Trees sampled", form.trees_sampled ? `${form.trees_sampled} trees` : "—"],
                 bugsPerTree != null ? ["Pests per tree", bugsPerTree.toFixed(1)] : null,
                 ["Weather",       WEATHER_OPTIONS.find(w => w.value === form.weather_past_week)?.label ?? "—"],
-                ["Action taken",  ACTION_OPTIONS.find(a => a.value === form.action_taken)?.label ?? "—"],
+                ["Action taken",  (ACTION_OPTIONS.find(a => a.value === form.action_taken)?.label) ?? "—"],
                 form.notes ? ["Notes", form.notes] : null,
-              ].filter(Boolean).map(([key, val]) => (
+              ].filter((x): x is [string, string] => x !== null).map(([key, val]) => (
                 <div key={key as string} className="flex justify-between items-start py-2.5 first:pt-0 last:pb-0">
                   <span className="text-xs text-[#6B7280] flex-shrink-0 w-32">{key}</span>
                   <span className="text-sm text-white text-right">{val as string}</span>
