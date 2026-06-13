@@ -1,10 +1,108 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 export default function AddMilkRecordPage() {
   const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    cow_id: '',
+    record_date: new Date().toISOString().split('T')[0],
+    morning_milk: '',
+    evening_milk: '',
+    total_milk: '',
+    notes: '',
+  })
+  const [cows, setCows] = useState<any[]>([])
+  const [farmId, setFarmId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: fm } = await supabase
+          .from('farm_managers')
+          .select('farm_id')
+          .eq('user_id', user.id)
+          .single()
+        
+        if (fm) {
+          setFarmId(fm.farm_id)
+          const { data: cowData } = await supabase
+            .from('cows')
+            .select('id, cow_tag, name, status')
+            .eq('farm_id', fm.farm_id)
+            .eq('status', 'active')
+            .order('cow_tag')
+          if (cowData) setCows(cowData)
+        }
+      } catch (err) {
+        console.error('Failed to load cows:', err)
+      }
+    }
+    loadData()
+  }, [])
+
+  const set = (key: string, value: any) => {
+    setFormData(prev => {
+      const updated = { ...prev, [key]: value }
+      if (key === 'morning_milk' || key === 'evening_milk') {
+        const morning = key === 'morning_milk' ? parseFloat(value) || 0 : parseFloat(prev.morning_milk) || 0
+        const evening = key === 'evening_milk' ? parseFloat(value) || 0 : parseFloat(prev.evening_milk) || 0
+        updated.total_milk = (morning + evening).toString()
+      }
+      return updated
+    })
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    setSuccess(false)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const payload = {
+        farm_id: farmId,
+        cow_id: formData.cow_id,
+        record_date: formData.record_date,
+        morning_milk: parseFloat(formData.morning_milk) || 0,
+        evening_milk: parseFloat(formData.evening_milk) || 0,
+        total_milk: parseFloat(formData.total_milk) || 0,
+        notes: formData.notes || null,
+      }
+
+      const { error } = await supabase
+        .from('milk_records')
+        .insert(payload)
+
+      if (error) throw error
+
+      setSuccess(true)
+      setFormData({
+        cow_id: '',
+        record_date: new Date().toISOString().split('T')[0],
+        morning_milk: '',
+        evening_milk: '',
+        total_milk: '',
+        notes: '',
+      })
+    } catch (err: any) {
+      setError(err.message || 'Failed to save milk record')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -16,11 +114,108 @@ export default function AddMilkRecordPage() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <p className="text-gray-500">🚧 Phase 2 Feature - Coming Soon</p>
-          <p className="text-sm text-gray-400 mt-2">Milk recording form will be available in the next update</p>
-        </div>
+        {success && (
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 text-green-800">
+            ✓ Milk record saved successfully!
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Cow *</label>
+            <select
+              value={formData.cow_id}
+              onChange={(e) => set('cow_id', e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select a cow...</option>
+              {cows.map(cow => (
+                <option key={cow.id} value={cow.id}>
+                  {cow.cow_tag} {cow.name ? `(${cow.name})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
+            <input
+              type="date"
+              value={formData.record_date}
+              onChange={(e) => set('record_date', e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Morning (L) *</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={formData.morning_milk}
+                onChange={(e) => set('morning_milk', e.target.value)}
+                required
+                placeholder="0.0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Evening (L) *</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={formData.evening_milk}
+                onChange={(e) => set('evening_milk', e.target.value)}
+                required
+                placeholder="0.0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Total (L)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={formData.total_milk}
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => set('notes', e.target.value)}
+              rows={3}
+              placeholder="Any observations about milk quality, cow health, etc."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || !formData.cow_id}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+          >
+            {loading ? 'Saving...' : 'Save Milk Record'}
+          </button>
+        </form>
       </div>
     </div>
   )
-}
+}"

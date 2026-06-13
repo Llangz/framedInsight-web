@@ -3,6 +3,8 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { recordActivity } from '../actions'
+import { useChemicalCheck } from '@/hooks/useChemicalCheck'
+import { ChemicalComplianceWarning } from '@/components/ui/ChemicalComplianceWarning'
 
 // TODO Phase 2: Restore lucide-react icons when dependency is properly resolved
 const ChevronLeft = () => <span>←</span>
@@ -137,6 +139,17 @@ function ActivityRecordForm({ plots }: { plots: Plot[] }) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
+  // ── Agrochemical compliance check ─────────────────────────────────────────
+  const sprayProduct = form.activity_type === 'spraying' ? form.product_name : undefined
+  const weedingHerbicide =
+    form.activity_type === 'weeding' && form.weeding_method === 'herbicide'
+      ? form.product_name
+      : undefined
+  const { warning: chemWarning } = useChemicalCheck(
+    sprayProduct ?? weedingHerbicide,
+    { enterprise: 'coffee' }
+  )
+
   const cost_labour = (() => {
     const { workers, days, rate, mode } = form.labour
     if (mode === 'own') return 0
@@ -175,6 +188,8 @@ function ActivityRecordForm({ plots }: { plots: Plot[] }) {
       if (form.activity_type === 'fertilizer' && !form.fertilizer_type) return false
       if (form.activity_type === 'spraying' && !form.spray_type) return false
       if (form.activity_type === 'pruning' && !form.pruning_type) return false
+      // Block advancement if a banned/restricted chemical is selected
+      if (chemWarning?.blocksSubmission) return false
     }
     return true
   }
@@ -390,6 +405,22 @@ function ActivityRecordForm({ plots }: { plots: Plot[] }) {
                   </button>
                 ))}
               </div>
+              {form.weeding_method === 'herbicide' && (
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Herbicide Product</label>
+                  <select
+                    value={form.product_name || ''}
+                    onChange={e => update('product_name', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-2 text-sm ${chemWarning?.severity === 'critical' ? 'border-red-400 ring-1 ring-red-400' : chemWarning?.severity === 'warning' ? 'border-amber-400 ring-1 ring-amber-400' : 'border-gray-300'}`}
+                  >
+                    <option value="">Select herbicide product…</option>
+                    {['Glyphosate', 'Paraquat', 'Metsulfuron', 'Glufosinate', '2,4-D Amine', 'Diuron', 'Other'].map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                  {chemWarning && <ChemicalComplianceWarning warning={chemWarning} />}
+                </div>
+              )}
             </div>
           )}
           {type === 'fertilizer' && (
@@ -454,11 +485,12 @@ function ActivityRecordForm({ plots }: { plots: Plot[] }) {
                   <select
                     value={form.product_name || ''}
                     onChange={e => update('product_name', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    className={"w-full border rounded-lg px-3 py-2 text-sm " + (chemWarning?.severity === 'critical' ? 'border-red-400 ring-1 ring-red-400' : chemWarning?.severity === 'warning' ? 'border-amber-400 ring-1 ring-amber-400' : 'border-gray-300')}
                   >
                     <option value="">Select product…</option>
                     {SPRAY_PRODUCTS[form.spray_type].map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
+                  {chemWarning && <ChemicalComplianceWarning warning={chemWarning} />}
                 </div>
               )}
             </>
@@ -561,6 +593,9 @@ function ActivityRecordForm({ plots }: { plots: Plot[] }) {
     return (
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-gray-800 mb-1">Review</h2>
+        {chemWarning && (
+          <ChemicalComplianceWarning warning={chemWarning} />
+        )}
         <div className="rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-100 text-sm">
           <div className="flex justify-between p-3 bg-gray-50">
             <span className="text-gray-500">Activity</span>
