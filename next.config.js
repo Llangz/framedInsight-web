@@ -47,14 +47,17 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' blob: data: https://*.supabase.co https://api.agromonitoring.com",
-              "font-src 'self' data:",
+              // ⚠️ TODO: Remove 'unsafe-eval' and 'unsafe-inline' when dependencies allow
+              // Currently required by: Next.js hydration, Supabase client, Leaflet maps
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://maps.googleapis.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' blob: data: https://*.supabase.co https://api.agromonitoring.com https://*.tile.openstreetmap.org",
+              "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https://*.supabase.co https://api.agromonitoring.com https://api2.tiaraconnect.io https://gateway.lipachat.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
+              "upgrade-insecure-requests",
             ].join('; '),
           },
         ],
