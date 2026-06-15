@@ -44,3 +44,53 @@ yarn-error.log*
 
 # Local files
 *.local
+
+# Large unused data files (from audit report)
+lib/schemaframedInsight.md
+lib/Kenya_Wards/
+lib/seed_kenya_locations.sql
+lib/raw_wards.csv
+*.patch
+
+# Status/documentation files
+CHANGES_SUMMARY.md
+OTP_BEFORE_AFTER.md
+VISUAL_SUMMARY.md
+all-fixes-v2.patch
+cleanup.js
+
+# Build artifacts
+.next/
+out/
+dist/
+build/
+
+# Environment files (keep .env.example)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel
+.vercel

@@ -1,6 +1,7 @@
 // 📁 FILE PATH: app/api/poultry/batches/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateCsrfRequest, getSessionId } from '@/lib/csrf'
 
 // ── Auth + ownership guard ─────────────────────────────────────────────────
 
@@ -31,6 +32,11 @@ async function guardBatch(id: string) {
 
 // PUT /api/poultry/batches/[id] — update batch (status, current_count, notes, etc.)
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req);
+  const csrfError = validateCsrfRequest(req, sessionId);
+  if (csrfError) return csrfError;
+
   try {
     const { id } = await context.params
     const body = await req.json()
@@ -57,6 +63,11 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 // Note: cascades to all child records (eggs, feed, health, mortality, sales)
 // Only allow on non-active batches to prevent accidental data loss.
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req);
+  const csrfError = validateCsrfRequest(req, sessionId);
+  if (csrfError) return csrfError;
+
   try {
     const { id } = await context.params
 

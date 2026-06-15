@@ -256,13 +256,7 @@ const ENTERPRISE_BY_ACTION_ID = new Map(
   ENTERPRISES.flatMap(e => Object.keys(e.actions).map(id => [id, e]))
 )
 
-/** Build number shortcut map dynamically from ENTERPRISES array */
-function buildShortcutMap(strings: Strings): Map<string, () => Promise<void>> {
-  const map = new Map<string, () => Promise<void>>()
-  // We need `to` and `sendMenu` in scope — these are created in the handler.
-  // This factory function is called inside the POST handler.
-  return map
-}
+
 
 // ─────────────────────────────────────────────
 // LipaChat API helpers
@@ -433,7 +427,10 @@ export async function POST(req: NextRequest) {
     .single()
 
   // ── Resolve session (lang + menu state)
-  const session = await getSession(supabase, phone, null)
+  // Pass the farm's stored language so returning users get the right locale
+  // even if their session record has expired or been rotated out.
+  const farmLang = (farm as any)?.whatsapp_language as Lang | null ?? null
+  const session = await getSession(supabase, phone, farmLang)
   const strings = t[session.lang]
 
   // ── Convenience: persist session and return 200
@@ -590,5 +587,8 @@ export async function POST(req: NextRequest) {
     try { await sendText(senderNumber, strings.error) } catch {}
   }
 
+  // Single call-site for session persistence — all branches above that need
+  // a different state call done() and return early, so this is only reached
+  // by the AI intent path (success or error).
   return done({ menuState: session.menuState })
 }

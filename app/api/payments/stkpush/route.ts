@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { initiateSTKPush } from '@/lib/daraja'
 import { createClient as createAnonClient } from '@supabase/supabase-js'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { validateCsrfRequest, getSessionId } from '@/lib/csrf'
 
 // Monthly prices in KES — matches lib/tiers.ts
 const TIER_MONTHLY_PRICES: Record<string, number> = {
@@ -12,6 +13,11 @@ const TIER_MONTHLY_PRICES: Record<string, number> = {
 }
 
 export async function POST(req: NextRequest) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req)
+  const csrfError = validateCsrfRequest(req, sessionId)
+  if (csrfError) return csrfError
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -28,7 +34,6 @@ export async function POST(req: NextRequest) {
 
   const token = authHeader.substring(7)
 
-  // Use anon client with the user's JWT so auth.getUser() validates it properly
   const supabaseUser = createAnonClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth:   { autoRefreshToken: false, persistSession: false },
@@ -75,7 +80,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Farm not found or access denied.' }, { status: 403 })
   }
 
-  // ── 5. Fetch farm to get tier and phone — never trust client-supplied amount
+  // ── 5. Fetch farm to get tier and phone ────────────────────────────────────
   const { data: farm, error: farmError } = await supabaseAdmin
     .from('farms')
     .select('id, farm_name, phone, subscription_tier')
@@ -86,7 +91,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Farm not found.' }, { status: 404 })
   }
 
-  // If they are on smallholder, they are upgrading to commercial
   const targetTier = farm.subscription_tier === 'smallholder' ? 'commercial' : farm.subscription_tier
   const monthlyPrice = TIER_MONTHLY_PRICES[targetTier] ?? 500
 
@@ -97,7 +101,6 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Server-side amount — client has no say in this value
   const amount = monthlyPrice * monthsInt
 
   // ── 6. Initiate STK push ───────────────────────────────────────────────────
@@ -105,18 +108,17 @@ export async function POST(req: NextRequest) {
     const stkResponse = await initiateSTKPush(
       farm.phone,
       amount,
-      farmId.slice(0, 12),                      // AccountReference max 12 chars
-      `${monthsInt}mo subscription`             // TransactionDesc max 13 chars
+      farmId.slice(0, 12),
+      `${monthsInt}mo subscription`
     )
 
-    // ── 7. Log pending transaction ─────────────────────────────────────────
     const { error: dbError } = await supabaseAdmin
       .from('transactions')
       .insert({
         farm_id:             farmId,
-        user_id:             user.id,            // from verified session, not body
+        user_id:             user.id,
         amount,
-        phone_number:        farm.phone,          // from DB, not body
+        phone_number:        farm.phone,
         merchant_request_id: stkResponse.MerchantRequestID,
         checkout_request_id: stkResponse.CheckoutRequestID,
         status:              'pending',
@@ -124,7 +126,6 @@ export async function POST(req: NextRequest) {
       })
 
     if (dbError) {
-      // STK push already sent — log but don't fail the response
       console.error('[stkpush] Failed to log transaction:', dbError.message)
     }
 

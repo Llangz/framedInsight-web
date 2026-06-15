@@ -49,17 +49,37 @@ function NewsletterSection() {
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    if (!email.includes('@') || !email.includes('.')) {
-      setError('Please enter a valid email address.')
+  e.preventDefault()
+  setError('')
+  
+  if (!email.includes('@') || !email.includes('.')) {
+    setError('Please enter a valid email address.')
+    return
+  }
+  
+  setLoading(true)
+  
+  try {
+    const res = await fetch('/api/newsletter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    
+    const data = await res.json()
+    
+    if (!res.ok) {
+      setError(data.error || 'Subscription failed. Please try again.')
       return
     }
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    setLoading(false)
+    
     setSubscribed(true)
+  } catch (err) {
+    setError('Network error. Please check your connection and try again.')
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div className="mt-16 bg-white rounded-3xl p-8 shadow-sm border border-gray-100">

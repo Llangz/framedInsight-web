@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { validateCsrfRequest, getSessionId } from '@/lib/csrf';
 
 /**
  * Helper: Create Supabase client with user token (RLS-safe)
@@ -89,6 +90,11 @@ export async function GET(req: NextRequest) {
  * POST /api/coffee/harvests
  */
 export async function POST(req: NextRequest) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req);
+  const csrfError = validateCsrfRequest(req, sessionId);
+  if (csrfError) return csrfError;
+
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {

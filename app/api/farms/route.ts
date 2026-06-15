@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sanitizeObject } from '@/lib/validation';
 import { z } from 'zod';
 import { Database } from '@/lib/database.types';
+import { validateCsrfRequest, getSessionId } from '@/lib/csrf';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -76,6 +77,11 @@ const PatchFarmSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req);
+  const csrfError = validateCsrfRequest(req, sessionId);
+  if (csrfError) return csrfError;
+
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {

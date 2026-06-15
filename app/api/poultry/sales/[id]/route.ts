@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { PoultrySaleSchema } from '@/lib/security'
+import { validateCsrfRequest, getSessionId } from '@/lib/csrf'
 
 // ── Auth + Ownership Guard ─────────────────────────────────────────────────
 async function guardRecord(id: string) {
@@ -37,11 +38,16 @@ async function guardRecord(id: string) {
   return { error: null, status: 200, supabase }
 }
 
-// ── PUT /api/poultry/sales/[id] ────────────────────────────────────────────
+// ── PUT /api/poultry/sales/[id] ────────────────────────────────────────────────
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req);
+  const csrfError = validateCsrfRequest(req, sessionId);
+  if (csrfError) return csrfError;
+
   try {
     const { id } = await context.params
     const body = await req.json()
@@ -105,11 +111,16 @@ export async function PUT(
   }
 }
 
-// ── DELETE /api/poultry/sales/[id] ─────────────────────────────────────────
+// ── DELETE /api/poultry/sales/[id] ───────────────────────────────────────────────
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req);
+  const csrfError = validateCsrfRequest(req, sessionId);
+  if (csrfError) return csrfError;
+
   try {
     const { id } = await context.params
     

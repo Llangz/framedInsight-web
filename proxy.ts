@@ -73,11 +73,7 @@ export default async function proxy(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=self, geolocation=self, microphone=()')
   
-  response.headers.set(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data: https://*.tile.openstreetmap.org https://maps.gstatic.com https://maps.googleapis.com; connect-src 'self' https://*.supabase.co https://gateway.lipachat.com https://api.openai.com https://api.anthropic.com;"
-  )
-
+ 
   return response
 }
 

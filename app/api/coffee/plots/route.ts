@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { validateCsrfRequest, getSessionId } from '@/lib/csrf';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -60,6 +61,11 @@ export async function GET(req: NextRequest) {
  * Create a new coffee plot
  */
 export async function POST(req: NextRequest) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req);
+  const csrfError = validateCsrfRequest(req, sessionId);
+  if (csrfError) return csrfError;
+
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {

@@ -2,6 +2,7 @@
 // Note: DB table is `poultry_mortality` (not poultry_mortality_records — see database.types.ts)
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateCsrfRequest, getSessionId } from '@/lib/csrf'
 
 async function guardRecord(id: string) {
   const supabase = await createClient()
@@ -31,6 +32,11 @@ async function guardRecord(id: string) {
 // PUT /api/poultry/mortality/[id]
 // Typical use: correct count_dead, cause, notes, record_date
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req);
+  const csrfError = validateCsrfRequest(req, sessionId);
+  if (csrfError) return csrfError;
+
   try {
     const { id } = await context.params
     const body = await req.json()
@@ -56,6 +62,11 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 // Deleting a mortality record does NOT auto-restore current_count on the batch.
 // The client must separately PATCH /api/poultry/batches/[id] if needed.
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  // ── CSRF Validation ──────────────────────────────────────────────────────
+  const sessionId = getSessionId(req);
+  const csrfError = validateCsrfRequest(req, sessionId);
+  if (csrfError) return csrfError;
+
   try {
     const { id } = await context.params
 

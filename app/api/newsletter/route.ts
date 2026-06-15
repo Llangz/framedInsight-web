@@ -13,23 +13,33 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const normalizedEmail = email.toLowerCase().trim()
 
-    const db = supabase as any
-
-    const { data: existing } = await db
+    // Check if already subscribed
+    const { data: existing } = await supabase
       .from('newsletter_subscribers')
-      .select('id')
-      .eq('email', email.toLowerCase().trim())
+      .select('id, status')
+      .eq('email', normalizedEmail)
       .single()
 
     if (existing) {
+      if (existing.status === 'unsubscribed') {
+        // Re-subscribe
+        await supabase
+          .from('newsletter_subscribers')
+          .update({ status: 'active', subscribed_at: new Date().toISOString() })
+          .eq('id', existing.id)
+        
+        return NextResponse.json({ message: 'Welcome back! Resubscribed successfully.' }, { status: 200 })
+      }
       return NextResponse.json({ message: 'Already subscribed!' }, { status: 200 })
     }
 
-    const { error } = await db
+    // Insert new subscriber
+    const { error } = await supabase
       .from('newsletter_subscribers')
       .insert({
-        email: email.toLowerCase().trim(),
+        email: normalizedEmail,
         subscribed_at: new Date().toISOString(),
         status: 'active',
       })
