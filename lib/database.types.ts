@@ -3621,6 +3621,198 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string | null
+          farm_id: string
+          id: string
+          ip_address: string | null
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string | null
+          farm_id: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string | null
+          farm_id?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      coffee_plot_weather: {
+        Row: {
+          cbd_risk_score: number | null
+          clr_risk_score: number | null
+          created_at: string | null
+          date: string
+          drought_stress_score: number | null
+          evapotranspiration: number | null
+          id: string
+          plot_id: string
+          precipitation_sum: number | null
+          relative_humidity_2m_mean: number | null
+          soil_moisture_0_to_10cm: number | null
+          temperature_2m_max: number | null
+          temperature_2m_mean: number | null
+          temperature_2m_min: number | null
+          weather_code: number | null
+        }
+        Insert: {
+          cbd_risk_score?: number | null
+          clr_risk_score?: number | null
+          created_at?: string | null
+          date: string
+          drought_stress_score?: number | null
+          evapotranspiration?: number | null
+          id?: string
+          plot_id: string
+          precipitation_sum?: number | null
+          relative_humidity_2m_mean?: number | null
+          soil_moisture_0_to_10cm?: number | null
+          temperature_2m_max?: number | null
+          temperature_2m_mean?: number | null
+          temperature_2m_min?: number | null
+          weather_code?: number | null
+        }
+        Update: {
+          cbd_risk_score?: number | null
+          clr_risk_score?: number | null
+          created_at?: string | null
+          date?: string
+          drought_stress_score?: number | null
+          evapotranspiration?: number | null
+          id?: string
+          plot_id?: string
+          precipitation_sum?: number | null
+          relative_humidity_2m_mean?: number | null
+          soil_moisture_0_to_10cm?: number | null
+          temperature_2m_max?: number | null
+          temperature_2m_mean?: number | null
+          temperature_2m_min?: number | null
+          weather_code?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coffee_plot_weather_plot_id_fkey"
+            columns: ["plot_id"]
+            isOneToOne: false
+            referencedRelation: "coffee_plots"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      newsletter_subscribers: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          status: string
+          subscribed_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          status?: string
+          subscribed_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          status?: string
+          subscribed_at?: string | null
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          checkout_request_id: string
+          created_at: string | null
+          farm_id: string | null
+          id: string
+          merchant_request_id: string
+          months_added: number
+          mpesa_receipt_number: string | null
+          phone_number: string
+          result_desc: string | null
+          status: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          checkout_request_id: string
+          created_at?: string | null
+          farm_id?: string | null
+          id?: string
+          merchant_request_id: string
+          months_added?: number
+          mpesa_receipt_number?: string | null
+          phone_number: string
+          result_desc?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          checkout_request_id?: string
+          created_at?: string | null
+          farm_id?: string | null
+          id?: string
+          merchant_request_id?: string
+          months_added?: number
+          mpesa_receipt_number?: string | null
+          phone_number?: string
+          result_desc?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       coffee_cost_summary: {
@@ -4239,6 +4431,34 @@ export type Database = {
           traffic_light_status: string | null
         }
         Relationships: []
+      }
+      v_plot_latest_weather: {
+        Row: {
+          avg_cbd_risk_7d: number | null
+          avg_clr_risk_7d: number | null
+          avg_drought_risk_7d: number | null
+          cbd_risk_score: number | null
+          clr_risk_score: number | null
+          drought_stress_score: number | null
+          farm_id: string | null
+          plot_id: string | null
+          plot_name: string | null
+          precipitation_sum: number | null
+          region_name: string | null
+          relative_humidity_2m_mean: number | null
+          soil_moisture_0_to_10cm: number | null
+          temperature_2m_mean: number | null
+          weather_date: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coffee_plots_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Functions: {

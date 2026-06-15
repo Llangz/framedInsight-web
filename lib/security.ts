@@ -62,7 +62,7 @@ export const PoultrySaleSchema = z.object({
 })
 
 // ============================================================================
-// RATE LIMITING (In-Memory Fallback)
+// RATE LIMITING (Vercel KV / Upstash Redis with In-Memory Fallback)
 // ============================================================================
 
 interface RateLimitEntry {
@@ -81,11 +81,7 @@ if (typeof setInterval !== 'undefined') {
   }, 5 * 60 * 1000)
 }
 
-export function checkRateLimit(
-  key: string,
-  maxRequests: number = 10,
-  windowMs: number = 60_000
-): boolean {
+function checkRateLimitInMemory(key: string, maxRequests: number, windowMs: number): boolean {
   const now = Date.now()
   const entry = rateLimitStore.get(key)
 
@@ -98,6 +94,52 @@ export function checkRateLimit(
 
   entry.count++
   return true
+}
+
+export async function checkRateLimit(
+  key: string,
+  maxRequests: number = 10,
+  windowMs: number = 60_000
+): Promise<boolean> {
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN
+
+  if (!url || !token) {
+    // Graceful fallback to memory if KV is not configured
+    return checkRateLimitInMemory(key, maxRequests, windowMs);
+  }
+
+  try {
+    // Vercel KV REST API via Upstash Pipeline
+    const response = await fetch(`${url}/pipeline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify([
+        ['INCR', key],
+        ['PTTL', key]
+      ])
+    })
+    
+    if (!response.ok) return true; // fail open
+
+    const results = await response.json();
+    const count = results[0]?.result;
+    const ttl = results[1]?.result;
+
+    // If there's no expiration set (-1 or -2)
+    if (ttl === -1 || ttl === -2) {
+      await fetch(`${url}/`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(['PEXPIRE', key, windowMs])
+      });
+    }
+
+    return count <= maxRequests;
+  } catch (error) {
+    console.warn('[Rate Limit] KV error, falling back to memory:', error)
+    return checkRateLimitInMemory(key, maxRequests, windowMs);
+  }
 }
 
 // ============================================================================

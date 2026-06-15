@@ -1,3 +1,6 @@
+import { checkRateLimit } from '@/lib/security'
+
+// The rest of imports remain
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -9,46 +12,6 @@ function normalisePhone(phone: string): string {
   if (digits.startsWith('0')) digits = '254' + digits.slice(1)
   if (!digits.startsWith('254')) throw new Error('Invalid Kenyan phone number')
   return '+' + digits
-}
-
-// ---- RATE LIMITER (global + per-phone) ----
-const verifyRateLimit = new Map<string, { count: number; resetAt: number }>()
-// Clean up every minute
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now()
-    for (const [key, entry] of verifyRateLimit) {
-      if (entry.resetAt < now) verifyRateLimit.delete(key)
-    }
-  }, 60_000)
-}
-
-function checkVerifyRateLimit(phone: string, ip: string): boolean {
-  const now = Date.now()
-  
-  // Per-phone limit: 10 attempts per minute
-  const phoneKey = `verify:phone:${phone}`
-  const phoneEntry = verifyRateLimit.get(phoneKey)
-  if (phoneEntry && phoneEntry.resetAt > now && phoneEntry.count >= 10) return false
-  
-  // Global IP limit: 30 attempts per minute (basic DDoS protection)
-  const ipKey = `verify:ip:${ip}`
-  const ipEntry = verifyRateLimit.get(ipKey)
-  if (ipEntry && ipEntry.resetAt > now && ipEntry.count >= 30) return false
-  
-  // Update counters
-  const updateCounter = (key: string) => {
-    const entry = verifyRateLimit.get(key)
-    if (!entry || entry.resetAt < now) {
-      verifyRateLimit.set(key, { count: 1, resetAt: now + 60_000 })
-    } else {
-      entry.count++
-    }
-  }
-  
-  updateCounter(phoneKey)
-  updateCounter(ipKey)
-  return true
 }
 
 export async function POST(req: NextRequest) {
@@ -106,7 +69,13 @@ export async function POST(req: NextRequest) {
 
   // ---- RATE LIMIT CHECK ----
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
-  if (!checkVerifyRateLimit(normalisedPhone, ip)) {
+  
+  // Per-phone limit: 10 attempts per minute
+  const phoneAllowed = await checkRateLimit(`verify:phone:${normalisedPhone}`, 10, 60_000)
+  // Global IP limit: 30 attempts per minute
+  const ipAllowed = await checkRateLimit(`verify:ip:${ip}`, 30, 60_000)
+
+  if (!phoneAllowed || !ipAllowed) {
     console.warn('[verify-otp] Rate limited:', normalisedPhone.slice(0, 7) + '***', 'IP:', ip)
     return NextResponse.json(
       { error: 'Too many attempts. Please wait a moment before trying again.' },

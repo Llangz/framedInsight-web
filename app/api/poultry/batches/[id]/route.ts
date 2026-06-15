@@ -30,6 +30,19 @@ async function guardBatch(id: string) {
   return { error: null, status: 200, supabase }
 }
 
+import { z } from 'zod'
+
+const updateBatchSchema = z.object({
+  batch_name: z.string().min(1).optional(),
+  bird_type: z.string().optional(),
+  current_count: z.number().int().min(0).optional(),
+  date_of_placement: z.string().optional(),
+  notes: z.string().nullable().optional(),
+  purpose: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  status: z.enum(['active', 'sold', 'culled', 'closed']).optional(),
+}).strict()
+
 // PUT /api/poultry/batches/[id] — update batch (status, current_count, notes, etc.)
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   // ── CSRF Validation ──────────────────────────────────────────────────────
@@ -41,12 +54,18 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const { id } = await context.params
     const body = await req.json()
 
+    // Validate and whitelist fields using Zod
+    const validation = updateBatchSchema.safeParse(body)
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Invalid update payload', details: validation.error.format() }, { status: 400 })
+    }
+
     const guard = await guardBatch(id)
     if (guard.error) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
     const { data, error } = await (guard.supabase as any)
       .from('poultry_batches')
-      .update(body)
+      .update(validation.data)
       .eq('id', id)
       .select()
       .single()
