@@ -1,115 +1,141 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import DairyClient from './DairyClient'
+import DairyDashboard from './DairyDashboard'
+import { validateFarmAccess } from '@/lib/validate-farm-access'
+import type { Cow } from '@/lib/database.types'
 
-export default async function DairyPage() {
-  const supabase = await createClient()
+export const dynamic = 'force-dynamic'
 
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
+export default async function DairyDashboardPage() {
+  const access = await validateFarmAccess()
+  
+  if (!access.success) {
     redirect('/auth/login')
   }
 
-  const { data: farmManager } = await supabase
-    .from('farm_managers')
-    .select('farm_id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!farmManager) {
-    redirect('/onboarding')
-  }
-
-  const farmId = farmManager.farm_id
-
-  // 1. Get all cows for this farm
-  const { data: cows } = await supabase
+  const supabase = await createClient()
+  
+  // Fetch cows first to get cowIds
+  const { data: cows, error: cowsError } = await supabase
     .from('cows')
-    .select('id, status, cow_tag')
-    .eq('farm_id', farmId)
+    .select('*')  // ✅ Select ALL fields
+    .eq('farm_id', access.farmId!)
+    .eq('status', 'active')
 
-  const cowIds = cows?.map(c => c.id) || []
-  const todayDate = new Date().toISOString().split('T')[0]
-  const weekAgo = new Date()
-  weekAgo.setDate(weekAgo.getDate() - 7)
-  const weekAgoStr = weekAgo.toISOString().split('T')[0]
-
-  // 2. Milk Records
-  let milkRecords: any[] = []
-  if (cowIds.length > 0) {
-    const { data } = await supabase
-      .from('milk_records')
-      .select('total_milk, record_date')
-      .in('cow_id', cowIds)
-      .gte('record_date', weekAgoStr)
-    milkRecords = data || []
+  if (cowsError || !cows) {
+    console.error('Failed to fetch cows:', cowsError)
+    return <div className="p-4 text-red-600">Failed to load dairy data</div>
   }
 
-  const todayMilk = milkRecords
-    .filter(r => r.record_date === todayDate)
-    .reduce((sum, r) => sum + (r.total_milk || 0), 0)
-
-  const weekTotalMilk = milkRecords.reduce((sum, r) => sum + (r.total_milk || 0), 0)
-  const uniqueDays = new Set(milkRecords.map(r => r.record_date)).size || 1
-  const avgDailyMilk = weekTotalMilk / uniqueDays
-
-  // 3. Upcoming Events (Breeding)
-  let upcomingEvents: any[] = []
-  if (cowIds.length > 0) {
-    const { data } = await supabase
-      .from('breeding_events')
-      .select('id, expected_calving_date, cow_id')
-      .in('cow_id', cowIds)
-      .gte('expected_calving_date', todayDate)
-      .order('expected_calving_date', { ascending: true })
-      .limit(3)
-    upcomingEvents = data || []
-  }
-
-  // 4. Health Alerts (Vet Visits)
-  const { data: recentHealth } = await supabase
-    .from('vet_visits')
-    .select('id, visit_reason, cow_id')
-    .eq('farm_id', farmId)
-    .gte('visit_date', weekAgoStr)
-    .order('visit_date', { ascending: false })
-    .limit(3)
-
-  const cowMap = Object.fromEntries(cows?.map(c => [c.id, c.cow_tag]) || [])
-
-  const stats = {
-    total_cows: cows?.length || 0,
-    producing_cows: cows?.filter(c => c.status === 'active').length || 0,
-    dry_cows: cows?.filter(c => c.status === 'dry').length || 0,
-    today_milk: todayMilk,
-    avg_daily_milk: parseFloat(avgDailyMilk.toFixed(1)),
-    calves: cows?.filter(c => c.status === 'heifer').length || 0,
-  }
-
-  const alerts = recentHealth?.map(alert => ({
-    id: alert.id,
-    message: `${(alert.cow_id ? cowMap[alert.cow_id] : null) || 'Cow'} - ${alert.visit_reason || 'Vet Visit'}`,
-    subMessage: 'Recent health issue',
-    type: 'health'
-  })) || []
-
-  const upcoming = upcomingEvents.map(event => {
-    const daysTo = Math.ceil(
-      (new Date(event.expected_calving_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24)
+  const cowIds = cows.map(c => c.id)
+  
+  // If no cows, return empty dashboard
+  if (cowIds.length === 0) {
+    return (
+      <DairyDashboard
+        cows={[]}
+        milkRecords={[]}
+        breedingEvents={[]}
+        vetVisits={[]}
+        healthRecords={[]}
+        stats={{
+          totalCows: 0,
+          milkingCows: 0,
+          totalMilkToday: 0,
+          avgMilkLast7Days: 0,
+          pendingBreedings: 0,
+          recentHealthIssues: 0,
+          upcomingVetVisits: 0,
+        }}
+      />
     )
-    return {
-      id: event.id,
-      message: `${cowMap[event.cow_id] || 'Cow'} - Expected Calving`,
-      subMessage: `In ${daysTo} days`,
-      type: 'calving'
-    }
-  })
+  }
+
+  // ⚡ PARALLEL FETCH: Execute all heavy queries concurrently
+  const [milkRecordsResult, breedingEventsResult, vetVisitsResult, healthRecordsResult] = await Promise.all([
+    // Milk records (last 30 days)
+    supabase
+      .from('milk_records')
+      .select('*')  // ✅ Select ALL fields
+      .in('cow_id', cowIds)
+      .gte('record_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+      .order('record_date', { ascending: false }),
+    
+    // Breeding events
+    supabase
+      .from('breeding_events')
+      .select('*')  // ✅ Select ALL fields
+      .in('cow_id', cowIds)
+      .or('pregnancy_result.is.null,pregnancy_result.eq.pending')
+      .order('service_date', { ascending: false }),
+    
+    // Vet visits (last 90 days)
+    supabase
+      .from('vet_visits')
+      .select('*')  // ✅ Select ALL fields
+      .eq('farm_id', access.farmId!)
+      .in('cow_id', cowIds)
+      .gte('visit_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+      .order('visit_date', { ascending: false }),
+    
+    // Health records (last 90 days)
+    supabase
+      .from('health_records')
+      .select('*')  // ✅ Select ALL fields
+      .in('cow_id', cowIds)
+      .gte('treatment_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+      .order('treatment_date', { ascending: false }),
+  ])
+
+  // ✅ Don't force types - let TypeScript infer from the query results
+  const milkRecords = milkRecordsResult.data ?? []
+  const breedingEvents = breedingEventsResult.data ?? []
+  const vetVisits = vetVisitsResult.data ?? []
+  const healthRecords = healthRecordsResult.data ?? []
+
+  // Log any errors for debugging
+  if (milkRecordsResult.error) console.error('Milk records error:', milkRecordsResult.error)
+  if (breedingEventsResult.error) console.error('Breeding events error:', breedingEventsResult.error)
+  if (vetVisitsResult.error) console.error('Vet visits error:', vetVisitsResult.error)
+  if (healthRecordsResult.error) console.error('Health records error:', healthRecordsResult.error)
+
+  // Calculate stats
+  const today = new Date().toISOString().split('T')[0]
+  const stats = {
+    totalCows: cows.length,
+    milkingCows: cows.filter(c => c.purpose === 'dairy').length,
+    totalMilkToday: milkRecords
+      .filter(r => r.record_date === today)
+      .reduce((sum, r) => sum + (r.total_milk || 0), 0),
+    avgMilkLast7Days: calculateAvgMilk(milkRecords, 7),
+    pendingBreedings: breedingEvents.length,
+    recentHealthIssues: healthRecords.length,
+    upcomingVetVisits: vetVisits.filter(v => v.next_visit_date).length,
+  }
 
   return (
-    <div className="min-h-screen">
-      <DairyClient stats={stats} alerts={alerts} upcoming={upcoming} />
-    </div>
+    <DairyDashboard
+      cows={cows}
+      milkRecords={milkRecords}
+      breedingEvents={breedingEvents}
+      vetVisits={vetVisits}
+      healthRecords={healthRecords}
+      stats={stats}
+    />
   )
 }
 
+function calculateAvgMilk(
+  records: Array<{ record_date: string; total_milk: number | null }>, 
+  days: number
+): number {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const recentRecords = records.filter(r => r.record_date >= cutoff)
+  
+  if (recentRecords.length === 0) return 0
+  
+  const total = recentRecords.reduce((sum, r) => sum + (r.total_milk || 0), 0)
+  const uniqueDays = new Set(recentRecords.map(r => r.record_date)).size
+  
+  return uniqueDays > 0 ? parseFloat((total / uniqueDays).toFixed(2)) : 0
+}

@@ -1,61 +1,117 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import MilkClient from './MilkClient'
+import { validateFarmAccess } from '@/lib/validate-farm-access'
+import type { MilkRecord, Cow } from '@/lib/database.types'
 
-export default async function MilkRecordsPage() {
-  const supabase = await createClient()
+interface MilkPageProps {
+  searchParams: Promise<{
+    page?: string
+    cowId?: string
+    startDate?: string
+    endDate?: string
+  }>
+}
 
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
+export default async function MilkRecordsPage({ searchParams }: MilkPageProps) {
+  const params = await searchParams
+  const access = await validateFarmAccess()
+  
+  if (!access.success) {
     redirect('/auth/login')
   }
 
-  const { data: farmManager } = await supabase
-    .from('farm_managers')
-    .select('farm_id')
-    .eq('user_id', user.id)
-    .single()
+  const supabase = await createClient()
+  const page = Number(params.page) || 1
+  const limit = 20
+  const from = (page - 1) * limit
+  const to = from + limit - 1
 
-  if (!farmManager) {
-    redirect('/onboarding')
-  }
-
-  // Load cows
-  const { data: cowsData } = await supabase
+  // Get cow IDs for this farm first (milk_records has no farm_id)
+  const { data: farmCows } = await supabase
     .from('cows')
-    .select('id, name, cow_tag')
-    .eq('farm_id', farmManager.farm_id)
-    .eq('status', 'active')
-    .order('name')
+    .select('id')
+    .eq('farm_id', access.farmId!)
 
-  const cows = cowsData || []
-  const cowIds = cows.map(c => c.id)
+  const cowIds = farmCows?.map(c => c.id) ?? []
 
-  // Load milk records via cow_ids (milk_records has no farm_id column)
-  let records: any[] = []
-  let error = null
-  if (cowIds.length > 0) {
-    const result = await supabase
-      .from('milk_records')
-      .select(`
-        *,
-        cows (name, cow_tag)
-      `)
-      .in('cow_id', cowIds)
-      .order('record_date', { ascending: false })
-    records = result.data || []
-    error = result.error
+  // If no cows, return empty results
+  if (cowIds.length === 0) {
+    return (
+      <MilkClient
+        records={[]}
+        cows={[]}
+        pagination={{
+          currentPage: page,
+          totalPages: 0,
+          totalRecords: 0,
+          hasPrev: false,
+          hasNext: false,
+        }}
+        filters={{
+          cowId: params.cowId,
+          startDate: params.startDate,
+          endDate: params.endDate,
+        }}
+      />
+    )
   }
+
+  // Build query with filters
+  let query = supabase
+    .from('milk_records')
+    .select('*', { count: 'exact' })
+    .in('cow_id', cowIds)
+
+  // Apply cow filter
+  if (params.cowId) {
+    query = query.eq('cow_id', params.cowId)
+  }
+
+  // Apply date range filters
+  if (params.startDate) {
+    query = query.gte('record_date', params.startDate)
+  }
+  if (params.endDate) {
+    query = query.lte('record_date', params.endDate)
+  }
+
+  // Execute paginated query
+  const { data: records, error, count } = await query
+    .order('record_date', { ascending: false })
+    .range(from, to)
 
   if (error) {
-    console.error('Error loading milk records:', error)
+    console.error('Failed to fetch milk records:', error)
+    return <div className="p-4 text-red-600">Failed to load milk records</div>
   }
 
+  // Fetch FULL cow objects for filter dropdown and display
+  const { data: cows } = await supabase
+    .from('cows')
+    .select('*')  // ✅ Select ALL fields to match Cow type
+    .eq('farm_id', access.farmId!)
+    .eq('status', 'active')
+    .order('cow_tag')
+
+  const totalPages = count ? Math.ceil(count / limit) : 0
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <MilkClient initialRecords={records || []} initialCows={cows} />
-    </div>
+    <MilkClient
+      records={records ?? []}
+      cows={cows ?? []}
+      pagination={{
+        currentPage: page,
+        totalPages,
+        totalRecords: count ?? 0,
+        hasPrev: page > 1,
+        hasNext: page < totalPages,
+      }}
+      filters={{
+        cowId: params.cowId,
+        startDate: params.startDate,
+        endDate: params.endDate,
+      }}
+    />
   )
 }
-

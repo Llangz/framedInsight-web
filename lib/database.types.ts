@@ -4604,3 +4604,23 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+// Convenient type aliases derived from Database
+export type MilkRecord = Database['public']['Tables']['milk_records']['Row']
+export type Cow = Database['public']['Tables']['cows']['Row']
+export type SmallRuminant = Database['public']['Tables']['small_ruminants']['Row']
+export type CoffeePlot = Database['public']['Tables']['coffee_plots']['Row']
+export type CoffeeHarvest = Database['public']['Tables']['coffee_harvests']['Row']
+export type PoultryBatch = Database['public']['Tables']['poultry_batches']['Row']
+export type Farm = Database['public']['Tables']['farms']['Row']
+export type FarmManager = Database['public']['Tables']['farm_managers']['Row']
+export type VetVisit = Database['public']['Tables']['vet_visits']['Row']
+export type BreedingEvent = Database['public']['Tables']['breeding_events']['Row']
+export type HealthRecord = Database['public']['Tables']['health_records']['Row']
+export type GoatMilkRecord = Database['public']['Tables']['goat_milk_records']['Row']
+
+// Insert types
+export type MilkRecordInsert = Database['public']['Tables']['milk_records']['Insert']
+export type CowInsert = Database['public']['Tables']['cows']['Insert']
+export type VetVisitInsert = Database['public']['Tables']['vet_visits']['Insert']
+// ... add more as needed
