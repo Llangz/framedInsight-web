@@ -27,5 +27,5 @@ export default async function RecordMilkPage() {
     .eq("status", "active")
     .order("cow_tag");
 
-  return <RecordMilkClient initialCows={cows || []} />;
+  return <RecordMilkClient farmId={farmManager.farm_id} initialCows={cows || []} />;
 }

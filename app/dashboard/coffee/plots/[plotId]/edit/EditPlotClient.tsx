@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Database } from '@/lib/database.types'
+import { updateCoffeePlot } from '../../actions'
 
 type CoffeePlot = Database['public']['Tables']['coffee_plots']['Row']
 
@@ -22,7 +23,7 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
     variety: plot.variety || '',
     total_trees: plot.total_trees?.toString() || '',
     productive_trees: plot.productive_trees?.toString() || '',
-    area_hectares: plot.area_hectares?.toString() || '',
+    land_size_acres: plot.land_size_acres?.toString() || '',
     establishment_year: plot.establishment_year?.toString() || '',
   })
 
@@ -33,16 +34,14 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/coffee/plots/${plot.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      await updateCoffeePlot(plot.id, {
+        plot_name: formData.plot_name,
+        variety: formData.variety || null,
+        total_trees: formData.total_trees ? Number(formData.total_trees) : 0,
+        productive_trees: formData.productive_trees ? Number(formData.productive_trees) : null,
+        land_size_acres: formData.land_size_acres ? Number(formData.land_size_acres) : null,
+        establishment_year: formData.establishment_year ? Number(formData.establishment_year) : null,
       })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to update plot')
-      }
 
       setSuccess('Plot updated successfully!')
       setTimeout(() => router.push(`/dashboard/coffee/plots/${plot.id}`), 1500)
@@ -126,12 +125,12 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Area (hectares)</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Land Size (acres)</label>
               <input
                 type="number"
                 step="0.01"
-                value={formData.area_hectares}
-                onChange={e => setFormData({...formData, area_hectares: e.target.value})}
+                value={formData.land_size_acres}
+                onChange={e => setFormData({...formData, land_size_acres: e.target.value})}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
             </div>
