@@ -1,12 +1,41 @@
+// 📁 FILE PATH: app/dashboard/dairy/health/HealthClient.tsx
 'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft, AlertCircle, CheckCircle2, Info } from 'lucide-react'
 import { recordHealthEvent } from './actions'
 
 interface HealthClientProps {
   initialCows: any[]
   initialHistory: any[]
+}
+
+const FIELD = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-[#4B5563] transition-colors'
+const LABEL = 'block text-xs font-medium text-[#D1D5DB] mb-1'
+
+function fmt(d: string) {
+  return new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+const COMMON_ISSUES = [
+  'Mastitis', 'Foot and Mouth Disease', 'Brucellosis', 'Lameness',
+  'Bloat', 'Diarrhea', 'Anemia', 'Pregnancy complications',
+  'Tick infestation', 'Worm infestation', 'Pneumonia', 'Other',
+]
+
+const VACCINATION_TYPES = [
+  'Foot and Mouth Disease (FMD)', 'Brucellosis', 'Anthrax',
+  'Lumpy Skin Disease (LSD)', 'East Coast Fever (ECF)',
+  'Blackleg', 'Rift Valley Fever', 'Rabies', 'Other',
+]
+
+const RECORD_TYPE_CLASSES: Record<string, string> = {
+  vaccination: 'text-sky-400 border-sky-900/40 bg-sky-950/30',
+  treatment:   'text-amber-400 border-amber-900/40 bg-amber-950/30',
+  diagnosis:   'text-purple-400 border-purple-900/40 bg-purple-950/30',
+  checkup:     'text-emerald-400 border-emerald-900/40 bg-emerald-950/30',
 }
 
 export default function HealthClient({ initialCows, initialHistory }: HealthClientProps) {
@@ -16,351 +45,248 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
   const [success, setSuccess] = useState('')
   const [tab, setTab] = useState<'record' | 'history'>('record')
 
-  const [formData, setFormData] = useState({
-    animal_id: '',
-    record_type: 'treatment' as 'treatment' | 'vaccination',
-    health_issue: '',
-    medication: '',
-    dosage: '',
-    dosage_unit: 'ml',
-    treatment_date: new Date().toISOString().split('T')[0],
-    withdrawal_period_days: '0',
-    veterinarian: '',
-    cost: '',
-    notes: ''
+  const [form, setForm] = useState({
+    animal_id:               '',
+    record_type:             'treatment' as 'treatment' | 'vaccination' | 'diagnosis' | 'checkup',
+    health_issue:            '',
+    medication:              '',
+    dosage:                  '',
+    dosage_unit:             'ml',
+    treatment_date:          new Date().toISOString().split('T')[0],
+    withdrawal_period_days:  '0',
+    veterinarian:            '',
+    cost:                    '',
+    notes:                   '',
   })
 
-  const recordTypes = [
-    { value: 'treatment', label: 'Treatment' },
-    { value: 'vaccination', label: 'Vaccination' },
-    { value: 'diagnosis', label: 'Diagnosis' },
-    { value: 'checkup', label: 'Health Checkup' }
-  ]
-
-  const commonIssues = [
-    'Mastitis',
-    'Foot and Mouth Disease',
-    'Brucellosis',
-    'Lameness',
-    'Bloat',
-    'Diarrhea',
-    'Anemia',
-    'Pregnancy Complications',
-    'Other'
-  ]
-
-  const vaccinationTypes = [
-    'Brucellosis',
-    'Foot and Mouth Disease',
-    'Anthrax',
-    'Lumpy Skin Disease',
-    'East Coast Fever',
-    'Rinderpest',
-    'Other'
-  ]
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!form.animal_id) { setError('Select a cow'); return }
+    if (!form.health_issue) { setError('Select the health issue or vaccine type'); return }
     setLoading(true)
     setError('')
-
     try {
-      await recordHealthEvent(formData)
-
-      setSuccess(`${formData.record_type === 'vaccination' ? 'Vaccination' : 'Health'} record added successfully!`)
-      setFormData({
-        animal_id: '',
-        record_type: 'treatment' as 'treatment' | 'vaccination',
-        health_issue: '',
-        medication: '',
-        dosage: '',
-        dosage_unit: 'ml',
+      await recordHealthEvent(form)
+      setSuccess(`${form.record_type === 'vaccination' ? 'Vaccination' : 'Health'} record saved!`)
+      setForm({
+        animal_id: '', record_type: 'treatment', health_issue: '',
+        medication: '', dosage: '', dosage_unit: 'ml',
         treatment_date: new Date().toISOString().split('T')[0],
-        withdrawal_period_days: '0',
-        veterinarian: '',
-        cost: '',
-        notes: ''
+        withdrawal_period_days: '0', veterinarian: '', cost: '', notes: '',
       })
-
-      setTimeout(() => {
-        router.refresh()
-        setTab('history')
-      }, 2000)
+      setTimeout(() => { router.refresh(); setTab('history') }, 2000)
     } catch (err: any) {
-      setError(err.message || 'Failed to record health information')
+      setError(err.message || 'Failed to record health event')
     } finally {
       setLoading(false)
     }
   }
 
+  const issueOptions = form.record_type === 'vaccination' ? VACCINATION_TYPES : COMMON_ISSUES
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 p-6">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Health & Veterinary</h1>
-          <p className="text-gray-600">Track medical treatments, vaccinations, and health records</p>
+    <div className="min-h-screen bg-obsidian">
+      <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/dairy" className="text-[#6B7280] hover:text-white transition-colors">
+            <ArrowLeft size={16} />
+          </Link>
+          <div>
+            <h1 className="text-lg font-semibold text-white">Health &amp; Veterinary</h1>
+            <p className="text-xs text-[#6B7280] mt-0.5">Treatments, vaccinations and health checks</p>
+          </div>
         </div>
 
-        <div className="flex gap-4 mb-6">
-          <button
-            onClick={() => setTab('record')}
-            className={`px-6 py-2 rounded-lg font-semibold transition duration-200 ${
-              tab === 'record' ? 'bg-amber-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Record Health Event
-          </button>
-          <button
-            onClick={() => setTab('history')}
-            className={`px-6 py-2 rounded-lg font-semibold transition duration-200 ${
-              tab === 'history' ? 'bg-amber-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Health History
-          </button>
+        {/* Tab switcher */}
+        <div className="flex gap-1 p-1 rounded-lg border border-[#2A2D35] bg-[#0D0F14] w-fit">
+          {(['record', 'history'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors capitalize ${
+                tab === t ? 'text-white bg-white/10' : 'text-[#6B7280] hover:text-white'
+              }`}
+            >
+              {t === 'record' ? 'Record event' : 'History'}
+            </button>
+          ))}
         </div>
 
         {tab === 'record' && (
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700 font-medium">{error}</p>
+              <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-900/40 bg-red-950/30">
+                <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
+                <p className="text-sm text-red-300">{error}</p>
               </div>
             )}
-
             {success && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-700 font-medium">✓ {success}</p>
+              <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-emerald-900/40 bg-emerald-950/30">
+                <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0" />
+                <p className="text-sm text-emerald-300">{success}</p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Cow *</label>
-                <select
-                  value={formData.animal_id}
-                  onChange={(e) => setFormData({ ...formData, animal_id: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
-                >
-                  <option value="">Choose a cow</option>
-                  {initialCows.map((cow) => (
-                    <option key={cow.id} value={cow.id}>
-                      {cow.animal_id || cow.cow_tag}
-                    </option>
-                  ))}
-                </select>
+            {initialCows.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[#2A2D35] p-8 text-center">
+                <p className="text-sm text-[#6B7280] mb-2">No active cows registered</p>
+                <Link href="/dashboard/dairy/add-cow" className="text-sm text-emerald-500">Add a cow →</Link>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Record Type *</label>
-                <select
-                  value={formData.record_type}
-                  onChange={(e) => setFormData({ ...formData, record_type: e.target.value as 'treatment' | 'vaccination', health_issue: '' })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
-                >
-                  {recordTypes.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {formData.record_type === 'vaccination' ? 'Vaccine Type' : 'Health Issue'} *
-                </label>
-                <select
-                  value={formData.health_issue}
-                  onChange={(e) => setFormData({ ...formData, health_issue: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
-                >
-                  <option value="">Select an issue</option>
-                  {(formData.record_type === 'vaccination' ? vaccinationTypes : commonIssues).map((issue) => (
-                    <option key={issue} value={issue}>
-                      {issue}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {formData.record_type === 'treatment' && (
-                <div className="bg-blue-50 rounded-lg p-6 space-y-4">
-                  <h3 className="font-semibold text-gray-900">Treatment Details</h3>
+            ) : (
+              <>
+                {/* Cow + Record type */}
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Medication Name</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Amoxicillin"
-                      value={formData.medication}
-                      onChange={(e) => setFormData({ ...formData, medication: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Dosage</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        placeholder="100"
-                        value={formData.dosage}
-                        onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Unit</label>
-                      <select
-                        value={formData.dosage_unit}
-                        onChange={(e) => setFormData({ ...formData, dosage_unit: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      >
-                        <option value="ml">ml</option>
-                        <option value="l">L</option>
-                        <option value="g">g</option>
-                        <option value="kg">kg</option>
-                        <option value="tablet">tablet</option>
-                      </select>
-                    </div>
+                    <label className={LABEL}>Cow *</label>
+                    <select className={FIELD} value={form.animal_id} onChange={e => set('animal_id', e.target.value)} required>
+                      <option value="">Select cow</option>
+                      {initialCows.map(c => (
+                        <option key={c.id} value={c.id}>{c.cow_tag || c.animal_id}{c.name ? ` — ${c.name}` : ''}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Withdrawal Period (Days)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={formData.withdrawal_period_days}
-                      onChange={(e) => setFormData({ ...formData, withdrawal_period_days: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                    <p className="text-gray-500 text-xs mt-1">Days before milk/meat can be used for sale</p>
+                    <label className={LABEL}>Event type *</label>
+                    <select className={FIELD} value={form.record_type} onChange={e => set('record_type', e.target.value)}>
+                      <option value="treatment">Treatment</option>
+                      <option value="vaccination">Vaccination</option>
+                      <option value="diagnosis">Diagnosis</option>
+                      <option value="checkup">Health checkup</option>
+                    </select>
                   </div>
                 </div>
-              )}
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {formData.record_type === 'vaccination' ? 'Vaccination' : 'Treatment'} Date *
-                </label>
-                <input
-                  type="date"
-                  value={formData.treatment_date}
-                  onChange={(e) => setFormData({ ...formData, treatment_date: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
-                />
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
+                {/* Issue / vaccine */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Veterinarian Name</label>
-                  <input
-                    type="text"
-                    placeholder="Optional"
-                    value={formData.veterinarian}
-                    onChange={(e) => setFormData({ ...formData, veterinarian: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
-                  />
+                  <label className={LABEL}>{form.record_type === 'vaccination' ? 'Vaccine type *' : 'Health issue *'}</label>
+                  <select className={FIELD} value={form.health_issue} onChange={e => set('health_issue', e.target.value)} required>
+                    <option value="">Select…</option>
+                    {issueOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
                 </div>
+
+                {/* Treatment details */}
+                {form.record_type === 'treatment' && (
+                  <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+                    <div className="px-4 py-3 border-b border-[#2A2D35]">
+                      <h3 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Treatment details</h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <div>
+                        <label className={LABEL}>Medication name</label>
+                        <input className={FIELD} placeholder="e.g. Amoxicillin, Terramycin, Penstrep"
+                          value={form.medication} onChange={e => set('medication', e.target.value)} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className={LABEL}>Dosage</label>
+                          <input type="number" step="0.1" className={FIELD} placeholder="e.g. 100"
+                            value={form.dosage} onChange={e => set('dosage', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className={LABEL}>Unit</label>
+                          <select className={FIELD} value={form.dosage_unit} onChange={e => set('dosage_unit', e.target.value)}>
+                            <option value="ml">ml</option>
+                            <option value="L">L</option>
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                            <option value="tablet">tablet(s)</option>
+                            <option value="sachet">sachet(s)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className={LABEL}>Withdrawal period (days)</label>
+                        <input type="number" min="0" className={FIELD} placeholder="e.g. 7"
+                          value={form.withdrawal_period_days} onChange={e => set('withdrawal_period_days', e.target.value)} />
+                        <p className="text-[11px] text-[#4B5563] mt-1">Days before milk / meat can be sold</p>
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                {/* Date + vet + cost */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={LABEL}>{form.record_type === 'vaccination' ? 'Vaccination date *' : 'Treatment date *'}</label>
+                    <input type="date" className={FIELD} value={form.treatment_date} onChange={e => set('treatment_date', e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className={LABEL}>Cost (KES)</label>
+                    <input type="number" step="0.01" min="0" className={FIELD} placeholder="e.g. 1500"
+                      value={form.cost} onChange={e => set('cost', e.target.value)} />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Cost (KES)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formData.cost}
-                    onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
-                  />
+                  <label className={LABEL}>Veterinarian name (optional)</label>
+                  <input className={FIELD} placeholder="e.g. Dr. Kamau, DVS office"
+                    value={form.veterinarian} onChange={e => set('veterinarian', e.target.value)} />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Notes (Optional)</label>
-                <textarea
-                  placeholder="Additional observations or recommendations..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
-                ></textarea>
-              </div>
+                <div>
+                  <label className={LABEL}>Notes (optional)</label>
+                  <textarea className={`${FIELD} resize-none`} rows={3}
+                    placeholder="Additional observations, follow-up actions, or recommendations…"
+                    value={form.notes} onChange={e => set('notes', e.target.value)} />
+                </div>
 
-              <div className="flex gap-4 pt-6 border-t">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg transition duration-200"
-                >
-                  {loading ? 'Recording...' : 'Record Health Event'}
+                {/* Protocol reminder */}
+                <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+                  <Info size={13} className="text-[#4B5563] mt-0.5 flex-shrink-0" />
+                  <p className="text-[11px] text-[#6B7280]">
+                    Always record withdrawal periods for medication · Keep vaccinations per DVS schedule · Quarantine sick animals to prevent disease spread
+                  </p>
+                </div>
+
+                <button type="submit" disabled={loading}
+                  className="w-full px-4 py-2.5 rounded-md bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-sm font-medium text-white transition-colors">
+                  {loading ? 'Saving…' : 'Save health record'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => router.back()}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 rounded-lg transition duration-200"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
+              </>
+            )}
+          </form>
         )}
 
         {tab === 'history' && (
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] overflow-hidden">
             {initialHistory.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">No health history found.</div>
+              <p className="text-sm text-[#6B7280] px-4 py-8 text-center">No health records yet</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Date</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Cow</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Type</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Issue/Vaccine</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Details</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Vet & Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {initialHistory.map((record) => (
-                      <tr key={`${record.record_type === 'vaccination' ? 'v' : 't'}-${record.id}`} className="hover:bg-gray-50 transition">
-                        <td className="px-6 py-4 text-sm text-gray-900">{new Date(record.treatment_date).toLocaleDateString()}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{record.cows?.animal_id || record.cows?.cow_tag}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${record.record_type === 'vaccination' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
-                            {record.record_type ? record.record_type.charAt(0).toUpperCase() + record.record_type.slice(1) : 'Treatment'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{record.disease || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{record.drug_name ? `Med: ${record.drug_name}` : (record.treatment || '-')}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          {record.vet_name || 'Unknown'}
-                          {record.cost ? <span className="block text-xs text-gray-500">KES {record.cost}</span> : null}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="divide-y divide-[#1F2128]">
+                {initialHistory.map(record => {
+                  const rtype = record.record_type || 'treatment'
+                  return (
+                    <div key={`${rtype[0]}-${record.id}`} className="px-4 py-3 flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white">
+                          {record.cows?.cow_tag || record.cows?.animal_id || '—'}
+                        </p>
+                        <p className="text-xs text-[#6B7280]">
+                          {record.disease || '—'}
+                          {record.drug_name ? ` · ${record.drug_name}` : ''}
+                          {record.vet_name ? ` · ${record.vet_name}` : ''}
+                        </p>
+                        <p className="text-[11px] text-[#4B5563] mt-0.5">
+                          {new Date(record.treatment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {record.cost ? ` · KES ${Number(record.cost).toLocaleString()}` : ''}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded border capitalize flex-shrink-0 ${RECORD_TYPE_CLASSES[rtype] ?? RECORD_TYPE_CLASSES.treatment}`}>
+                        {rtype}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             )}
-          </div>
+          </section>
         )}
 
-        <div className="mt-8 bg-orange-50 border border-orange-200 rounded-lg p-6">
-          <h3 className="font-semibold text-orange-900 mb-3">⚠️ Important Health Protocol</h3>
-          <ul className="text-orange-800 space-y-2 text-sm">
-            <li>• Always record withdrawal periods for medication to ensure food safety</li>
-            <li>• Keep vaccinations up to date according to government guidelines</li>
-            <li>• Mastitis (bacterial infection) requires immediate treatment to prevent spread</li>
-            <li>• Maintain quarantine for sick animals to prevent disease transmission</li>
-            <li>• Consult with veterinarians for proper diagnosis and treatment plans</li>
-          </ul>
-        </div>
       </div>
     </div>
   )

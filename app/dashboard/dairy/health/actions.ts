@@ -29,7 +29,17 @@ interface TreatmentForm {
   notes?: string | null;
 }
 
-type HealthEventFormData = VaccinationForm | TreatmentForm;
+interface DiagnosisForm {
+  record_type: 'diagnosis' | 'checkup';
+  animal_id: string;
+  treatment_date: string;
+  health_issue: string;
+  veterinarian?: string | null;
+  cost?: string | number | null;
+  notes?: string | null;
+}
+
+type HealthEventFormData = VaccinationForm | TreatmentForm | DiagnosisForm;
 
 export async function recordHealthEvent(formData: HealthEventFormData) {
   const supabase = await createClient();
@@ -50,16 +60,17 @@ export async function recordHealthEvent(formData: HealthEventFormData) {
       notes: formData.notes,
     };
   } else {
+    const t = formData as TreatmentForm
     insertData = {
       cow_id: formData.animal_id,
       treatment_date: formData.treatment_date,
       disease: formData.health_issue,
-      drug_name: formData.medication,
-      dosage: formData.dosage && formData.dosage_unit ? `${formData.dosage} ${formData.dosage_unit}` : formData.dosage,
-      treatment: 'Treatment',
+      drug_name: t.medication ?? null,
+      dosage: t.dosage && t.dosage_unit ? `${t.dosage} ${t.dosage_unit}` : (t.dosage ?? null),
+      treatment: formData.record_type === 'diagnosis' ? 'Diagnosis' : formData.record_type === 'checkup' ? 'Checkup' : 'Treatment',
       vet_name: formData.veterinarian,
-      cost: formData.cost ? parseFloat(String(formData.cost)) : null,
-      withdrawal_days: formData.withdrawal_period_days ? parseInt(String(formData.withdrawal_period_days)) : null,
+      cost: 'cost' in formData && formData.cost ? parseFloat(String(formData.cost)) : null,
+      withdrawal_days: t.withdrawal_period_days ? parseInt(String(t.withdrawal_period_days)) : null,
       symptoms: formData.notes,
       notes: formData.notes,
     };

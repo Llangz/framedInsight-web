@@ -1,7 +1,10 @@
+// 📁 FILE PATH: app/dashboard/dairy/milk/MilkClient.tsx
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTransition } from 'react'
+import Link from 'next/link'
+import { PlusCircle, Droplets, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { MilkRecord, Cow } from '@/lib/database.types'
 
 interface MilkClientProps {
@@ -21,6 +24,13 @@ interface MilkClientProps {
   }
 }
 
+const FIELD = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-[#4B5563] transition-colors'
+const LABEL = 'block text-xs font-medium text-[#9CA3AF] mb-1'
+
+function fmt(d: string) {
+  return new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 export default function MilkClient({ records, cows, pagination, filters }: MilkClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -37,21 +47,17 @@ export default function MilkClient({ records, cows, pagination, filters }: MilkC
   const handleFilterChange = (key: string, value: string) => {
     startTransition(() => {
       const params = new URLSearchParams()
-      params.set('page', '1') // Reset to first page on filter change
-      
+      params.set('page', '1')
       if (value) params.set(key, value)
       if (filters.cowId && key !== 'cowId') params.set('cowId', filters.cowId)
       if (filters.startDate && key !== 'startDate') params.set('startDate', filters.startDate)
       if (filters.endDate && key !== 'endDate') params.set('endDate', filters.endDate)
-      
       router.push(`/dashboard/dairy/milk?${params.toString()}`)
     })
   }
 
   const handleClearFilters = () => {
-    startTransition(() => {
-      router.push('/dashboard/dairy/milk')
-    })
+    startTransition(() => router.push('/dashboard/dairy/milk'))
   }
 
   const getCowDisplay = (cowId: string) => {
@@ -60,140 +66,142 @@ export default function MilkClient({ records, cows, pagination, filters }: MilkC
     return `${cow.cow_tag}${cow.name ? ` (${cow.name})` : ''}`
   }
 
+  const hasFilters = !!(filters.cowId || filters.startDate || filters.endDate)
+
   return (
-    <div className="space-y-6">
+    <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold text-white">Milk records</h1>
+          <p className="text-xs text-[#6B7280] mt-0.5">{pagination.totalRecords} total records</p>
+        </div>
+        <Link
+          href="/dashboard/dairy/milk/record"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors"
+        >
+          <PlusCircle size={12} /> Record milk
+        </Link>
+      </div>
+
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-          <button
-            onClick={handleClearFilters}
-            className="text-sm text-blue-600 hover:underline font-medium"
-          >
-            Clear all
-          </button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <select
-            value={filters.cowId || ''}
-            onChange={(e) => handleFilterChange('cowId', e.target.value)}
-            className="border border-gray-300 rounded-lg p-2.5 w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Cows</option>
-            {cows.map(cow => (
-              <option key={cow.id} value={cow.id}>
-                {cow.cow_tag} {cow.name ? `(${cow.name})` : ''}
-              </option>
-            ))}
-          </select>
-
-          <input
-            type="date"
-            value={filters.startDate || ''}
-            onChange={(e) => handleFilterChange('startDate', e.target.value)}
-            className="border border-gray-300 rounded-lg p-2.5 w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Start Date"
-          />
-
-          <input
-            type="date"
-            value={filters.endDate || ''}
-            onChange={(e) => handleFilterChange('endDate', e.target.value)}
-            className="border border-gray-300 rounded-lg p-2.5 w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="End Date"
-          />
-        </div>
-      </div>
-
-      {/* Records Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cow</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Morning (L)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Midday (L)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evening (L)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total (L)</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {records.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    No milk records found
-                    {(filters.cowId || filters.startDate || filters.endDate) && (
-                      <span className="block mt-1 text-sm">Try adjusting your filters</span>
-                    )}
-                  </td>
-                </tr>
-              ) : (
-                records.map(record => (
-                  <tr key={record.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(record.record_date).toLocaleDateString('en-KE', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                      {getCowDisplay(record.cow_id)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {record.morning_milk?.toFixed(2) ?? '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {record.midday_milk?.toFixed(2) ?? '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {record.evening_milk?.toFixed(2) ?? '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                      {record.total_milk?.toFixed(2) ?? '-'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow">
-        <div className="text-sm text-gray-700">
-          Showing <span className="font-medium">{records.length}</span> of{' '}
-          <span className="font-medium">{pagination.totalRecords}</span> records
-          {pagination.totalPages > 0 && (
-            <span className="ml-2">
-              (Page <span className="font-medium">{pagination.currentPage}</span> of{' '}
-              <span className="font-medium">{pagination.totalPages}</span>)
-            </span>
+      <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#2A2D35]">
+          <div className="flex items-center gap-2">
+            <Droplets size={13} className="text-[#6B7280]" />
+            <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Filter records</h2>
+          </div>
+          {hasFilters && (
+            <button
+              onClick={handleClearFilters}
+              className="text-xs text-[#6B7280] hover:text-white transition-colors"
+            >
+              Clear filters
+            </button>
           )}
         </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => handlePageChange(pagination.currentPage - 1)}
-            disabled={!pagination.hasPrev || isPending}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            ← Previous
-          </button>
-          
-          <button
-            onClick={() => handlePageChange(pagination.currentPage + 1)}
-            disabled={!pagination.hasNext || isPending}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Next →
-          </button>
+        <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className={LABEL}>Cow</label>
+            <select
+              value={filters.cowId || ''}
+              onChange={e => handleFilterChange('cowId', e.target.value)}
+              className={FIELD}
+            >
+              <option value="">All cows</option>
+              {cows.map(cow => (
+                <option key={cow.id} value={cow.id}>
+                  {cow.cow_tag}{cow.name ? ` (${cow.name})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>From date</label>
+            <input
+              type="date"
+              value={filters.startDate || ''}
+              onChange={e => handleFilterChange('startDate', e.target.value)}
+              className={FIELD}
+            />
+          </div>
+          <div>
+            <label className={LABEL}>To date</label>
+            <input
+              type="date"
+              value={filters.endDate || ''}
+              onChange={e => handleFilterChange('endDate', e.target.value)}
+              className={FIELD}
+            />
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Records */}
+      <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] overflow-hidden">
+        {/* Table header */}
+        <div className="grid grid-cols-6 gap-2 px-4 py-2.5 border-b border-[#2A2D35] bg-[#0A0C10]">
+          {['Date', 'Cow', 'Morning (L)', 'Midday (L)', 'Evening (L)', 'Total (L)'].map(h => (
+            <p key={h} className="text-[10px] font-semibold text-[#4B5563] uppercase tracking-widest">{h}</p>
+          ))}
+        </div>
+
+        {records.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-sm text-[#6B7280]">
+              {hasFilters ? 'No records match your filters' : 'No milk records yet'}
+            </p>
+            {!hasFilters && (
+              <Link
+                href="/dashboard/dairy/milk/record"
+                className="inline-flex items-center gap-1.5 mt-3 text-sm text-emerald-500 hover:text-emerald-400"
+              >
+                <PlusCircle size={13} /> Record first entry
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-[#1F2128]">
+            {records.map(record => (
+              <div key={record.id} className="grid grid-cols-6 gap-2 px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                <p className="text-sm text-white">{fmt(record.record_date)}</p>
+                <p className="text-sm font-medium text-white truncate">{getCowDisplay(record.cow_id)}</p>
+                <p className="text-sm text-[#9CA3AF]">{record.morning_milk?.toFixed(2) ?? '—'}</p>
+                <p className="text-sm text-[#9CA3AF]">{record.midday_milk?.toFixed(2) ?? '—'}</p>
+                <p className="text-sm text-[#9CA3AF]">{record.evening_milk?.toFixed(2) ?? '—'}</p>
+                <p className="text-sm font-semibold text-white">{record.total_milk?.toFixed(2) ?? '—'}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-[#6B7280]">
+            Showing {records.length} of {pagination.totalRecords} records
+            {pagination.totalPages > 1 && ` · Page ${pagination.currentPage} of ${pagination.totalPages}`}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handlePageChange(pagination.currentPage - 1)}
+              disabled={!pagination.hasPrev || isPending}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-[#2A2D35] text-xs text-[#9CA3AF] hover:text-white hover:border-[#3A3D45] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={13} /> Previous
+            </button>
+            <button
+              onClick={() => handlePageChange(pagination.currentPage + 1)}
+              disabled={!pagination.hasNext || isPending}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-[#2A2D35] text-xs text-[#9CA3AF] hover:text-white hover:border-[#3A3D45] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next <ChevronRight size={13} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
