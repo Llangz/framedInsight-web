@@ -26,5 +26,5 @@ export default async function RecordActivityPage() {
     .eq("farm_id", manager.farm_id)
     .order("plot_name");
 
-  return <ActivityRecordClient plots={plots || []} />;
+  return <ActivityRecordClient farmId={manager.farm_id} plots={plots || []} />;
 }
