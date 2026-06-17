@@ -1,8 +1,10 @@
+// 📁 FILE PATH: app/dashboard/dairy/cows/[id]/edit/EditCowClient.tsx
 'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { updateCow } from '../../action'
 import { Database } from '@/lib/database.types'
 
@@ -26,50 +28,17 @@ const DAIRY_BREEDS = [
   'Ayrshire × Zebu', 'Crossbred', 'Other',
 ]
 
-function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
-  return (
-    <label className="block text-sm font-medium text-gray-700 mb-1">
-      {children}{required && <span className="text-red-500 ml-0.5">*</span>}
-    </label>
-  )
-}
-
-function Input({ ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50"
-    />
-  )
-}
-
-function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { children: React.ReactNode }) {
-  return (
-    <select
-      {...props}
-      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-    >
-      {children}
-    </select>
-  )
-}
-
-function Textarea({ ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      {...props}
-      rows={3}
-      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
-    />
-  )
-}
+const FIELD = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#4B5563] focus:outline-none focus:border-[#4B5563] transition-colors'
+const LABEL = 'block text-xs font-medium text-[#D1D5DB] mb-1'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
-      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h3>
-      {children}
-    </div>
+    <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] overflow-hidden">
+      <div className="px-4 py-3 border-b border-[#2A2D35]">
+        <h3 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">{title}</h3>
+      </div>
+      <div className="p-4 space-y-4">{children}</div>
+    </section>
   )
 }
 
@@ -103,14 +72,13 @@ export default function EditCowClient({ cow, farmCows }: Props) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  const bulls    = farmCows.filter(c => c.sex === 'male')
-  const dams     = farmCows.filter(c => c.sex === 'female' || !c.sex)
-  const isExited = form.status === 'sold' || form.status === 'deceased' || form.status === 'culled'
+  const bulls  = farmCows.filter(c => c.sex === 'male')
+  const dams   = farmCows.filter(c => c.sex === 'female' || !c.sex)
+  const isExited = ['sold', 'deceased', 'culled'].includes(form.status)
 
   async function handleSubmit() {
     setError(null)
     if (!form.cow_tag.trim()) { setError('Tag/ID is required'); return }
-
     setSaving(true)
     try {
       await updateCow(cow.id, {
@@ -141,36 +109,31 @@ export default function EditCowClient({ cow, farmCows }: Props) {
     }
   }
 
-  const displayName = cow.name ?? cow.cow_tag
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link
-                href={`/dashboard/dairy/cows/${cow.id}`}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                ← Back
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Edit 🐄 {displayName}</h1>
-                <p className="text-xs text-gray-500 mt-0.5">Tag: {cow.cow_tag}</p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-obsidian">
+      <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Link href={`/dashboard/dairy/cows/${cow.id}`} className="text-[#6B7280] hover:text-white transition-colors">
+            <ArrowLeft size={16} />
+          </Link>
+          <div>
+            <h1 className="text-lg font-semibold text-white">Edit — {cow.name ?? cow.cow_tag}</h1>
+            <p className="text-xs text-[#6B7280] mt-0.5">Tag: {cow.cow_tag}</p>
           </div>
         </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 lg:px-8 py-6 space-y-6">
 
         {success && (
-          <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700 font-medium">
-            ✓ Saved — redirecting…
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-emerald-900/40 bg-emerald-950/30">
+            <CheckCircle2 size={14} className="text-emerald-400" />
+            <p className="text-sm text-emerald-300">Saved — redirecting…</p>
+          </div>
+        )}
+        {error && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-900/40 bg-red-950/30">
+            <AlertCircle size={14} className="text-red-400" />
+            <p className="text-sm text-red-300">{error}</p>
           </div>
         )}
 
@@ -178,47 +141,33 @@ export default function EditCowClient({ cow, farmCows }: Props) {
         <Section title="Identification">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label required>Tag / ID</Label>
-              <Input
-                value={form.cow_tag}
-                onChange={e => set('cow_tag', e.target.value)}
-                placeholder="e.g. COW001"
-              />
+              <label className={LABEL}>Tag / ID *</label>
+              <input className={FIELD} value={form.cow_tag} onChange={e => set('cow_tag', e.target.value)} placeholder="e.g. COW001" />
             </div>
             <div>
-              <Label>Name</Label>
-              <Input
-                value={form.name}
-                onChange={e => set('name', e.target.value)}
-                placeholder="e.g. Daisy"
-              />
+              <label className={LABEL}>Name</label>
+              <input className={FIELD} value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Daisy" />
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Breed</Label>
-              <Select value={form.breed} onChange={e => set('breed', e.target.value)}>
+              <label className={LABEL}>Breed</label>
+              <select className={FIELD} value={form.breed} onChange={e => set('breed', e.target.value)}>
                 <option value="">Select breed</option>
                 {DAIRY_BREEDS.map(b => <option key={b} value={b}>{b}</option>)}
-              </Select>
+              </select>
             </div>
             <div>
-              <Label>Sex</Label>
-              <Select value={form.sex} onChange={e => set('sex', e.target.value)}>
-                <option value="female">♀ Female</option>
-                <option value="male">♂ Male (Bull)</option>
-              </Select>
+              <label className={LABEL}>Sex</label>
+              <select className={FIELD} value={form.sex} onChange={e => set('sex', e.target.value)}>
+                <option value="female">Female</option>
+                <option value="male">Male (Bull)</option>
+              </select>
             </div>
           </div>
-
           <div>
-            <Label>Date of Birth</Label>
-            <Input
-              type="date"
-              value={form.birth_date}
-              onChange={e => set('birth_date', e.target.value)}
-            />
+            <label className={LABEL}>Date of birth</label>
+            <input type="date" className={FIELD} value={form.birth_date} onChange={e => set('birth_date', e.target.value)} />
           </div>
         </Section>
 
@@ -226,97 +175,72 @@ export default function EditCowClient({ cow, farmCows }: Props) {
         <Section title="Management">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Purpose</Label>
-              <Select value={form.purpose} onChange={e => set('purpose', e.target.value)}>
+              <label className={LABEL}>Purpose</label>
+              <select className={FIELD} value={form.purpose} onChange={e => set('purpose', e.target.value)}>
                 <option value="dairy">Dairy</option>
                 <option value="beef">Beef</option>
                 <option value="dual">Dual purpose</option>
                 <option value="breeding">Breeding</option>
-              </Select>
+                <option value="calf">Calf</option>
+                <option value="heifer">Heifer</option>
+              </select>
             </div>
             <div>
-              <Label>Status</Label>
-              <Select value={form.status} onChange={e => set('status', e.target.value)}>
+              <label className={LABEL}>Status</label>
+              <select className={FIELD} value={form.status} onChange={e => set('status', e.target.value)}>
                 <option value="active">Active</option>
                 <option value="dry">Dry</option>
                 <option value="pregnant">Pregnant</option>
                 <option value="sold">Sold</option>
                 <option value="deceased">Deceased</option>
                 <option value="culled">Culled</option>
-              </Select>
+              </select>
             </div>
           </div>
 
-          {/* Exit details — shown when status is sold/deceased/culled */}
           {isExited && (
-            <div className="grid grid-cols-2 gap-4 pt-1">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Exit date</Label>
-                <Input
-                  type="date"
-                  value={form.exit_date}
-                  onChange={e => set('exit_date', e.target.value)}
-                />
+                <label className={LABEL}>Exit date</label>
+                <input type="date" className={FIELD} value={form.exit_date} onChange={e => set('exit_date', e.target.value)} />
               </div>
               <div>
-                <Label>Exit value (KES)</Label>
-                <Input
-                  type="number"
-                  value={form.exit_value}
-                  onChange={e => set('exit_value', e.target.value)}
-                  placeholder="e.g. 80000"
-                />
+                <label className={LABEL}>Exit value (KES)</label>
+                <input type="number" className={FIELD} value={form.exit_value} onChange={e => set('exit_value', e.target.value)} placeholder="e.g. 80000" />
               </div>
               <div className="col-span-2">
-                <Label>Exit reason</Label>
-                <Input
-                  value={form.exit_reason}
-                  onChange={e => set('exit_reason', e.target.value)}
-                  placeholder="e.g. Low production, old age"
-                />
+                <label className={LABEL}>Exit reason</label>
+                <input className={FIELD} value={form.exit_reason} onChange={e => set('exit_reason', e.target.value)} placeholder="e.g. Low production, old age" />
               </div>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Source</Label>
-              <Select value={form.source} onChange={e => set('source', e.target.value)}>
+              <label className={LABEL}>Source</label>
+              <select className={FIELD} value={form.source} onChange={e => set('source', e.target.value)}>
                 <option value="">Select…</option>
                 <option value="born on farm">Born on farm</option>
                 <option value="purchased">Purchased</option>
                 <option value="donated">Donated</option>
                 <option value="other">Other</option>
-              </Select>
+              </select>
             </div>
             <div>
-              <Label>QR Code</Label>
-              <Input
-                value={form.qr_code}
-                onChange={e => set('qr_code', e.target.value)}
-                placeholder="Scan or type"
-              />
+              <label className={LABEL}>QR code</label>
+              <input className={FIELD} value={form.qr_code} onChange={e => set('qr_code', e.target.value)} placeholder="Scan or type" />
             </div>
           </div>
 
           {(form.source === 'purchased' || cow.purchase_price || cow.purchase_date) && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Purchase price (KES)</Label>
-                <Input
-                  type="number"
-                  value={form.purchase_price}
-                  onChange={e => set('purchase_price', e.target.value)}
-                  placeholder="e.g. 80000"
-                />
+                <label className={LABEL}>Purchase price (KES)</label>
+                <input type="number" className={FIELD} value={form.purchase_price} onChange={e => set('purchase_price', e.target.value)} placeholder="e.g. 80000" />
               </div>
               <div>
-                <Label>Purchase date</Label>
-                <Input
-                  type="date"
-                  value={form.purchase_date}
-                  onChange={e => set('purchase_date', e.target.value)}
-                />
+                <label className={LABEL}>Purchase date</label>
+                <input type="date" className={FIELD} value={form.purchase_date} onChange={e => set('purchase_date', e.target.value)} />
               </div>
             </div>
           )}
@@ -326,58 +250,37 @@ export default function EditCowClient({ cow, farmCows }: Props) {
         <Section title="Parentage">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Sire (father/bull)</Label>
-              <Select value={form.sire_id} onChange={e => set('sire_id', e.target.value)}>
+              <label className={LABEL}>Sire (bull / father)</label>
+              <select className={FIELD} value={form.sire_id} onChange={e => set('sire_id', e.target.value)}>
                 <option value="">Unknown / External</option>
-                {bulls.map(b => (
-                  <option key={b.id} value={b.id}>
-                    {b.cow_tag}{b.name ? ` — ${b.name}` : ''}
-                  </option>
-                ))}
-              </Select>
+                {bulls.map(b => <option key={b.id} value={b.id}>{b.cow_tag}{b.name ? ` — ${b.name}` : ''}</option>)}
+              </select>
             </div>
             <div>
-              <Label>Dam (mother)</Label>
-              <Select value={form.dam_id} onChange={e => set('dam_id', e.target.value)}>
+              <label className={LABEL}>Dam (mother)</label>
+              <select className={FIELD} value={form.dam_id} onChange={e => set('dam_id', e.target.value)}>
                 <option value="">Unknown</option>
-                {dams.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.cow_tag}{c.name ? ` — ${c.name}` : ''}
-                  </option>
-                ))}
-              </Select>
+                {dams.map(c => <option key={c.id} value={c.id}>{c.cow_tag}{c.name ? ` — ${c.name}` : ''}</option>)}
+              </select>
             </div>
           </div>
         </Section>
 
         {/* Notes */}
         <Section title="Notes">
-          <Textarea
-            value={form.notes}
-            onChange={e => set('notes', e.target.value)}
-            placeholder="Any additional notes about this animal…"
-          />
+          <textarea className={`${FIELD} resize-none`} rows={3}
+            value={form.notes} onChange={e => set('notes', e.target.value)}
+            placeholder="Any additional notes about this animal…" />
         </Section>
 
-        {error && (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
         <div className="flex gap-3 pb-8">
-          <Link
-            href={`/dashboard/dairy/cows/${cow.id}`}
-            className="flex-1 py-3 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors text-center"
-          >
+          <Link href={`/dashboard/dairy/cows/${cow.id}`}
+            className="flex-1 py-2.5 text-sm font-medium rounded-md border border-[#2A2D35] text-[#9CA3AF] hover:text-white hover:border-[#3A3D45] transition-colors text-center">
             Cancel
           </Link>
-          <button
-            onClick={handleSubmit}
-            disabled={saving || success}
-            className="flex-1 py-3 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {saving ? 'Saving…' : success ? '✓ Saved' : 'Save Changes'}
+          <button onClick={handleSubmit} disabled={saving || success}
+            className="flex-1 py-2.5 text-sm font-medium rounded-md bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white transition-colors">
+            {saving ? 'Saving…' : success ? '✓ Saved' : 'Save changes'}
           </button>
         </div>
 

@@ -1,12 +1,28 @@
+// 📁 FILE PATH: app/dashboard/dairy/breeding/BreedingClient.tsx
 'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft, AlertCircle, CheckCircle2, Heart, Info } from 'lucide-react'
 import { recordBreeding } from './actions'
 
 interface BreedingClientProps {
   initialCows: any[]
   initialHistory: any[]
+}
+
+const FIELD = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#4B5563] focus:outline-none focus:border-[#4B5563] transition-colors'
+const LABEL = 'block text-xs font-medium text-[#D1D5DB] mb-1'
+
+function fmt(d: string) {
+  return new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+const RESULT_CLASSES: Record<string, string> = {
+  positive: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/30',
+  negative:  'text-red-400 border-red-900/40 bg-red-950/30',
+  pending:   'text-amber-400 border-amber-900/40 bg-amber-950/30',
 }
 
 export default function BreedingClient({ initialCows, initialHistory }: BreedingClientProps) {
@@ -16,36 +32,38 @@ export default function BreedingClient({ initialCows, initialHistory }: Breeding
   const [success, setSuccess] = useState('')
   const [tab, setTab] = useState<'record' | 'history'>('record')
 
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     dam_id: '',
     service_date: new Date().toISOString().split('T')[0],
     service_type: 'AI',
     sire_id: '',
     sire_name: '',
-    notes: ''
+    notes: '',
   })
+
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const dueDate = form.service_date
+    ? new Date(new Date(form.service_date).getTime() + 283 * 24 * 60 * 60 * 1000)
+        .toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '—'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     try {
-      await recordBreeding(formData)
-      setSuccess('Breeding record added successfully!')
-      setFormData({
+      await recordBreeding(form)
+      setSuccess('Breeding record saved!')
+      setForm({
         dam_id: '',
         service_date: new Date().toISOString().split('T')[0],
         service_type: 'AI',
         sire_id: '',
         sire_name: '',
-        notes: ''
+        notes: '',
       })
-
-      setTimeout(() => {
-        router.refresh()
-        setTab('history')
-      }, 2000)
+      setTimeout(() => { router.refresh(); setTab('history') }, 2000)
     } catch (err: any) {
       setError(err.message || 'Failed to record breeding event')
     } finally {
@@ -53,146 +71,158 @@ export default function BreedingClient({ initialCows, initialHistory }: Breeding
     }
   }
 
-  const calculateDueDate = () => {
-    if (!formData.service_date) return ''
-    const serviceDate = new Date(formData.service_date)
-    const dueDate = new Date(serviceDate.getTime() + 283 * 24 * 60 * 60 * 1000)
-    return dueDate.toISOString().split('T')[0]
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-rose-50 p-6">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Breeding Management</h1>
-          <p className="text-gray-600">Track breeding events and calving dates</p>
+    <div className="min-h-screen bg-obsidian">
+      <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/dairy" className="text-[#6B7280] hover:text-white transition-colors">
+            <ArrowLeft size={16} />
+          </Link>
+          <div className="flex-1">
+            <h1 className="text-lg font-semibold text-white">Breeding</h1>
+            <p className="text-xs text-[#6B7280] mt-0.5">Service records and calving dates</p>
+          </div>
         </div>
 
-        <div className="flex gap-4 mb-6">
-          <button
-            onClick={() => setTab('record')}
-            className={`px-6 py-2 rounded-lg font-semibold transition duration-200 ${ tab === 'record' ? 'bg-pink-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }`}
-          >
-            Record Service
-          </button>
-          <button
-            onClick={() => setTab('history')}
-            className={`px-6 py-2 rounded-lg font-semibold transition duration-200 ${ tab === 'history' ? 'bg-pink-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }`}
-          >
-            Breeding History
-          </button>
+        {/* Tab switcher */}
+        <div className="flex gap-1 p-1 rounded-lg border border-[#2A2D35] bg-[#0D0F14] w-fit">
+          {(['record', 'history'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors capitalize ${
+                tab === t ? 'text-white bg-white/10' : 'text-[#6B7280] hover:text-white'
+              }`}
+            >
+              {t === 'record' ? 'Record service' : 'History'}
+            </button>
+          ))}
         </div>
 
         {tab === 'record' && (
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700 font-medium">{error}</p>
+              <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-900/40 bg-red-950/30">
+                <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
+                <p className="text-sm text-red-300">{error}</p>
               </div>
             )}
-
             {success && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-700 font-medium">✓ {success}</p>
+              <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-emerald-900/40 bg-emerald-950/30">
+                <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0" />
+                <p className="text-sm text-emerald-300">{success}</p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Cow (Dam) *</label>
-                <select value={formData.dam_id} onChange={(e) => setFormData({ ...formData, dam_id: e.target.value })} required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none">
-                  <option value="">Choose a cow</option>
-                  {initialCows.map((cow) => ( <option key={cow.id} value={cow.id}>{cow.animal_id}</option> ))}
-                </select>
+            {initialCows.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[#2A2D35] p-8 text-center">
+                <p className="text-sm text-[#6B7280] mb-2">No active cows registered</p>
+                <Link href="/dashboard/dairy/add-cow" className="text-sm text-emerald-500">Add a cow →</Link>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Service Date *</label>
-                <input type="date" value={formData.service_date} onChange={(e) => setFormData({ ...formData, service_date: e.target.value })} required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Service Type *</label>
-                <select value={formData.service_type} onChange={(e) => setFormData({ ...formData, service_type: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none">
-                  <option value="AI">Artificial Insemination (AI)</option>
-                  <option value="natural">Natural Service</option>
-                </select>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">{formData.service_type === 'AI' ? 'Semen Batch/Code' : 'Sire (Bull) ID'}</label>
-                  <input type="text" placeholder={formData.service_type === 'AI' ? 'e.g., HF-2024-001' : 'e.g., BULL-001'} value={formData.sire_id} onChange={(e) => setFormData({ ...formData, sire_id: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none" />
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={LABEL}>Dam (cow) *</label>
+                    <select className={FIELD} value={form.dam_id} onChange={e => set('dam_id', e.target.value)} required>
+                      <option value="">Select cow</option>
+                      {initialCows.map(c => (
+                        <option key={c.id} value={c.id}>{c.cow_tag || c.animal_id}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={LABEL}>Service date *</label>
+                    <input type="date" className={FIELD} value={form.service_date} onChange={e => set('service_date', e.target.value)} required />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Sire Name/Breed Info</label>
-                  <input type="text" placeholder="e.g., Holstein Friesian" value={formData.sire_name} onChange={(e) => setFormData({ ...formData, sire_name: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none" />
+                  <label className={LABEL}>Service type *</label>
+                  <select className={FIELD} value={form.service_type} onChange={e => set('service_type', e.target.value)}>
+                    <option value="AI">Artificial Insemination (AI)</option>
+                    <option value="natural">Natural service</option>
+                  </select>
                 </div>
-              </div>
 
-              <div className="bg-pink-50 rounded-lg p-6">
-                <p className="text-sm text-gray-600 mb-1">Expected Calving Date (283 days post-service)</p>
-                <p className="text-2xl font-bold text-pink-700">{calculateDueDate().replace(/-/g, '/')}</p>
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={LABEL}>{form.service_type === 'AI' ? 'Semen batch / code' : 'Sire (bull) ID'}</label>
+                    <input type="text" className={FIELD}
+                      placeholder={form.service_type === 'AI' ? 'e.g. HF-2024-001' : 'e.g. BULL-001'}
+                      value={form.sire_id} onChange={e => set('sire_id', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={LABEL}>Sire breed / name</label>
+                    <input type="text" className={FIELD} placeholder="e.g. Holstein Friesian"
+                      value={form.sire_name} onChange={e => set('sire_name', e.target.value)} />
+                  </div>
+                </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Notes (Optional)</label>
-                <textarea placeholder="Any additional information..." value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={4} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"></textarea>
-              </div>
+                {/* Expected calving */}
+                <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+                  <Heart size={14} className="text-emerald-400 flex-shrink-0" />
+                  <p className="text-sm text-[#9CA3AF]">
+                    Expected calving: <span className="font-semibold text-white">{dueDate}</span>
+                    <span className="text-[11px] text-[#4B5563] ml-2">(283 days post-service)</span>
+                  </p>
+                </div>
 
-              <div className="flex gap-4 pt-6 border-t">
-                <button type="submit" disabled={loading} className="flex-1 bg-pink-600 hover:bg-pink-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg transition duration-200">{loading ? 'Recording...' : 'Record Service'}</button>
-                <button type="button" onClick={() => router.back()} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 rounded-lg transition duration-200">Cancel</button>
-              </div>
-            </form>
-          </div>
+                <div>
+                  <label className={LABEL}>Notes (optional)</label>
+                  <input className={FIELD} placeholder="e.g. AI technician name, heat signs observed…"
+                    value={form.notes} onChange={e => set('notes', e.target.value)} />
+                </div>
+
+                <button type="submit" disabled={loading}
+                  className="w-full px-4 py-2.5 rounded-md bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-sm font-medium text-white transition-colors">
+                  {loading ? 'Saving…' : 'Record service'}
+                </button>
+              </>
+            )}
+          </form>
         )}
 
         {tab === 'history' && (
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] overflow-hidden">
             {initialHistory.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">No breeding history found.</div>
+              <p className="text-sm text-[#6B7280] px-4 py-8 text-center">No breeding history yet</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Service Date</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Cow (Dam)</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Type & Sire</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Expected Calving</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {initialHistory.map((event) => (
-                      <tr key={event.id} className="hover:bg-gray-50 transition">
-                        <td className="px-6 py-4 text-sm text-gray-900">{new Date(event.service_date).toLocaleDateString()}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{event.cows?.animal_id || event.cows?.cow_tag}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{event.service_type === 'AI' ? 'AI' : 'Natural'} ({event.bull_code || 'Unknown'})</td>
-                        <td className="px-6 py-4 text-sm font-semibold text-pink-600">{new Date(event.expected_calving_date).toLocaleDateString()}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${event.pregnancy_result === 'positive' ? 'bg-green-100 text-green-800' : event.pregnancy_result === 'negative' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                            {event.pregnancy_result || 'Pending'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="divide-y divide-[#1F2128]">
+                {initialHistory.map(e => {
+                  const res = e.pregnancy_result || 'pending'
+                  return (
+                    <div key={e.id} className="px-4 py-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white">
+                          {e.cows?.cow_tag || e.cows?.animal_id || '—'}
+                        </p>
+                        <p className="text-xs text-[#6B7280]">
+                          {e.service_type === 'AI' ? 'AI' : 'Natural'} · {fmt(e.service_date)}
+                          {e.expected_calving_date && ` · Due ${fmt(e.expected_calving_date)}`}
+                        </p>
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded border ${RESULT_CLASSES[res] ?? RESULT_CLASSES.pending} capitalize`}>
+                        {res}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             )}
-          </div>
+          </section>
         )}
 
-        <div className="mt-8 bg-rose-50 border border-rose-200 rounded-lg p-6">
-          <h3 className="font-semibold text-rose-900 mb-3">Breeding Management</h3>
-          <ul className="text-rose-800 space-y-2 text-sm">
-            <li>Gestation: 283 days</li>
-            <li>Heat cycle: 21 days</li>
-            <li>AI success: 60-70%</li>
-          </ul>
+        {/* Quick ref */}
+        <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
+          <Info size={13} className="text-[#4B5563] mt-0.5 flex-shrink-0" />
+          <p className="text-[11px] text-[#6B7280]">
+            Gestation: 283 days · Heat cycle: 21 days · AI success rate: 60–70%
+          </p>
         </div>
+
       </div>
     </div>
   )
