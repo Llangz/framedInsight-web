@@ -8,6 +8,12 @@ import {
   getPendingPoultryEvents,
   markPoultryEventSynced,
   clearSyncedPoultryEvents,
+  getPendingDairyEvents,
+  markDairyEventSynced,
+  clearSyncedDairyEvents,
+  getPendingCoffeeEvents,
+  markCoffeeEventSynced,
+  clearSyncedCoffeeEvents,
 } from '@/lib/offline-db'
 
 export function SyncManager() {
@@ -33,23 +39,27 @@ export function SyncManager() {
   }, [])
 
   async function checkPending() {
-    const [generic, poultry] = await Promise.all([
+    const [generic, poultry, dairy, coffee] = await Promise.all([
       getPendingRequests(),
       getPendingPoultryEvents(),
+      getPendingDairyEvents(),
+      getPendingCoffeeEvents(),
     ])
 
-    setPendingCount(generic.length + poultry.length)
+    setPendingCount(generic.length + poultry.length + dairy.length + coffee.length)
   }
 
   async function syncData() {
     if (!navigator.onLine || isSyncing) return
 
-    const [generic, poultryEvents] = await Promise.all([
+    const [generic, poultryEvents, dairyEvents, coffeeEvents] = await Promise.all([
       getPendingRequests(),
       getPendingPoultryEvents(),
+      getPendingDairyEvents(),
+      getPendingCoffeeEvents(),
     ])
 
-    if (generic.length === 0 && poultryEvents.length === 0) return
+    if (generic.length === 0 && poultryEvents.length === 0 && dairyEvents.length === 0 && coffeeEvents.length === 0) return
 
     setIsSyncing(true)
 
@@ -77,44 +87,17 @@ export function SyncManager() {
 
       /* ─────────────── 2. Sync poultry CRDT events ─────────────── */
       if (poultryEvents.length > 0) {
-        const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
+        await syncDomainEvents('poultry', poultryEvents, markPoultryEventSynced, clearSyncedPoultryEvents)
+      }
 
-        if (!session) {
-          setIsSyncing(false)
-          return
-        }
+      /* ─────────────── 3. Sync dairy CRDT events ─────────────── */
+      if (dairyEvents.length > 0) {
+        await syncDomainEvents('dairy', dairyEvents, markDairyEventSynced, clearSyncedDairyEvents)
+      }
 
-        const res = await supabase.functions.invoke('sync-offline-events', {
-          body: {
-            device_id: getDeviceId(),
-            user_id: session.user.id,
-            poultryEvents: poultryEvents.map(e => ({
-              eventId: e.eventId,
-              entityType: e.entityType,
-              farmId: e.farmId,
-              batchId: e.batchId,
-              payload: e.payload,
-              isoTimestamp: e.isoTimestamp,
-            })),
-          },
-        })
-
-        if (!res.error) {
-          const syncedIds: string[] = res.data?.synced_poultry_ids ?? []
-
-          // Mark individually synced
-          for (const event of poultryEvents) {
-            if (event.id != null && syncedIds.includes(event.eventId)) {
-              await markPoultryEventSynced(event.id)
-            }
-          }
-
-          // Clean up fully synced entries
-          await clearSyncedPoultryEvents()
-        } else {
-          console.error('Poultry sync error:', res.error)
-        }
+      /* ─────────────── 4. Sync coffee CRDT events ─────────────── */
+      if (coffeeEvents.length > 0) {
+        await syncDomainEvents('coffee', coffeeEvents, markCoffeeEventSynced, clearSyncedCoffeeEvents)
       }
     } catch (err) {
       console.error('Sync failed:', err)
@@ -122,6 +105,48 @@ export function SyncManager() {
 
     await checkPending()
     setIsSyncing(false)
+  }
+
+  async function syncDomainEvents(
+    domain: 'poultry' | 'dairy' | 'coffee',
+    events: any[],
+    markSynced: (id: number) => Promise<unknown>,
+    clearSynced: () => Promise<unknown>
+  ) {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) return
+
+    const res = await supabase.functions.invoke('sync-offline-events', {
+      body: {
+        device_id: getDeviceId(),
+        user_id: session.user.id,
+        [`${domain}Events`]: events.map(e => ({
+          eventId: e.eventId,
+          entityType: e.entityType,
+          farmId: e.farmId,
+          batchId: e.batchId,
+          referenceId: e.referenceId,
+          payload: e.payload,
+          isoTimestamp: e.isoTimestamp,
+        })),
+      },
+    })
+
+    if (!res.error) {
+      const syncedIds: string[] = res.data?.[`synced_${domain}_ids`] ?? []
+
+      for (const event of events) {
+        if (event.id != null && syncedIds.includes(event.eventId)) {
+          await markSynced(event.id)
+        }
+      }
+
+      await clearSynced()
+    } else {
+      console.error(`${domain} sync error:`, res.error)
+    }
   }
 
   if (pendingCount === 0 && !isSyncing) return null

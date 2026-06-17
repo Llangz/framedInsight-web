@@ -2,14 +2,18 @@
  * Offline Sync System (Production-ready)
  * - Generic request queue (legacy support)
  * - Poultry domain event store (CRDT-style offline log)
+ * - Dairy domain event store
+ * - Coffee domain event store
  * - Safe sync + idempotency support
  */
 
 const DB_NAME = 'framedInsightSync'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 const STORE_REQUESTS = 'pendingRequests'
 const STORE_POULTRY  = 'poultryOfflineEvents'
+const STORE_DAIRY    = 'dairyOfflineEvents'
+const STORE_COFFEE   = 'coffeeOfflineEvents'
 
 /* ─────────────────────────────────────────────────────────────
    TYPES
@@ -24,9 +28,6 @@ export interface PendingRequest {
   timestamp: number
 }
 
-/**
- * Poultry domain event (CRDT-friendly offline log)
- */
 export type PoultryEntityType =
   | 'poultry_egg_record'
   | 'poultry_feed_record'
@@ -35,12 +36,30 @@ export type PoultryEntityType =
   | 'poultry_sale'
   | 'poultry_batch_update'
 
-export interface PoultryOfflineEvent {
+export type DairyEntityType =
+  | 'milk_record'
+  | 'cow_registration'
+  | 'breeding_event'
+  | 'health_check'
+
+export type CoffeeEntityType =
+  | 'coffee_activity'
+  | 'coffee_harvest'
+  | 'coffee_spray_event'
+  | 'coffee_pruning'
+
+export type OfflineEntityType =
+  | PoultryEntityType
+  | DairyEntityType
+  | CoffeeEntityType
+
+export interface OfflineEvent {
   id?: number
   eventId: string
-  entityType: PoultryEntityType
+  entityType: OfflineEntityType
   farmId: string
-  batchId: string
+  referenceId?: string
+  batchId?: string
   payload: Record<string, any>
   timestamp: number
   isoTimestamp: string
@@ -80,6 +99,37 @@ export async function initDB(): Promise<IDBDatabase> {
         store.createIndex('by_farm', 'farmId')
         store.createIndex('by_synced', 'synced')
         store.createIndex('by_event_id', 'eventId', { unique: true })
+      }
+
+      // v3: dairy and coffee event logs
+      if (oldVersion < 3) {
+        // Dairy store
+        if (!db.objectStoreNames.contains(STORE_DAIRY)) {
+          const store = db.createObjectStore(STORE_DAIRY, {
+            keyPath: 'id',
+            autoIncrement: true
+          })
+
+          store.createIndex('by_entity_type', 'entityType')
+          store.createIndex('by_cow', 'referenceId')
+          store.createIndex('by_farm', 'farmId')
+          store.createIndex('by_synced', 'synced')
+          store.createIndex('by_event_id', 'eventId', { unique: true })
+        }
+
+        // Coffee store
+        if (!db.objectStoreNames.contains(STORE_COFFEE)) {
+          const store = db.createObjectStore(STORE_COFFEE, {
+            keyPath: 'id',
+            autoIncrement: true
+          })
+
+          store.createIndex('by_entity_type', 'entityType')
+          store.createIndex('by_plot', 'referenceId')
+          store.createIndex('by_farm', 'farmId')
+          store.createIndex('by_synced', 'synced')
+          store.createIndex('by_event_id', 'eventId', { unique: true })
+        }
       }
     }
 
@@ -142,7 +192,9 @@ export async function removeRequest(id: number) {
 ───────────────────────────────────────────────────────────── */
 
 export async function queuePoultryEvent(
-  event: Omit<PoultryOfflineEvent, 'id' | 'timestamp' | 'isoTimestamp' | 'synced'>
+  event: Omit<OfflineEvent, 'id' | 'timestamp' | 'isoTimestamp' | 'synced'> & {
+    entityType: PoultryEntityType
+  }
 ) {
   const db = await initDB()
   const now = new Date()
@@ -164,10 +216,7 @@ export async function queuePoultryEvent(
   })
 }
 
-/**
- * Get all unsynced poultry events
- */
-export async function getPendingPoultryEvents(): Promise<PoultryOfflineEvent[]> {
+export async function getPendingPoultryEvents(): Promise<OfflineEvent[]> {
   const db = await initDB()
 
   return new Promise((resolve, reject) => {
@@ -181,9 +230,6 @@ export async function getPendingPoultryEvents(): Promise<PoultryOfflineEvent[]> 
   })
 }
 
-/**
- * Get events for a specific batch (useful for partial sync)
- */
 export async function getPoultryEventsByBatch(batchId: string) {
   const db = await initDB()
 
@@ -198,9 +244,6 @@ export async function getPoultryEventsByBatch(batchId: string) {
   })
 }
 
-/**
- * Mark event as synced (idempotent-safe)
- */
 export async function markPoultryEventSynced(id: number) {
   const db = await initDB()
 
@@ -227,9 +270,6 @@ export async function markPoultryEventSynced(id: number) {
   })
 }
 
-/**
- * Increment retry count (useful for failed sync backoff)
- */
 export async function incrementRetry(id: number) {
   const db = await initDB()
 
@@ -256,15 +296,192 @@ export async function incrementRetry(id: number) {
   })
 }
 
-/**
- * Clean up synced events (run after successful server reconciliation)
- */
 export async function clearSyncedPoultryEvents() {
   const db = await initDB()
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_POULTRY, 'readwrite')
     const index = tx.objectStore(STORE_POULTRY).index('by_synced')
+
+    const request = index.openCursor(IDBKeyRange.only(true))
+
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (!cursor) return resolve(true)
+
+      cursor.delete()
+      cursor.continue()
+    }
+
+    request.onerror = () => reject(request.error)
+  })
+}
+
+/* ─────────────────────────────────────────────────────────────
+   DAIRY OFFLINE EVENT SYSTEM
+───────────────────────────────────────────────────────────── */
+
+export async function queueDairyEvent(
+  event: Omit<OfflineEvent, 'id' | 'timestamp' | 'isoTimestamp' | 'synced'> & {
+    entityType: DairyEntityType
+  }
+) {
+  const db = await initDB()
+  const now = new Date()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_DAIRY, 'readwrite')
+    const store = tx.objectStore(STORE_DAIRY)
+
+    const request = store.add({
+      ...event,
+      timestamp: now.getTime(),
+      isoTimestamp: now.toISOString(),
+      synced: false,
+      retryCount: 0
+    })
+
+    request.onsuccess = () => resolve(true)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function getPendingDairyEvents(): Promise<OfflineEvent[]> {
+  const db = await initDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_DAIRY, 'readonly')
+    const index = tx.objectStore(STORE_DAIRY).index('by_synced')
+
+    const request = index.getAll(IDBKeyRange.only(false))
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function markDairyEventSynced(id: number) {
+  const db = await initDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_DAIRY, 'readwrite')
+    const store = tx.objectStore(STORE_DAIRY)
+
+    const request = store.get(id)
+
+    request.onsuccess = () => {
+      const event = request.result
+      if (!event) return resolve(true)
+
+      const update = store.put({
+        ...event,
+        synced: true
+      })
+
+      update.onsuccess = () => resolve(true)
+      update.onerror = () => reject(update.error)
+    }
+
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function clearSyncedDairyEvents() {
+  const db = await initDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_DAIRY, 'readwrite')
+    const index = tx.objectStore(STORE_DAIRY).index('by_synced')
+
+    const request = index.openCursor(IDBKeyRange.only(true))
+
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (!cursor) return resolve(true)
+
+      cursor.delete()
+      cursor.continue()
+    }
+
+    request.onerror = () => reject(request.error)
+  })
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COFFEE OFFLINE EVENT SYSTEM
+───────────────────────────────────────────────────────────── */
+
+export async function queueCoffeeEvent(
+  event: Omit<OfflineEvent, 'id' | 'timestamp' | 'isoTimestamp' | 'synced'> & {
+    entityType: CoffeeEntityType
+  }
+) {
+  const db = await initDB()
+  const now = new Date()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_COFFEE, 'readwrite')
+    const store = tx.objectStore(STORE_COFFEE)
+
+    const request = store.add({
+      ...event,
+      timestamp: now.getTime(),
+      isoTimestamp: now.toISOString(),
+      synced: false,
+      retryCount: 0
+    })
+
+    request.onsuccess = () => resolve(true)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function getPendingCoffeeEvents(): Promise<OfflineEvent[]> {
+  const db = await initDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_COFFEE, 'readonly')
+    const index = tx.objectStore(STORE_COFFEE).index('by_synced')
+
+    const request = index.getAll(IDBKeyRange.only(false))
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function markCoffeeEventSynced(id: number) {
+  const db = await initDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_COFFEE, 'readwrite')
+    const store = tx.objectStore(STORE_COFFEE)
+
+    const request = store.get(id)
+
+    request.onsuccess = () => {
+      const event = request.result
+      if (!event) return resolve(true)
+
+      const update = store.put({
+        ...event,
+        synced: true
+      })
+
+      update.onsuccess = () => resolve(true)
+      update.onerror = () => reject(update.error)
+    }
+
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function clearSyncedCoffeeEvents() {
+  const db = await initDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_COFFEE, 'readwrite')
+    const index = tx.objectStore(STORE_COFFEE).index('by_synced')
 
     const request = index.openCursor(IDBKeyRange.only(true))
 
