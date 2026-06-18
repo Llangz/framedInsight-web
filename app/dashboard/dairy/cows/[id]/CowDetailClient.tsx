@@ -77,6 +77,33 @@ export default function CowDetailClient({ initialCow }: CowDetailClientProps) {
           </div>
         </div>
         <p className="text-[#6B7280] text-sm">Tag: {cow.cow_tag}</p>
+
+        {/* Incomplete profile banner */}
+        {(!cow.breed || !cow.name || !cow.source || !cow.purchase_date) && (
+          <div className="mt-3 bg-amber-950 border border-amber-700 rounded-xl p-3 flex items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <span className="text-amber-400 text-base flex-shrink-0 mt-0.5">⚠️</span>
+              <div>
+                <p className="text-amber-300 text-sm font-bold">Profile incomplete</p>
+                <p className="text-amber-400/80 text-xs mt-0.5">
+                  {[
+                    !cow.name && 'name',
+                    !cow.breed && 'breed',
+                    !cow.source && 'source',
+                    !cow.purchase_date && 'acquisition date',
+                  ].filter(Boolean).join(', ')} {' '}
+                  missing — complete this for accurate milk projections and herd records.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/dashboard/dairy/cows/${cow.id}/edit`}
+              className="flex-shrink-0 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition whitespace-nowrap"
+            >
+              Complete profile
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

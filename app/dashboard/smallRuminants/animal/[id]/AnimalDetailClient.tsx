@@ -194,14 +194,48 @@ export default function AnimalDetailClient({ animal, weights, healthRecords, bre
               {animal.status ?? 'unknown'}
             </span>
           </div>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="text-xs px-3 py-2 bg-red-950/50 hover:bg-red-900/50 text-red-400 border border-red-900/30 rounded-lg transition-colors disabled:opacity-40 shrink-0"
-          >
-            {deleting ? 'Deleting…' : 'Delete'}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href={`/dashboard/smallRuminants/animal/${animal.id}/edit`}
+              className="text-xs px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 rounded-lg transition-colors"
+            >
+              Edit
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-xs px-3 py-2 bg-red-950/50 hover:bg-red-900/50 text-red-400 border border-red-900/30 rounded-lg transition-colors disabled:opacity-40"
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
         </div>
+
+        {/* Incomplete profile banner */}
+        {(!animal.breed || !animal.name || !animal.purpose || !animal.source) && (
+          <div className="bg-amber-950 border border-amber-800 rounded-xl p-3 flex items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <span className="text-amber-400 text-base flex-shrink-0 mt-0.5">⚠️</span>
+              <div>
+                <p className="text-amber-300 text-sm font-bold">Profile incomplete</p>
+                <p className="text-amber-400/80 text-xs mt-0.5">
+                  {[
+                    !animal.name && 'name',
+                    !animal.breed && 'breed',
+                    !animal.purpose && 'purpose',
+                    !animal.source && 'source',
+                  ].filter(Boolean).join(', ')} missing — complete this for accurate weight gain tracking and flock records.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/dashboard/smallRuminants/animal/${animal.id}/edit`}
+              className="flex-shrink-0 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition whitespace-nowrap"
+            >
+              Complete profile
+            </Link>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

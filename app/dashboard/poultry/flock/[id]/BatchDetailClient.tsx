@@ -157,11 +157,45 @@ export default function BatchDetailClient({
               {batch.breed || 'Mixed'} · {batch.house_number ? `House ${batch.house_number}` : 'No house'} · {ageWeeks}w old · Placed {fmt(batch.date_of_placement)}
             </p>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className="text-2xl font-semibold text-white">{batch.current_count.toLocaleString()}</p>
-            <p className="text-xs text-[#6B7280]">of {(batch.initial_count ?? batch.current_count).toLocaleString()} placed</p>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Link
+              href={`/dashboard/poultry/flock/${batch.id}/edit`}
+              className="text-xs px-3 py-1.5 bg-[#0D0F14] hover:bg-[#161921] border border-[#2A2D35] text-[#9CA3AF] rounded-lg transition-colors"
+            >
+              Edit batch
+            </Link>
+            <div className="text-right">
+              <p className="text-2xl font-semibold text-white">{batch.current_count.toLocaleString()}</p>
+              <p className="text-xs text-[#6B7280]">of {(batch.initial_count ?? batch.current_count).toLocaleString()} placed</p>
+            </div>
           </div>
         </div>
+
+        {/* Incomplete batch banner */}
+        {(!batch.source || !batch.housing_system || !batch.house_number || (!batch.target_weight_kg && !batch.expected_laying_date)) && (
+          <div className="bg-amber-950 border border-amber-800 rounded-xl p-3 flex items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <span className="text-amber-400 text-base flex-shrink-0 mt-0.5">⚠️</span>
+              <div>
+                <p className="text-amber-300 text-sm font-bold">Batch details incomplete</p>
+                <p className="text-amber-400/80 text-xs mt-0.5">
+                  {[
+                    !batch.source && 'source',
+                    !batch.housing_system && 'housing system',
+                    !batch.house_number && 'house/pen number',
+                    (!batch.target_weight_kg && !batch.expected_laying_date) && (batch.bird_type === 'layer' || batch.bird_type === 'dual_purpose' ? 'expected laying date' : 'target weight'),
+                  ].filter(Boolean).join(', ')} missing — add these for better performance tracking and financial reports.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/dashboard/poultry/flock/${batch.id}/edit`}
+              className="flex-shrink-0 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition whitespace-nowrap"
+            >
+              Complete details
+            </Link>
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

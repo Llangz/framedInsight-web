@@ -210,6 +210,11 @@ export default function FlockClient({ initialBatches, farmId }: Props) {
                       <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${STATUS_COLOR[b.status]}`}>
                         {b.status}
                       </span>
+                      {(!b.source || !b.housing_system || !b.house_number) && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-amber-900/40 bg-amber-950/30 text-amber-400">
+                          incomplete
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-[#6B7280] mt-0.5">
                       {b.breed || 'Mixed'} · {b.house_number ? `House ${b.house_number}` : 'No house assigned'} · {ageDisplay(b.date_of_placement)}
@@ -258,7 +263,11 @@ export default function FlockClient({ initialBatches, farmId }: Props) {
                       <p className="text-xs text-[#6B7280] italic">{b.notes}</p>
                     )}
 
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex gap-2 pt-1 flex-wrap">
+                      <Link href={`/dashboard/poultry/flock/${b.id}`}
+                        className="px-3 py-1.5 rounded-md border border-[#2A2D35] text-xs text-[#9CA3AF] hover:text-white hover:border-[#4B5563] transition-colors">
+                        View details
+                      </Link>
                       <Link href={`/dashboard/poultry/eggs`}
                         className="px-3 py-1.5 rounded-md border border-[#2A2D35] text-xs text-[#9CA3AF] hover:text-white hover:border-[#4B5563] transition-colors">
                         Record eggs
@@ -270,6 +279,10 @@ export default function FlockClient({ initialBatches, farmId }: Props) {
                       <Link href={`/dashboard/poultry/health`}
                         className="px-3 py-1.5 rounded-md border border-[#2A2D35] text-xs text-[#9CA3AF] hover:text-white hover:border-[#4B5563] transition-colors">
                         Health / Vax
+                      </Link>
+                      <Link href={`/dashboard/poultry/flock/${b.id}/edit`}
+                        className="px-3 py-1.5 rounded-md border border-[#2A2D35] text-xs text-[#9CA3AF] hover:text-white hover:border-[#4B5563] transition-colors">
+                        Edit batch
                       </Link>
                       {b.status === 'active' && (
                         <button

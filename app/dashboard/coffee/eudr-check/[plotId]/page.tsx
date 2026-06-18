@@ -3,9 +3,20 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/lib/database.types'
 import { EventStore, PhotoEvidenceUploadedEvent, EudrAssessmentRunEvent } from '@/lib/event-sourcing'
+import type { BoundaryResult } from '@/components/coffee/PlotBoundaryMapper'
+
+const PlotBoundaryMapper = dynamic(
+  () => import('@/components/coffee/PlotBoundaryMapper'),
+  { ssr: false, loading: () => (
+    <div className="h-64 bg-slate-800 rounded-xl flex items-center justify-center">
+      <p className="text-slate-400 text-sm">Loading map…</p>
+    </div>
+  )}
+)
 
 type RiskLevel = 'green' | 'yellow' | 'red' | 'unknown'
 
@@ -146,15 +157,7 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [polygon, lat, lng, risk, retryToken])
 
-  if (!hasPolygon && !hasPoint) return (
-    <div className="h-64 bg-slate-800 rounded-xl flex items-center justify-center border-2 border-dashed border-slate-600">
-      <div className="text-center">
-        <p className="text-3xl mb-2">📍</p>
-        <p className="text-slate-400 text-sm">No GPS data recorded</p>
-        <p className="text-slate-500 text-xs mt-1">Walk or draw the boundary to enable the map view</p>
-      </div>
-    </div>
-  )
+  if (!hasPolygon && !hasPoint) return null // handled by NoGpsPanel below
   return (
     <div className="relative rounded-xl overflow-hidden border-2 border-slate-600">
       <div ref={containerRef} style={{ height: 280 }} />
@@ -208,6 +211,58 @@ export default function EUDRPlotDetailPage() {
   const [uploadMsg, setUploadMsg] = useState('')
   const [auditTrail, setAuditTrail] = useState<AuditEvent[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showMapper, setShowMapper] = useState(false)
+  const [savingBoundary, setSavingBoundary] = useState(false)
+  const [boundaryMsg, setBoundaryMsg] = useState('')
+
+  async function handleBoundaryComplete(result: BoundaryResult) {
+    setSavingBoundary(true)
+    setBoundaryMsg('')
+    try {
+      const { data: { session } } = await supabase.auth.refreshSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const { error } = await supabase
+        .from('coffee_plots')
+        .update({
+          gps_polygon: result.polygon,
+          gps_latitude: result.centroid.lat,
+          gps_longitude: result.centroid.lng,
+          area_hectares: result.areaHa,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', plotId)
+
+      if (error) throw error
+
+      // Record in audit trail
+      const eventStore = new EventStore()
+      await eventStore.recordEvent({
+        id: crypto.randomUUID(),
+        farm_id: eudr?.farm_id || '',
+        event_type: 'plot_boundary_recorded',
+        actor_id: session.user.id,
+        actor_type: 'farmer',
+        created_at: new Date().toISOString(),
+        event_data: {
+          plot_id: plotId,
+          point_count: result.pointCount,
+          area_ha: result.areaHa,
+          perimeter_m: result.perimeterM,
+          centroid_lat: result.centroid.lat,
+          centroid_lng: result.centroid.lng,
+        }
+      } as any)
+
+      setBoundaryMsg('✅ Plot boundary saved!')
+      setShowMapper(false)
+      await loadData()
+    } catch (err: any) {
+      setBoundaryMsg(`❌ Failed to save: ${err.message}`)
+    } finally {
+      setSavingBoundary(false)
+    }
+  }
 
   useEffect(() => { if (plotId) loadData() }, [plotId])
 
@@ -402,15 +457,84 @@ export default function EUDRPlotDetailPage() {
         {/* ── Section 2: Plot Map ── */}
         <div>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">📍 Plot Boundary Map</p>
-          <PlotMap polygon={plot?.gps_polygon} lat={plot?.gps_latitude ?? null} lng={plot?.gps_longitude ?? null} risk={risk} />
-          {(hasPolygon || hasPoint) && (
-            <p className="text-xs text-slate-500 mt-1.5">
-              {hasPolygon ? (
-                <>Plot polygon displayed over current satellite imagery. {risk === 'red' && <span className="text-red-400 font-semibold">Red border = conflict zone detected.</span>}</>
-              ) : (
-                'Point location displayed over current satellite imagery — sufficient for plots ≤4 ha.'
+
+          {/* Mapper active */}
+          {showMapper && (
+            <div className="rounded-xl overflow-hidden border-2 border-amber-500 bg-slate-800">
+              <div className="px-4 py-3 bg-amber-900/40 border-b border-amber-600 flex items-center justify-between">
+                <div>
+                  <p className="text-amber-300 text-sm font-bold">Map plot boundary</p>
+                  <p className="text-amber-400/80 text-xs mt-0.5">Walk the perimeter or tap corners on the satellite map, then tap Save.</p>
+                </div>
+                <button
+                  onClick={() => setShowMapper(false)}
+                  className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded border border-slate-600"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div className="h-72">
+                <PlotBoundaryMapper
+                  onComplete={handleBoundaryComplete}
+
+                />
+              </div>
+              {savingBoundary && (
+                <div className="px-4 py-3 bg-slate-700 flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-slate-300 text-sm">Saving boundary…</p>
+                </div>
               )}
+            </div>
+          )}
+
+          {/* No GPS yet — actionable empty state */}
+          {!showMapper && !hasPolygon && !hasPoint && (
+            <div className="h-auto bg-slate-800 rounded-xl border-2 border-dashed border-slate-600 px-6 py-8 flex flex-col items-center text-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center text-2xl">📍</div>
+              <div>
+                <p className="text-white font-semibold text-sm">No GPS boundary recorded</p>
+                <p className="text-slate-400 text-xs mt-1 max-w-xs">
+                  A GPS boundary is required for EUDR compliance. Walk your plot perimeter with the app open, or tap corners on the satellite map.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowMapper(true)}
+                className="mt-1 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white text-sm font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 transition"
+              >
+                <span>🗺️</span> Map this plot now
+              </button>
+              <p className="text-slate-600 text-xs">You can also do this from the plot edit page</p>
+            </div>
+          )}
+
+          {/* Map shown when GPS data present */}
+          {!showMapper && (hasPolygon || hasPoint) && (
+            <PlotMap polygon={plot?.gps_polygon} lat={plot?.gps_latitude ?? null} lng={plot?.gps_longitude ?? null} risk={risk} />
+          )}
+
+          {boundaryMsg && (
+            <p className={`text-xs mt-2 font-semibold ${boundaryMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'}`}>
+              {boundaryMsg}
             </p>
+          )}
+
+          {(hasPolygon || hasPoint) && !showMapper && (
+            <div className="flex items-center justify-between mt-1.5">
+              <p className="text-xs text-slate-500">
+                {hasPolygon ? (
+                  <>Plot polygon displayed over current satellite imagery. {risk === 'red' && <span className="text-red-400 font-semibold">Red border = conflict zone detected.</span>}</>
+                ) : (
+                  'Point location displayed over current satellite imagery — sufficient for plots ≤4 ha.'
+                )}
+              </p>
+              <button
+                onClick={() => setShowMapper(true)}
+                className="text-xs text-amber-400 hover:text-amber-300 underline whitespace-nowrap ml-3 flex-shrink-0"
+              >
+                {hasPolygon ? 'Re-map boundary' : 'Add polygon'}
+              </button>
+            </div>
           )}
         </div>
 
@@ -481,7 +605,15 @@ export default function EUDRPlotDetailPage() {
                       : '⚠️ Point coordinate only · polygon boundary required for this plot size'}
                   </p>
                 ) : (
-                  <p className="text-red-400 text-sm mt-0.5 font-semibold">🚫 No GPS data — plot boundary required for EUDR</p>
+                  <div>
+                    <p className="text-red-400 text-sm mt-0.5 font-semibold">🚫 No GPS data — plot boundary required for EUDR</p>
+                    <button
+                      onClick={() => { setShowMapper(true); document.getElementById('plot-map-section')?.scrollIntoView({ behavior: 'smooth' }) }}
+                      className="mt-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                    >
+                      🗺️ Map boundary now
+                    </button>
+                  </div>
                 )}
                 {plot?.area_hectares && (
                   <p className="text-slate-400 text-xs mt-1">Plot size: {plot.area_hectares} ha {plot.area_hectares > 4 ? '· Polygon required (>4 ha)' : '· Point coordinate sufficient (≤4 ha)'}</p>
@@ -500,13 +632,19 @@ export default function EUDRPlotDetailPage() {
               {!hasSufficientGps && (
                 <div className="flex items-start gap-3 bg-slate-700 rounded-lg p-3">
                   <span className="text-xl">1️⃣</span>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-white text-sm font-bold">Record GPS Boundary</p>
                     <p className="text-slate-400 text-xs mt-0.5">
                       {hasPoint
                         ? 'This plot is over 4 ha, so a full GPS polygon is required — walk the perimeter with the app open to capture it.'
                         : 'Walk the farm perimeter with the app open to capture precise GPS polygon points.'}
                     </p>
+                    <button
+                      onClick={() => { setShowMapper(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                      className="mt-2 bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                    >
+                      🗺️ Open map now
+                    </button>
                   </div>
                 </div>
               )}

@@ -110,7 +110,22 @@ export default function PlotsClient({ initialPlots }: PlotsClientProps) {
                 <div className="pt-4 border-t border-[#2A2D35]">
                   <p className="text-xs text-[#6B7280] flex items-center gap-1">
                     📍 {plot.gps_latitude.toFixed(4)}, {plot.gps_longitude.toFixed(4)}
+                    {plot.gps_polygon && <span className="text-green-500 ml-1">· polygon</span>}
                   </p>
+                </div>
+              )}
+
+              {!plot.gps_latitude && !plot.gps_polygon && (
+                <div className="pt-4 border-t border-[#2A2D35] flex items-center justify-between">
+                  <p className="text-xs text-amber-500 flex items-center gap-1.5">
+                    ⚠️ No GPS boundary — required for EUDR
+                  </p>
+                  <Link
+                    href={`/dashboard/coffee/plots/${plot.id || plot.plot_id}/edit`}
+                    className="text-xs text-amber-400 hover:text-amber-300 underline"
+                  >
+                    Map now →
+                  </Link>
                 </div>
               )}
 

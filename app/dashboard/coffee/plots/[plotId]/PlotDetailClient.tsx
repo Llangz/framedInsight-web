@@ -202,7 +202,7 @@ function OverviewTab({ plot, latestSat }: { plot: CoffeePlot; latestSat: Satelli
       </div>
 
       {/* GPS */}
-      {(plot.gps_latitude || plot.gps_longitude) && (
+      {(plot.gps_latitude || plot.gps_longitude) ? (
         <div className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] divide-y divide-[#1F2128]">
           <div className="px-5 py-4 flex items-center gap-3">
             <MapPin size={14} className="text-[#6B7280]" strokeWidth={1.5} />
@@ -227,6 +227,22 @@ function OverviewTab({ plot, latestSat }: { plot: CoffeePlot; latestSat: Satelli
               Maps
             </a>
           </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-amber-800/60 bg-amber-950/20 px-5 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <MapPin size={14} className="text-amber-500 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+            <div>
+              <p className="text-sm font-medium text-amber-300">No GPS boundary recorded</p>
+              <p className="text-xs text-amber-500/80 mt-0.5">Required for EUDR compliance and satellite monitoring.</p>
+            </div>
+          </div>
+          <Link
+            href={`/dashboard/coffee/plots/${plot.id}/edit`}
+            className="flex-shrink-0 text-xs font-bold text-amber-400 hover:text-amber-300 border border-amber-700 hover:border-amber-500 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+          >
+            Map now →
+          </Link>
         </div>
       )}
 
