@@ -42,12 +42,12 @@ function SubNav({ active }: { active: string }) {
   return (
     <div className="flex gap-1 mt-3 overflow-x-auto pb-0.5">
       {[
-        { label: "🏠 Flock",    href: "/dashboard/smallRuminants" },
-        { label: "💉 Health",   href: "/dashboard/smallRuminants/health" },
-        { label: "🐣 Breeding", href: "/dashboard/smallRuminants/breeding" },
-        { label: "⚖️ Weights",  href: "/dashboard/smallRuminants/weights" },
-        { label: "🍼 Milk",     href: "/dashboard/smallRuminants/milk" },
-        { label: "💰 Sales",    href: "/dashboard/smallRuminants/sales" },
+        { label: "Flock",    href: "/dashboard/smallRuminants" },
+        { label: "Health",   href: "/dashboard/smallRuminants/health" },
+        { label: "Breeding", href: "/dashboard/smallRuminants/breeding" },
+        { label: "Weights",  href: "/dashboard/smallRuminants/weights" },
+        { label: "Milk",     href: "/dashboard/smallRuminants/milk" },
+        { label: "Sales",    href: "/dashboard/smallRuminants/sales" },
       ].map(l => (
         <Link key={l.href} href={l.href}
           className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${

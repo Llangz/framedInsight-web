@@ -60,8 +60,8 @@ export default function HerdClient({ initialAnimals, initialStats }: HerdClientP
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Herd Management</h1>
-            <p className="text-gray-600">Manage and track your dairy animals</p>
+            <h1 className="text-4xl font-bold text-white mb-2">Herd Management</h1>
+            <p className="text-[#6B7280]">Manage and track your dairy animals</p>
           </div>
           <Link
             href="/dashboard/dairy/add-cow"
@@ -88,8 +88,8 @@ export default function HerdClient({ initialAnimals, initialStats }: HerdClientP
 
         {/* Empty State */}
         {animals.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-            <p className="text-gray-600 mb-4">No animals in your herd yet</p>
+          <div className="bg-[#0D0F14] rounded-lg shadow-lg p-12 text-center">
+            <p className="text-[#6B7280] mb-4">No animals in your herd yet</p>
             <Link
               href="/dashboard/dairy/add-cow"
               className="inline-block bg-amber-600 hover:bg-amber-700 text-white font-semibold px-6 py-3 rounded-lg transition duration-200"
@@ -98,27 +98,27 @@ export default function HerdClient({ initialAnimals, initialStats }: HerdClientP
             </Link>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-[#0D0F14] rounded-lg shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-100 border-b">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Animal ID</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Breed</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Age</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Purchase Price</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#9CA3AF]">Animal ID</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#9CA3AF]">Breed</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#9CA3AF]">Age</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#9CA3AF]">Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#9CA3AF]">Purchase Price</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#9CA3AF]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {animals.map((animal) => (
-                    <tr key={animal.id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 font-semibold text-gray-900">{animal.animal_id}</td>
-                      <td className="px-6 py-4 text-gray-700">{animal.breed}</td>
-                      <td className="px-6 py-4 text-gray-700">{calculateAge(animal.date_of_birth)}</td>
+                    <tr key={animal.id} className="hover:bg-[#0A0C10] transition">
+                      <td className="px-6 py-4 font-semibold text-white">{animal.animal_id}</td>
+                      <td className="px-6 py-4 text-[#9CA3AF]">{animal.breed}</td>
+                      <td className="px-6 py-4 text-[#9CA3AF]">{calculateAge(animal.date_of_birth)}</td>
                       <td className="px-6 py-4">{getStatusBadge(animal.status)}</td>
-                      <td className="px-6 py-4 text-gray-700">
+                      <td className="px-6 py-4 text-[#9CA3AF]">
                         {animal.purchase_price ? `KES ${animal.purchase_price.toLocaleString()}` : '-'}
                       </td>
                       <td className="px-6 py-4">

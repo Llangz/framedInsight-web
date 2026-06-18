@@ -1,138 +1,143 @@
+// 📁 FILE PATH: app/dashboard/coffee/harvest/record/HarvestRecordClient.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { recordHarvest } from '../actions'
-import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Plus, X } from 'lucide-react'
 import Link from 'next/link'
+import CoffeeSubNav from '../../components/CoffeeSubNav'
 
 interface HarvestRecord {
-  id: string; harvest_date: string; plot_name: string; harvest_year: number | null;
-  harvest_season: string | null; cherry_kg: number; total_value: number | null;
-  quality_grade: string | null; amount_paid: number | null; payment_status: string | null;
+  id: string; harvest_date: string; plot_name: string; harvest_year: number | null
+  harvest_season: string | null; cherry_kg: number; total_value: number | null
+  quality_grade: string | null; amount_paid: number | null; payment_status: string | null
 }
-
-interface Plot {
-  id: string
-  plot_name: string
-}
+interface Plot { id: string; plot_name: string }
 
 const GRADES = ['AA', 'AB', 'C', 'PB', 'TT', 'T', 'MH/ML', 'UG'] as const
 type Grade = typeof GRADES[number]
 
-const SEASONS = ['Main Crop (Oct-Jan)', 'Fly Crop (Apr-Jun)', 'Other']
+const FIELD = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-[#4B5563] transition-colors'
+const LABEL = 'block text-xs font-medium text-[#D1D5DB] mb-1'
 
-export default function HarvestRecordClient({ 
-  initialRecords, 
-  farmId,
-  plots 
-}: { 
-  initialRecords: HarvestRecord[], 
-  farmId: string,
-  plots: Plot[]
+function fmt(d: string) {
+  return new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+const GRADE_COLORS: Record<string, string> = {
+  AA: 'text-emerald-400 bg-emerald-950/40 border-emerald-900/40',
+  AB: 'text-sky-400 bg-sky-950/40 border-sky-900/40',
+  PB: 'text-purple-400 bg-purple-950/40 border-purple-900/40',
+  C:  'text-amber-400 bg-amber-950/40 border-amber-900/40',
+}
+
+export default function HarvestRecordClient({
+  initialRecords, farmId, plots,
+}: {
+  initialRecords: HarvestRecord[]; farmId: string; plots: Plot[]
 }) {
   const router = useRouter()
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()))
+  const [showModal, setShowModal] = useState(false)
 
   const totals = {
-    totalCherry: initialRecords.reduce((s, r) => s + Number(r.cherry_kg || 0), 0),
-    totalValue: initialRecords.reduce((s, r) => s + Number(r.total_value || 0), 0),
-    count: initialRecords.length
+    cherry:  initialRecords.reduce((s, r) => s + Number(r.cherry_kg || 0), 0),
+    value:   initialRecords.reduce((s, r) => s + Number(r.total_value || 0), 0),
+    count:   initialRecords.length,
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b sticky top-0 z-10 px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard/coffee" className="text-gray-600 hover:text-gray-900">
-              <ArrowLeft size={18} />
-            </Link>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">Harvest Tracker</h1>
-              <p className="text-xs text-gray-500">Track your coffee cherry pickups</p>
-            </div>
+    <div className="min-h-screen bg-obsidian">
+      <CoffeeSubNav />
+
+      <div className="max-w-4xl mx-auto px-4 lg:px-6 py-8 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-white tracking-tight">Harvest records</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">Track cherry pickups and cooperative deliveries</p>
           </div>
-          <button 
-            onClick={() => setShowAddModal(true)} 
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-semibold text-sm transition-colors"
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors flex-shrink-0"
           >
-            + Record Harvest
+            <Plus size={12} /> Record harvest
           </button>
         </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto p-4 space-y-4">
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-red-50 border border-red-100 p-4 rounded-2xl">
-            <p className="text-2xl font-bold text-red-700">{totals.totalCherry.toLocaleString()} kg</p>
-            <p className="text-xs text-gray-500 mt-0.5">Total Cherry Picked</p>
-          </div>
-          <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl">
-            <p className="text-2xl font-bold text-emerald-700">KES {(totals.totalValue/1000).toFixed(1)}K</p>
-            <p className="text-xs text-gray-500 mt-0.5">Gross Value</p>
-          </div>
+        {/* Summary */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Total cherry', value: `${totals.cherry.toLocaleString()} kg` },
+            { label: 'Gross value',  value: `KES ${(totals.value / 1000).toFixed(1)}K` },
+            { label: 'Pickups',      value: totals.count },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] p-4">
+              <p className="text-xl font-semibold text-white">{value}</p>
+              <p className="text-xs text-[#6B7280] mt-0.5">{label}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Harvest list */}
-        <div className="bg-white rounded-2xl border overflow-hidden">
-          <div className="px-4 py-3 border-b bg-gray-50">
-            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Recent Harvests</p>
+        {/* Records list */}
+        <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#2A2D35]">
+            <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Recent pickups</h2>
           </div>
           {initialRecords.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 text-sm">
-              No harvest records yet. Click "Record Harvest" to add your first pickup.
+            <div className="py-10 text-center">
+              <p className="text-sm text-[#6B7280] mb-3">No harvest records yet</p>
+              <button onClick={() => setShowModal(true)} className="text-sm text-emerald-500 hover:text-emerald-400">
+                Record first pickup →
+              </button>
             </div>
           ) : (
-            initialRecords.map(r => (
-              <div key={r.id} className="p-4 border-b last:border-0 flex justify-between items-center hover:bg-gray-50">
-                <div>
-                  <p className="font-semibold text-sm text-gray-900">{r.plot_name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {new Date(r.harvest_date).toLocaleDateString()} 
-                    {r.quality_grade && <span className="ml-2 px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">{r.quality_grade}</span>}
-                  </p>
-                </div>
-                <p className="text-red-600 font-bold">{r.cherry_kg} kg</p>
-              </div>
-            ))
+            <div className="divide-y divide-[#1F2128]">
+              {initialRecords.map(r => {
+                const gradeClass = GRADE_COLORS[r.quality_grade ?? ''] ?? 'text-[#6B7280] bg-[#1F2128] border-[#2A2D35]'
+                return (
+                  <div key={r.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white">{r.plot_name}</p>
+                      <p className="text-xs text-[#6B7280]">{fmt(r.harvest_date)}</p>
+                    </div>
+                    {r.quality_grade && (
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${gradeClass}`}>
+                        {r.quality_grade}
+                      </span>
+                    )}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-semibold text-white">{Number(r.cherry_kg).toLocaleString()} kg</p>
+                      {r.total_value ? (
+                        <p className="text-xs text-[#6B7280]">KES {Number(r.total_value).toLocaleString()}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
-        </div>
+        </section>
       </div>
 
-      {/* Add Harvest Modal */}
-      {showAddModal && (
-        <HarvestModal 
-          plots={plots} 
-          farmId={farmId} 
-          onClose={() => setShowAddModal(false)}
-          onSuccess={() => {
-            setShowAddModal(false)
-            router.refresh()
-          }} 
+      {showModal && (
+        <HarvestModal
+          plots={plots}
+          farmId={farmId}
+          onClose={() => setShowModal(false)}
+          onSuccess={() => { setShowModal(false); router.refresh() }}
         />
       )}
     </div>
   )
 }
 
-function HarvestModal({ 
-  plots, 
-  farmId, 
-  onClose, 
-  onSuccess 
-}: { 
-  plots: Plot[], 
-  farmId: string, 
-  onClose: () => void,
-  onSuccess: () => void 
+function HarvestModal({ plots, farmId, onClose, onSuccess }: {
+  plots: Plot[]; farmId: string; onClose: () => void; onSuccess: () => void
 }) {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  
   const [form, setForm] = useState({
     plot_id: plots[0]?.id || '',
     harvest_date: new Date().toISOString().split('T')[0],
@@ -145,30 +150,26 @@ function HarvestModal({
 
   useEffect(() => {
     if (form.cherry_kg && form.price_per_kg) {
-      const total = parseFloat(form.cherry_kg) * parseFloat(form.price_per_kg)
-      setForm(f => ({ ...f, total_value: total.toFixed(2) }))
+      setForm(f => ({ ...f, total_value: (parseFloat(f.cherry_kg) * parseFloat(f.price_per_kg)).toFixed(2) }))
     }
   }, [form.cherry_kg, form.price_per_kg])
+
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const FIELD_M = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-[#4B5563] transition-colors'
+  const LABEL_M = 'block text-xs font-medium text-[#D1D5DB] mb-1'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.plot_id) { setError('Select a plot'); return }
     if (!form.cherry_kg || parseFloat(form.cherry_kg) <= 0) { setError('Enter a valid weight'); return }
-    
-    setLoading(true)
-    setError('')
-    
+    setLoading(true); setError('')
     try {
       await recordHarvest({
-        farm_id: farmId,
-        plot_id: form.plot_id,
-        harvest_date: form.harvest_date,
-        cherry_kg: parseFloat(form.cherry_kg),
-        produce_kg: parseFloat(form.cherry_kg),
-        quality_grade: form.quality_grade,
-        price_per_kg: parseFloat(form.price_per_kg),
-        total_value: parseFloat(form.total_value || '0'),
-        notes: form.notes || null,
+        farm_id: farmId, plot_id: form.plot_id, harvest_date: form.harvest_date,
+        cherry_kg: parseFloat(form.cherry_kg), produce_kg: parseFloat(form.cherry_kg),
+        quality_grade: form.quality_grade, price_per_kg: parseFloat(form.price_per_kg),
+        total_value: parseFloat(form.total_value || '0'), notes: form.notes || null,
       })
       onSuccess()
     } catch (err: any) {
@@ -179,127 +180,82 @@ function HarvestModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-      <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Record Harvest</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-t-xl sm:rounded-xl border border-[#2A2D35] bg-[#0D0F14] shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A2D35]">
+          <h2 className="text-sm font-semibold text-white">Record harvest</h2>
+          <button onClick={onClose} className="text-[#6B7280] hover:text-white transition-colors"><X size={16} /></button>
         </div>
 
-        {error && (
-          <div className="flex items-center gap-2 p-3 mb-4 rounded-lg border border-red-200 bg-red-50">
-            <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-red-900/40 bg-red-950/30">
+              <AlertCircle size={13} className="text-red-400 flex-shrink-0" />
+              <p className="text-xs text-red-300">{error}</p>
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Select Plot *</label>
-            <select 
-              value={form.plot_id} 
-              onChange={e => setForm({ ...form, plot_id: e.target.value })}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              required
-            >
-              <option value="">Choose plot...</option>
-              {plots.map(p => (
-                <option key={p.id} value={p.id}>{p.plot_name}</option>
-              ))}
+            <label className={LABEL_M}>Plot *</label>
+            <select className={FIELD_M} value={form.plot_id} onChange={e => set('plot_id', e.target.value)} required>
+              <option value="">Select plot…</option>
+              {plots.map(p => <option key={p.id} value={p.id}>{p.plot_name}</option>)}
             </select>
             {plots.length === 0 && (
-              <p className="text-xs text-amber-600 mt-1">No plots found. <Link href="/dashboard/coffee/plots/add" className="underline">Add a plot first</Link>.</p>
+              <p className="text-[11px] text-amber-400 mt-1">
+                No plots found. <Link href="/dashboard/coffee/plots/add" className="underline">Add a plot first →</Link>
+              </p>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Harvest Date *</label>
-              <input 
-                type="date" 
-                value={form.harvest_date} 
-                onChange={e => setForm({ ...form, harvest_date: e.target.value })}
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                required
-              />
+              <label className={LABEL_M}>Harvest date *</label>
+              <input type="date" className={FIELD_M} value={form.harvest_date} max={new Date().toISOString().split('T')[0]}
+                onChange={e => set('harvest_date', e.target.value)} required />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Quality Grade</label>
-              <select 
-                value={form.quality_grade} 
-                onChange={e => setForm({ ...form, quality_grade: e.target.value as Grade })}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
+              <label className={LABEL_M}>Quality grade</label>
+              <select className={FIELD_M} value={form.quality_grade} onChange={e => set('quality_grade', e.target.value)}>
                 {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Cherry Weight (kg) *</label>
-            <input 
-              type="number" 
-              step="0.1"
-              min="0"
-              value={form.cherry_kg} 
-              onChange={e => setForm({ ...form, cherry_kg: e.target.value })}
-              placeholder="e.g. 50.5"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">Weight of fresh coffee cherries picked</p>
+            <label className={LABEL_M}>Cherry weight (kg) *</label>
+            <input type="number" step="0.1" min="0" className={FIELD_M} placeholder="e.g. 50.5"
+              value={form.cherry_kg} onChange={e => set('cherry_kg', e.target.value)} required />
+            <p className="text-[11px] text-[#4B5563] mt-1">Weight of fresh cherry delivered to factory</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Price per kg (KES)</label>
-              <input 
-                type="number" 
-                step="0.5"
-                min="0"
-                value={form.price_per_kg} 
-                onChange={e => setForm({ ...form, price_per_kg: e.target.value })}
-                placeholder="e.g. 12"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+              <label className={LABEL_M}>Price / kg (KES)</label>
+              <input type="number" step="0.5" min="0" className={FIELD_M} placeholder="e.g. 12"
+                value={form.price_per_kg} onChange={e => set('price_per_kg', e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Total Value (KES)</label>
-              <input 
-                type="text" 
-                value={form.total_value} 
-                readOnly
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 font-semibold text-gray-900"
-              />
+              <label className={LABEL_M}>Total value (KES)</label>
+              <input type="text" className={`${FIELD_M} text-emerald-400 font-semibold`} value={form.total_value} readOnly />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Notes (optional)</label>
-            <textarea 
-              value={form.notes} 
-              onChange={e => setForm({ ...form, notes: e.target.value })}
-              placeholder="Weather conditions, picker name, etc."
-              rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-            />
+            <label className={LABEL_M}>Notes (optional)</label>
+            <textarea className={`${FIELD_M} resize-none`} rows={2}
+              placeholder="Weather, picker details, remarks…"
+              value={form.notes} onChange={e => set('notes', e.target.value)} />
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <button 
-              type="button" 
-              onClick={onClose}
-              className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors"
-            >
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 rounded-md border border-[#2A2D35] text-sm text-[#9CA3AF] hover:text-white transition-colors">
               Cancel
             </button>
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="flex-1 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-semibold text-sm transition-colors"
-            >
-              {loading ? 'Saving...' : 'Record Harvest'}
+            <button type="submit" disabled={loading}
+              className="flex-1 py-2.5 rounded-md bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-sm font-medium text-white transition-colors">
+              {loading ? 'Saving…' : 'Save harvest'}
             </button>
           </div>
         </form>

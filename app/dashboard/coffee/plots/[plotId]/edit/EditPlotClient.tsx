@@ -53,19 +53,19 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+    <div className="min-h-screen bg-[#0A0C10] p-4 md:p-8">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <Link href={`/dashboard/coffee/plots/${plot.id}`} className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+          <Link href={`/dashboard/coffee/plots/${plot.id}`} className="w-10 h-10 flex items-center justify-center bg-[#0D0F14] border border-[#2A2D35] rounded-lg hover:bg-[#0A0C10]">
             ←
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Edit Coffee Plot</h1>
-            <p className="text-gray-600 text-sm mt-1">{plot.plot_name}</p>
+            <h1 className="text-3xl font-bold text-white">Edit Coffee Plot</h1>
+            <p className="text-[#6B7280] text-sm mt-1">{plot.plot_name}</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-6 md:p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6 md:p-8 space-y-6">
           {error && (
             <div className="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
               {error}
@@ -79,21 +79,21 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Plot Name</label>
+              <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">Plot Name</label>
               <input
                 type="text"
                 value={formData.plot_name}
                 onChange={e => setFormData({...formData, plot_name: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-[#2A2D35] rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Variety</label>
+              <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">Variety</label>
               <select
                 value={formData.variety}
                 onChange={e => setFormData({...formData, variety: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-[#2A2D35] rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               >
                 <option value="">Select variety</option>
                 <option value="SL28">SL28</option>
@@ -105,43 +105,43 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Total Trees</label>
+              <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">Total Trees</label>
               <input
                 type="number"
                 value={formData.total_trees}
                 onChange={e => setFormData({...formData, total_trees: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-[#2A2D35] rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Productive Trees</label>
+              <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">Productive Trees</label>
               <input
                 type="number"
                 value={formData.productive_trees}
                 onChange={e => setFormData({...formData, productive_trees: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-[#2A2D35] rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Land Size (acres)</label>
+              <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">Land Size (acres)</label>
               <input
                 type="number"
                 step="0.01"
                 value={formData.land_size_acres}
                 onChange={e => setFormData({...formData, land_size_acres: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-[#2A2D35] rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Establishment Year</label>
+              <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">Establishment Year</label>
               <input
                 type="number"
                 value={formData.establishment_year}
                 onChange={e => setFormData({...formData, establishment_year: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-[#2A2D35] rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
             </button>
             <Link
               href={`/dashboard/coffee/plots/${plot.id}`}
-              className="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 font-semibold text-center transition-colors"
+              className="flex-1 px-4 py-2 bg-gray-200 text-white rounded-lg hover:bg-gray-300 font-semibold text-center transition-colors"
             >
               Cancel
             </Link>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import CoffeeSubNav from '../components/CoffeeSubNav'
 
 type RiskLevel = 'green' | 'yellow' | 'red' | 'unknown'
 
@@ -68,12 +69,9 @@ export default function EUDRFleetClient({
   const cfg = RISK_CONFIG[overallStatus]
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      <div className={`w-full py-6 px-4 ${
-        overallStatus === 'green' ? 'bg-green-700' :
-        overallStatus === 'yellow' ? 'bg-amber-600' :
-        overallStatus === 'red' ? 'bg-red-700' : 'bg-slate-700'
-      }`}>
+    <div className="min-h-screen bg-obsidian text-white">
+      <CoffeeSubNav />
+      <div className="py-6 px-4 hidden">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-4">
             <span className="text-5xl">{cfg.icon}</span>

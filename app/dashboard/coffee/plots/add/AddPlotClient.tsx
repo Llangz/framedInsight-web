@@ -186,7 +186,7 @@ export default function AddPlotClient() {
           type="button"
           disabled={!valid}
           onClick={() => setStep('map')}
-          className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold rounded-2xl transition-all shadow-lg"
+          className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold rounded-lg transition-all shadow-lg"
         >
           Next: Map Your Plot →
         </button>
@@ -201,7 +201,7 @@ export default function AddPlotClient() {
       <div className="space-y-4">
         {/* Intro */}
         <div className="p-4 bg-emerald-900/20 border border-emerald-500/20 rounded-xl">
-          <p className="text-sm text-emerald-300 font-semibold mb-1">📍 Map your plot boundary</p>
+          <p className="text-sm text-emerald-300 font-semibold mb-1"> Map your plot boundary</p>
           <p className="text-xs text-slate-400 leading-relaxed">
             Use <strong className="text-white">Walk Boundary</strong> to physically walk your plot edge and let GPS record
             the outline, or use <strong className="text-white">Tap Corners</strong> to click points directly
@@ -305,7 +305,7 @@ export default function AddPlotClient() {
         ) : (
           <div className="p-4 bg-amber-900/20 border border-amber-500/20 rounded-xl">
             <p className="text-sm text-amber-400">
-              ⚠️ No boundary mapped. You can always add it later from the plot detail page.
+               No boundary mapped. You can always add it later from the plot detail page.
             </p>
           </div>
         )}
@@ -324,7 +324,7 @@ export default function AddPlotClient() {
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 text-white font-bold rounded-2xl transition-all shadow-lg"
+            className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 text-white font-bold rounded-lg transition-all shadow-lg"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -379,7 +379,7 @@ export default function AddPlotClient() {
                 ${i < currentIndex
                   ? 'bg-emerald-600 text-white'
                   : i === currentIndex
-                  ? 'bg-emerald-500 text-white ring-2 ring-emerald-500/30'
+                  ? 'bg-emerald-500 text-white ring-2 border-[#4B5563]/30'
                   : 'bg-slate-800 text-slate-500'}
               `}>
                 {i < currentIndex ? '✓' : i + 1}
@@ -395,7 +395,7 @@ export default function AddPlotClient() {
         </div>
 
         {/* Step content */}
-        <div className="glass-card p-8 rounded-3xl">
+        <div className="glass-card p-8 rounded-xl">
           {step === 'details' && renderDetails()}
           {step === 'map' && renderMap()}
           {step === 'review' && renderReview()}

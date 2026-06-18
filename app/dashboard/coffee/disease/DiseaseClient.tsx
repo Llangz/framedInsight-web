@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import CoffeeSubNav from '../components/CoffeeSubNav'
 import {
   ArrowLeft, Plus, ChevronDown, ChevronUp, CheckCircle,
   AlertTriangle, AlertCircle, ShieldAlert, Eye, Search,
@@ -274,9 +275,10 @@ export default function DiseaseClient({
 
   return (
     <div className="min-h-screen bg-obsidian">
+      <CoffeeSubNav />
 
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-obsidian/95 backdrop-blur border-b border-[#1F2128]">
+      {/* Page header */}
+      <div className="border-b border-[#2A2D35] hidden">
         <div className="max-w-2xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

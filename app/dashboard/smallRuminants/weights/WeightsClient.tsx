@@ -65,12 +65,12 @@ function bcsLabel(bcs: number | null) {
 
 function SubNav({ active }: { active: string }) {
   const links = [
-    { label: "🏠 Flock",    href: "/dashboard/smallRuminants" },
-    { label: "💉 Health",   href: "/dashboard/smallRuminants/health" },
-    { label: "🐣 Breeding", href: "/dashboard/smallRuminants/breeding" },
-    { label: "⚖️ Weights",  href: "/dashboard/smallRuminants/weights" },
-    { label: "🍼 Milk",     href: "/dashboard/smallRuminants/milk" },
-    { label: "💰 Sales",    href: "/dashboard/smallRuminants/sales" },
+    { label: "Flock",    href: "/dashboard/smallRuminants" },
+    { label: "Health",   href: "/dashboard/smallRuminants/health" },
+    { label: "Breeding", href: "/dashboard/smallRuminants/breeding" },
+    { label: "Weights",  href: "/dashboard/smallRuminants/weights" },
+    { label: "Milk",     href: "/dashboard/smallRuminants/milk" },
+    { label: "Sales",    href: "/dashboard/smallRuminants/sales" },
   ];
   return (
     <div className="flex gap-1 mt-3 overflow-x-auto pb-0.5">

@@ -77,7 +77,7 @@ const PEST_OPTIONS: { type: ObservationType; emoji: string; label: string; subla
   { type: "leaf_miner", emoji: "🍃", label: "Leaf Miner",   sublabel: "Pale serpentine tunnels in leaf tissue",      category: "pest"    },
   { type: "root_disease",emoji:"🟣", label: "Root Disease", sublabel: "Wilting, yellowing — possible root rot",      category: "disease" },
   { type: "other_pest", emoji: "❓", label: "Other",        sublabel: "Something else — describe below",             category: "pest"    },
-  { type: "healthy",    emoji: "✅", label: "All Clear",    sublabel: "No problems found on this plot",              category: "clean"   },
+  { type: "healthy",    emoji: "", label: "All Clear",    sublabel: "No problems found on this plot",              category: "clean"   },
 ];
 
 const SEVERITY_OPTIONS: { value: SeverityLevel; label: string; desc: string; borderActive: string; bgActive: string; textActive: string }[] = [
@@ -97,7 +97,7 @@ const ACTION_OPTIONS: { value: ActionTaken; label: string; desc: string; emoji: 
   { value: "none",                        label: "Just recording",              desc: "No action yet — monitoring only",  emoji: "📝" },
   { value: "sprayed_immediately",         label: "Sprayed today",               desc: "Emergency spray already done",      emoji: "🚿" },
   { value: "scheduled_spray",             label: "Will spray in 2–3 days",      desc: "Spray scheduled and upcoming",      emoji: "📅" },
-  { value: "calendar_spray_sufficient",   label: "Already on calendar spray",   desc: "Routine spray schedule covers this", emoji: "✅" },
+  { value: "calendar_spray_sufficient",   label: "Already on calendar spray",   desc: "Routine spray schedule covers this", emoji: "" },
 ];
 
 const STEPS = ["Plot & Scout", "What did you see?", "How severe?", "Action taken", "Confirm & save"];
@@ -141,8 +141,8 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
 function AlertBanner({ level, threshold }: { level: "none" | "watch" | "action_required" | "emergency"; threshold: RegionalThreshold | null }) {
   if (level === "none") return null;
   const cfg = {
-    watch:           { bg: "bg-amber-900/20", border: "border-amber-700", text: "text-amber-400", icon: "⚠️", label: "Watch threshold reached" },
-    action_required: { bg: "bg-orange-900/20", border: "border-orange-700", text: "text-orange-400", icon: "🚨", label: "Action threshold breached — spray recommended" },
+    watch:           { bg: "bg-amber-900/20", border: "border-amber-700", text: "text-amber-400", icon: "", label: "Watch threshold reached" },
+    action_required: { bg: "bg-orange-900/20", border: "border-orange-700", text: "text-orange-400", icon: "", label: "Action threshold breached — spray recommended" },
     emergency:       { bg: "bg-red-900/20",   border: "border-red-700",   text: "text-red-400",   icon: "🆘", label: "Emergency threshold — immediate spray required" },
   }[level];
   return (
@@ -434,7 +434,7 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
           <>
             {form.observation_type === "healthy" ? (
               <div className={CARD + " text-center py-6"}>
-                <p className="text-4xl mb-3">✅</p>
+                <p className="text-4xl mb-3"></p>
                 <p className="text-white font-semibold">All Clear — no action needed</p>
                 <p className="text-sm text-[#6B7280] mt-1">Good scouting practice. Continue monitoring regularly.</p>
               </div>
@@ -630,7 +630,7 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                 ["Date",          new Date(form.scouting_date).toLocaleDateString("en-KE", { weekday: "short", day: "numeric", month: "long" })],
                 ["Scouted by",    form.scouted_by || "Not specified"],
                 ["Observation",   selectedPest?.label ?? form.observation_type],
-                ["Severity",      form.severity_level || (form.observation_type === "healthy" ? "All Clear ✅" : "Not specified")],
+                ["Severity",      form.severity_level || (form.observation_type === "healthy" ? "All Clear " : "Not specified")],
                 ["Trees sampled", form.trees_sampled ? `${form.trees_sampled} trees` : "—"],
                 bugsPerTree != null ? ["Pests per tree", bugsPerTree.toFixed(1)] : null,
                 ["Weather",       WEATHER_OPTIONS.find(w => w.value === form.weather_past_week)?.label ?? "—"],
