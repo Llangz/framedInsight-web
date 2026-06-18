@@ -222,8 +222,6 @@ export default function PlotBoundaryMapper({
           zoomControl: false,        // we render our own zoom buttons in React
           doubleClickZoom: false,    // disabled permanently — users use our buttons
           scrollWheelZoom: true,
-          tap: true,                 // enables mobile tap events
-          tapTolerance: 15,          // more forgiving tap radius on mobile
           touchZoom: true,
           attributionControl: false, // we add a minimal one
         })
