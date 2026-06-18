@@ -1,4 +1,3 @@
-// 📁 FILE PATH: app/dashboard/coffee/eudr-check/[plotId]/page.tsx
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
@@ -7,18 +6,13 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/lib/database.types'
 import { EventStore, PhotoEvidenceUploadedEvent, EudrAssessmentRunEvent } from '@/lib/event-sourcing'
-import {
-  ArrowLeft, MapPin, ShieldCheck, ShieldAlert, AlertTriangle,
-  FileText, Satellite, RefreshCw, Download, Camera, CheckCircle2,
-  XCircle, HelpCircle, Clock, ChevronRight,
-} from 'lucide-react'
-import CoffeeSubNav from '../../components/CoffeeSubNav'
 
 type RiskLevel = 'green' | 'yellow' | 'red' | 'unknown'
 
 interface PlotData {
   id: string; plot_name: string; area_hectares: number | null
-  gps_polygon: any; region_name: string | null
+  gps_polygon: any; gps_latitude: number | null; gps_longitude: number | null
+  region_name: string | null
 }
 type EudrData = Database['public']['Tables']['coffee_eudr_compliance']['Row'] | null
 interface SatData { ndvi_mean: number | null; health_label: string | null; image_date: string }
@@ -33,75 +27,171 @@ function getRisk(eudr: EudrData): RiskLevel {
   return 'yellow'
 }
 
-// Risk config — Lucide icons, no emoji
-const RISK_CONFIG = {
-  green:   { Icon: ShieldCheck,  label: 'Ready for export',         sub: 'No deforestation detected. All documents clear.',              border: 'border-emerald-900/40', bg: 'bg-emerald-950/30', text: 'text-emerald-400', dot: 'bg-emerald-500' },
-  yellow:  { Icon: AlertTriangle, label: 'Action required',         sub: 'Verify boundary, upload land title, or review forest baseline.', border: 'border-amber-900/40',   bg: 'bg-amber-950/30',   text: 'text-amber-400',   dot: 'bg-amber-500'   },
-  red:     { Icon: XCircle,       label: 'Potential forest conflict', sub: 'Significant tree-cover loss detected after Jan 1, 2021.',      border: 'border-red-900/40',     bg: 'bg-red-950/30',     text: 'text-red-400',     dot: 'bg-red-500'     },
-  unknown: { Icon: HelpCircle,    label: 'Not assessed yet',         sub: 'Run validation to assess this plot against EUDR baseline.',     border: 'border-[#2A2D35]',      bg: 'bg-[#0D0F14]',      text: 'text-[#6B7280]',   dot: 'bg-[#4B5563]'   },
+// gps_polygon may be stored as a bare Polygon/MultiPolygon geometry OR as a full
+// GeoJSON Feature wrapping one (the boundary mapper saves Features). Normalize both.
+function extractGeometry(polygon: any): { type: string; coordinates: any } | null {
+  if (!polygon) return null
+  if (polygon.type === 'Feature' && polygon.geometry) return polygon.geometry
+  if (polygon.type === 'Polygon' || polygon.type === 'MultiPolygon' || polygon.type === 'Point') return polygon
+  if (Array.isArray(polygon.coordinates)) return { type: 'Polygon', coordinates: polygon.coordinates }
+  return null
 }
 
-const EUDR_REQS = [
-  { key: 'gps',   label: 'GPS polygon',        desc: 'Plot boundary recorded' },
-  { key: 'land',  label: 'Land document',       desc: 'Title or ownership evidence uploaded' },
-  { key: 'forest',label: 'Forest baseline',     desc: 'No deforestation since Dec 31 2020' },
-]
+function extractPolygonLatLngs(polygon: any): [number, number][] {
+  const geom = extractGeometry(polygon)
+  const coords = geom?.type === 'MultiPolygon' ? geom.coordinates?.[0]?.[0] : geom?.coordinates?.[0]
+  return (coords || []).map((c: number[]) => [c[1], c[0]])
+}
 
-function PlotMap({ polygon, risk }: { polygon: any; risk: RiskLevel }) {
-  const mapRef = useRef<HTMLDivElement>(null)
-  const [mapLoaded, setMapLoaded] = useState(false)
+const RISK_COLOR: Record<RiskLevel, string> = { red: '#ef4444', yellow: '#f59e0b', green: '#22c55e', unknown: '#94a3b8' }
+
+type MapStatus = 'loading' | 'ready' | 'timeout' | 'error'
+
+// Satellite plot map — uses the `leaflet` package already bundled with the app instead
+// of injecting a <script src="https://unpkg.com/..."> tag at runtime. The old CDN-script
+// approach had two compounding problems: (1) the site's Content-Security-Policy doesn't
+// allow scripts from unpkg.com, so the browser silently blocked it outright, and (2) there
+// was no onerror/timeout handling, so the "Loading satellite map…" spinner had no way to
+// ever resolve when the script didn't load. Bundling avoids the CSP issue entirely, and a
+// timeout + retry path below means a slow connection no longer spins forever with no
+// feedback.
+function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null; lng: number | null; risk: RiskLevel }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<any>(null)
+  const [status, setStatus] = useState<MapStatus>('loading')
+  const [retryToken, setRetryToken] = useState(0)
+
+  const latlngs = extractPolygonLatLngs(polygon)
+  const hasPolygon = latlngs.length > 0
+  const hasPoint = lat != null && lng != null
 
   useEffect(() => {
-    if (!polygon || typeof window === 'undefined') return
-    if ((window as any).L) { initMap(); return }
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-    document.head.appendChild(link)
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-    script.onload = initMap
-    document.head.appendChild(script)
-  }, [polygon])
+    if (typeof window === 'undefined' || (!hasPolygon && !hasPoint)) return
 
-  function initMap() {
-    if (!mapRef.current || !polygon) return
-    const L = (window as any).L
-    if ((mapRef.current as any)._leaflet_id) return
-    const coords = polygon?.coordinates?.[0] || polygon?.geometry?.coordinates?.[0] || []
-    if (!coords.length) return
-    const latlngs = coords.map((c: number[]) => [c[1], c[0]])
-    const map = L.map(mapRef.current, { zoomControl: true, attributionControl: false })
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map)
-    const color = risk === 'red' ? '#ef4444' : risk === 'yellow' ? '#f59e0b' : '#10b981'
-    const poly = L.polygon(latlngs, { color, weight: 3, fillOpacity: 0.12, fillColor: color }).addTo(map)
-    map.fitBounds(poly.getBounds(), { padding: [28, 28] })
-    setMapLoaded(true)
-  }
+    let cancelled = false
+    setStatus('loading')
 
-  if (!polygon) return (
-    <div className="h-52 rounded-lg border border-dashed border-[#2A2D35] flex flex-col items-center justify-center gap-2">
-      <MapPin size={20} className="text-[#4B5563]" />
-      <p className="text-sm text-[#6B7280]">No GPS polygon recorded</p>
-      <p className="text-xs text-[#4B5563]">Draw plot boundary to enable map view</p>
+    // Surface a retry option instead of an endless spinner if init takes too long
+    // (e.g. very slow mobile data) — this is the direct fix for the reported bug.
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) setStatus((s) => (s === 'loading' ? 'timeout' : s))
+    }, 12000)
+
+    async function init() {
+      try {
+        const leafletMod: any = await import('leaflet')
+        // @ts-ignore — CSS import has no type declarations but works at runtime (bundled, not CDN)
+        await import('leaflet/dist/leaflet.css')
+        if (cancelled || !containerRef.current) return
+        const L = leafletMod.default ?? leafletMod
+
+        if (mapInstanceRef.current) {
+          try { mapInstanceRef.current.remove() } catch { /* no-op */ }
+          mapInstanceRef.current = null
+        }
+
+        const map = L.map(containerRef.current, {
+          zoomControl: true,
+          attributionControl: false,
+          updateWhenIdle: true, // fewer tile requests while panning — kinder to slow mobile data
+        })
+
+        const color = RISK_COLOR[risk]
+        const satellite = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 20, maxNativeZoom: 19 }
+        )
+        const streetFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+
+        // If the satellite tile provider is unreachable on this network, fall back to
+        // OpenStreetMap rather than leaving the farmer staring at a blank grey map.
+        let tileErrors = 0
+        satellite.on('tileerror', () => {
+          tileErrors += 1
+          if (tileErrors > 4 && map.hasLayer(satellite)) {
+            map.removeLayer(satellite)
+            streetFallback.addTo(map)
+          }
+        })
+        satellite.addTo(map)
+
+        if (hasPolygon) {
+          const poly = L.polygon(latlngs, { color, weight: 4, fillOpacity: 0.15, fillColor: color }).addTo(map)
+          map.fitBounds(poly.getBounds(), { padding: [30, 30] })
+        } else if (hasPoint) {
+          L.circleMarker([lat, lng], { radius: 10, color, weight: 3, fillColor: color, fillOpacity: 0.4 }).addTo(map)
+          map.setView([lat, lng], 17)
+        }
+
+        mapInstanceRef.current = map
+        clearTimeout(timeoutId)
+        if (!cancelled) setStatus('ready')
+      } catch (err) {
+        console.error('Plot map failed to load:', err)
+        clearTimeout(timeoutId)
+        if (!cancelled) setStatus('error')
+      }
+    }
+
+    init()
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+      if (mapInstanceRef.current) {
+        try { mapInstanceRef.current.remove() } catch { /* no-op */ }
+        mapInstanceRef.current = null
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [polygon, lat, lng, risk, retryToken])
+
+  if (!hasPolygon && !hasPoint) return (
+    <div className="h-64 bg-slate-800 rounded-xl flex items-center justify-center border-2 border-dashed border-slate-600">
+      <div className="text-center">
+        <p className="text-3xl mb-2">📍</p>
+        <p className="text-slate-400 text-sm">No GPS data recorded</p>
+        <p className="text-slate-500 text-xs mt-1">Walk or draw the boundary to enable the map view</p>
+      </div>
     </div>
   )
   return (
-    <div className="relative rounded-lg overflow-hidden border border-[#2A2D35]">
-      <div ref={mapRef} style={{ height: 240 }} />
-      {!mapLoaded && (
-        <div className="absolute inset-0 bg-[#0D0F14] flex flex-col items-center justify-center gap-2">
-          <div className="w-6 h-6 border-2 border-[#2A2D35] border-t-emerald-500 rounded-full animate-spin" />
-          <p className="text-xs text-[#6B7280]">Loading map…</p>
+    <div className="relative rounded-xl overflow-hidden border-2 border-slate-600">
+      <div ref={containerRef} style={{ height: 280 }} />
+      {status === 'loading' && (
+        <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-slate-600 border-t-green-400 rounded-full animate-spin mx-auto mb-2" />
+            <p className="text-slate-400 text-sm">Loading satellite map...</p>
+          </div>
+        </div>
+      )}
+      {status === 'timeout' && (
+        <div className="absolute inset-0 bg-slate-800 flex items-center justify-center px-4">
+          <div className="text-center">
+            <p className="text-3xl mb-2">🐢</p>
+            <p className="text-slate-300 text-sm font-semibold">Taking longer than usual</p>
+            <p className="text-slate-500 text-xs mt-1 mb-3">This can happen on a slow connection</p>
+            <button onClick={() => setRetryToken((k) => k + 1)} className="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition">
+              🔄 Retry
+            </button>
+          </div>
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="absolute inset-0 bg-slate-800 flex items-center justify-center px-4">
+          <div className="text-center">
+            <p className="text-3xl mb-2">⚠️</p>
+            <p className="text-slate-300 text-sm font-semibold">Couldn't load the map</p>
+            <p className="text-slate-500 text-xs mt-1 mb-3">Check your connection and try again</p>
+            <button onClick={() => setRetryToken((k) => k + 1)} className="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition">
+              🔄 Retry
+            </button>
+          </div>
         </div>
       )}
     </div>
   )
-}
-
-const EVENT_ICONS: Record<string, React.ElementType> = {
-  photo_evidence_uploaded: Camera,
-  eudr_assessment_run:     RefreshCw,
-  plot_boundary_recorded:  MapPin,
 }
 
 export default function EUDRPlotDetailPage() {
@@ -115,7 +205,7 @@ export default function EUDRPlotDetailPage() {
   const [eudr, setEudr] = useState<EudrData | null>(null)
   const [sat, setSat] = useState<SatData | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  const [uploadMsg, setUploadMsg] = useState('')
   const [auditTrail, setAuditTrail] = useState<AuditEvent[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -123,304 +213,415 @@ export default function EUDRPlotDetailPage() {
 
   async function loadData() {
     try {
-      const { data: { session } } = await supabase.auth.refreshSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) { router.push('/login'); return }
+
       const [plotRes, eudrRes, satRes, auditRes] = await Promise.all([
-        supabase.from('coffee_plots').select('id,plot_name,area_hectares,gps_polygon,region_name').eq('id', plotId).single(),
+        supabase.from('coffee_plots').select('id,plot_name,area_hectares,gps_polygon,gps_latitude,gps_longitude,region_name').eq('id', plotId).single(),
         supabase.from('coffee_eudr_compliance').select('*').eq('plot_id', plotId).maybeSingle(),
         supabase.from('coffee_satellite_indices').select('ndvi_mean,health_label,image_date').eq('plot_id', plotId).order('image_date', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('v_compliance_timeline').select('*').eq('plot_id', plotId).order('created_at', { ascending: false }).limit(10),
       ])
-      setPlot(plotRes.data); setEudr(eudrRes.data); setSat(satRes.data)
+
+      setPlot(plotRes.data)
+      setEudr(eudrRes.data)
+      setSat(satRes.data)
       setAuditTrail(auditRes.data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
   async function handlePhotoEvidence(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file) return
-    setUploading(true); setMsg(null)
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true); setUploadMsg('')
     try {
-      const { data: { session } } = await supabase.auth.refreshSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) throw new Error('Not authenticated')
+
       const path = `eudr-evidence/${plotId}/${Date.now()}_${file.name}`
       const { error: upErr } = await supabase.storage.from('farm-photos').upload(path, file)
       if (upErr) throw upErr
+
       const { data: { publicUrl } } = supabase.storage.from('farm-photos').getPublicUrl(path)
+
+      // Update compliance record
       await supabase.from('coffee_eudr_compliance').upsert({
-        plot_id: plotId, farm_id: eudr?.farm_id || '',
+        plot_id: plotId,
+        farm_id: eudr?.farm_id || '',
         notes: (eudr?.notes ? eudr.notes + '\n' : '') + `Evidence: ${publicUrl}`,
         updated_at: new Date().toISOString(),
         assessment_date: eudr?.assessment_date || new Date().toISOString(),
       }, { onConflict: 'plot_id' })
+
+      // Record event in audit trail
       const eventStore = new EventStore()
       await eventStore.recordEvent({
-        id: crypto.randomUUID(), farm_id: eudr?.farm_id || '',
-        event_type: 'photo_evidence_uploaded', actor_id: session.user.id, actor_type: 'farmer',
+        id: crypto.randomUUID(),
+        farm_id: eudr?.farm_id || '',
+        event_type: 'photo_evidence_uploaded',
+        actor_id: session.user.id,
+        actor_type: 'farmer',
         created_at: new Date().toISOString(),
-        event_data: { plot_id: plotId, photo_url: publicUrl, gps_lat: 0, gps_lng: 0, captured_at: new Date().toISOString(), file_size_bytes: file.size, photo_hash: '', farmer_notes: 'EUDR evidence photo' }
+        event_data: {
+          plot_id: plotId,
+          photo_url: publicUrl,
+          gps_lat: 0, // TODO: get from device GPS
+          gps_lng: 0,
+          captured_at: new Date().toISOString(),
+          file_size_bytes: file.size,
+          photo_hash: '', // TODO: compute SHA256 if needed
+          farmer_notes: 'EUDR evidence photo'
+        }
       } as PhotoEvidenceUploadedEvent)
-      setMsg({ text: 'Photo evidence uploaded and recorded in audit trail.', ok: true })
+
+      setUploadMsg('✅ Photo evidence uploaded and recorded in compliance audit trail!')
       loadData()
     } catch (err: any) {
-      setMsg({ text: `Upload failed: ${err.message}`, ok: false })
+      setUploadMsg(`❌ Upload failed: ${err.message}`)
     } finally { setUploading(false) }
   }
 
   async function handleRevalidate() {
-    setValidating(true); setMsg(null)
+    setValidating(true)
     try {
-      const { data: { session } } = await supabase.auth.refreshSession()
+      const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
       if (!session) throw new Error('Not authenticated')
+
+      // Call revalidation service
       const response = await fetch('https://vwevegzvqjoppsbkowfl.supabase.co/functions/v1/smart-service', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
         body: JSON.stringify({ plot_id: plotId })
       })
+
       const result = await response.json()
+
+      // Record assessment event in audit trail
       const eventStore = new EventStore()
       await eventStore.recordEvent({
-        id: crypto.randomUUID(), farm_id: eudr?.farm_id || '',
-        event_type: 'eudr_assessment_run', actor_id: session.user.id, actor_type: 'system',
+        id: crypto.randomUUID(),
+        farm_id: eudr?.farm_id || '',
+        event_type: 'eudr_assessment_run',
+        actor_id: session.user.id,
+        actor_type: 'system',
         created_at: new Date().toISOString(),
-        event_data: { plot_id: plotId, assessment_service: 'afa_api', risk_level: result.risk_level || 'unknown', forest_cover_pct: result.forest_cover_pct || 0, deforestation_detected_since: result.deforestation_detected_since || null, api_response: result, assessment_duration_ms: result.duration_ms || 0 }
+        event_data: {
+          plot_id: plotId,
+          assessment_service: 'afa_api',
+          risk_level: result.risk_level || 'unknown',
+          forest_cover_pct: result.forest_cover_pct || 0,
+          deforestation_detected_since: result.deforestation_detected_since || null,
+          api_response: result,
+          assessment_duration_ms: result.duration_ms || 0
+        }
       } as EudrAssessmentRunEvent)
+
       await loadData()
     } catch (e) {
-      setMsg({ text: `Revalidation failed: ${(e as Error).message}`, ok: false })
-    } finally { setValidating(false) }
+      console.error(e)
+      setUploadMsg(`❌ Revalidation failed: ${(e as Error).message}`)
+    }
+    finally { setValidating(false) }
   }
 
   function exportGeoJSON() {
-    if (!plot?.gps_polygon) return
+    const geometry = extractGeometry(plot?.gps_polygon) ?? (
+      plot?.gps_latitude != null && plot?.gps_longitude != null
+        ? { type: 'Point', coordinates: [plot.gps_longitude, plot.gps_latitude] }
+        : null
+    )
+    if (!plot || !geometry) return alert('No GPS data found for this plot.')
     const geojson = {
       type: 'FeatureCollection',
-      features: [{ type: 'Feature', properties: { plot_id: plot.id, plot_name: plot.plot_name, area_hectares: plot.area_hectares, eudr_compliance_status: eudr?.compliance_status || 'unknown', deforestation_risk: eudr?.risk_level || 'unknown', last_check: eudr?.assessment_date || null, exported_at: new Date().toISOString() }, geometry: plot.gps_polygon }]
+      features: [{
+        type: 'Feature',
+        properties: {
+          plot_id: plot.id,
+          plot_name: plot.plot_name,
+          area_hectares: plot.area_hectares,
+          eudr_compliance_status: eudr?.compliance_status || 'unknown',
+          deforestation_risk: eudr?.risk_level || 'unknown',
+          last_check: eudr?.assessment_date || null,
+          exported_at: new Date().toISOString(),
+        },
+        geometry
+      }]
     }
     const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url; a.download = `${plot.plot_name.replace(/\s+/g, '_')}_EUDR.geojson`; a.click(); URL.revokeObjectURL(url)
+    const a = document.createElement('a')
+    a.href = url; a.download = `${plot.plot_name.replace(/\s+/g, '_')}_EUDR.geojson`
+    a.click(); URL.revokeObjectURL(url)
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-obsidian flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-[#2A2D35] border-t-emerald-500 rounded-full animate-spin" />
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-slate-600 border-t-green-400 rounded-full animate-spin" />
     </div>
   )
 
   const risk = getRisk(eudr)
-  const cfg = RISK_CONFIG[risk]
-  const RiskIcon = cfg.Icon
-
-  const areaAcres = plot?.area_hectares ? (plot.area_hectares / 0.404686).toFixed(2) : null
-
-  const checks = {
-    gps:    !!plot?.gps_polygon,
-    land:   !!eudr?.notes,
-    forest: eudr ? eudr.risk_level === 'low' : false,
-  }
-
-  const resolutionSteps = [
-    !checks.gps   && { label: 'Record GPS boundary',       desc: 'Walk the farm perimeter with the app open to capture the plot polygon.', href: `/dashboard/coffee/plots/${plotId}/edit` },
-    !checks.land  && { label: 'Upload land title document', desc: 'Photograph your title deed and upload it using the camera button below.',  href: null },
-    risk === 'red' && { label: 'Upload photo evidence',     desc: 'Take a photo of the coffee trees to prove land use. The camera button captures GPS and timestamp.', href: null },
-  ].filter(Boolean) as { label: string; desc: string; href: string | null }[]
+  const hasPolygon = !!plot?.gps_polygon
+  const hasPoint = plot?.gps_latitude != null && plot?.gps_longitude != null
+  const isSmallPlot = (plot?.area_hectares ?? 999) <= 4
+  const hasSufficientGps = hasPolygon || (hasPoint && isSmallPlot)
+  const bannerConfig = {
+    green:   { bg: 'bg-green-700',  icon: '✅', title: 'PLOT READY FOR EXPORT',        sub: 'No deforestation detected. All documents clear.' },
+    yellow:  { bg: 'bg-amber-600',  icon: '⚠️', title: 'ACTION REQUIRED',               sub: 'Verify boundary, upload land title, or review forest baseline.' },
+    red:     { bg: 'bg-red-700',    icon: '🚫', title: 'POTENTIAL FOREST CONFLICT',     sub: 'Significant tree-cover loss detected after Jan 1, 2021.' },
+    unknown: { bg: 'bg-slate-700',  icon: '❓', title: 'COMPLIANCE NOT CHECKED YET',    sub: 'Run validation to assess this plot.' },
+  }[risk]
 
   return (
-    <div className="min-h-screen bg-obsidian pb-24">
-      <CoffeeSubNav />
+    <div className="min-h-screen bg-slate-900 text-white pb-24">
 
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-5">
-
-        {/* Breadcrumb + title */}
-        <div className="flex items-center gap-2 text-xs text-[#4B5563]">
-          <Link href="/dashboard/coffee/eudr-check" className="hover:text-white transition-colors">EUDR</Link>
-          <ChevronRight size={12} />
-          <span className="text-[#9CA3AF]">{plot?.plot_name || '—'}</span>
-        </div>
-
-        {/* Status banner */}
-        <div className={`rounded-lg border ${cfg.border} ${cfg.bg} px-4 py-4 flex items-start gap-3`}>
-          <RiskIcon size={18} className={`${cfg.text} flex-shrink-0 mt-0.5`} />
-          <div>
-            <p className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Deforestation risk</p>
-            <h1 className={`text-base font-semibold mt-0.5 ${cfg.text}`}>{cfg.label}</h1>
-            <p className="text-xs text-[#6B7280] mt-1">{cfg.sub}</p>
-          </div>
-        </div>
-
-        {/* Plot meta */}
-        <div className="flex items-center gap-4 text-xs text-[#6B7280]">
-          {areaAcres && <span>{areaAcres} acres</span>}
-          {plot?.region_name && <span>{plot.region_name}</span>}
-          {eudr?.assessment_date && (
-            <span>Last checked {new Date(eudr.assessment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          )}
-        </div>
-
-        {/* Map */}
-        <PlotMap polygon={plot?.gps_polygon} risk={risk} />
-
-        {/* Compliance checklist */}
-        <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
-          <div className="px-4 py-3 border-b border-[#2A2D35]">
-            <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Compliance requirements</h2>
-          </div>
-          <div className="divide-y divide-[#1F2128]">
-            {EUDR_REQS.map(req => {
-              const ok = checks[req.key as keyof typeof checks]
-              return (
-                <div key={req.key} className="flex items-center gap-3 px-4 py-3">
-                  {ok
-                    ? <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
-                    : <XCircle size={15} className="text-red-500 flex-shrink-0" />
-                  }
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white">{req.label}</p>
-                    <p className="text-xs text-[#6B7280]">{req.desc}</p>
-                  </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded border flex-shrink-0 ${
-                    ok
-                      ? 'text-emerald-400 border-emerald-900/40 bg-emerald-950/30'
-                      : 'text-red-400 border-red-900/40 bg-red-950/30'
-                  }`}>{ok ? 'Clear' : 'Missing'}</span>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Forest cover detail */}
-          {eudr?.forest_cover_pct != null && (
-            <div className="px-4 py-3 border-t border-[#2A2D35]">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#6B7280]">Forest cover at baseline</span>
-                <span className="text-white font-medium">{eudr.forest_cover_pct}%</span>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Satellite reading */}
-        {sat && (
-          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
-            <div className="px-4 py-3 border-b border-[#2A2D35] flex items-center gap-2">
-              <Satellite size={13} className="text-[#6B7280]" />
-              <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Satellite reading</h2>
-            </div>
-            <div className="px-4 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-white">NDVI {sat.ndvi_mean?.toFixed(3) ?? '—'}</p>
-                <p className="text-xs text-[#6B7280]">{sat.health_label ?? 'Unknown health'}</p>
-              </div>
-              <p className="text-xs text-[#4B5563]">{sat.image_date ? new Date(sat.image_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</p>
-            </div>
-          </section>
-        )}
-
-        {/* Resolution steps */}
-        {resolutionSteps.length > 0 && (
-          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
-            <div className="px-4 py-3 border-b border-[#2A2D35]">
-              <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Resolution steps</h2>
-            </div>
-            <div className="divide-y divide-[#1F2128]">
-              {resolutionSteps.map((s, i) => (
-                <div key={i} className="flex items-start gap-3 px-4 py-3">
-                  <span className="w-5 h-5 rounded-full border border-[#2A2D35] text-[10px] text-[#6B7280] flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white">{s.label}</p>
-                    <p className="text-xs text-[#6B7280] mt-0.5">{s.desc}</p>
-                  </div>
-                  {s.href && (
-                    <Link href={s.href} className="text-xs text-emerald-500 hover:text-emerald-400 flex-shrink-0">Fix →</Link>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Message */}
-        {msg && (
-          <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border ${
-            msg.ok ? 'border-emerald-900/40 bg-emerald-950/30' : 'border-red-900/40 bg-red-950/30'
-          }`}>
-            {msg.ok
-              ? <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0" />
-              : <XCircle size={14} className="text-red-400 flex-shrink-0" />
-            }
-            <p className={`text-sm ${msg.ok ? 'text-emerald-300' : 'text-red-300'}`}>{msg.text}</p>
-          </div>
-        )}
-
-        {/* Audit trail */}
-        {auditTrail.length > 0 && (
-          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14]">
-            <div className="px-4 py-3 border-b border-[#2A2D35] flex items-center gap-2">
-              <Clock size={13} className="text-[#6B7280]" />
-              <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Compliance audit trail</h2>
-            </div>
-            <div className="divide-y divide-[#1F2128]">
-              {auditTrail.map((event, idx) => {
-                const EventIcon = EVENT_ICONS[event.event_type ?? ''] ?? FileText
-                return (
-                  <div key={idx} className="flex items-start gap-3 px-4 py-3">
-                    <EventIcon size={13} className="text-[#4B5563] mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white capitalize">{event.event_type?.replace(/_/g, ' ')}</p>
-                      {event.risk_level && (
-                        <p className={`text-xs mt-0.5 ${
-                          event.risk_level === 'low' ? 'text-emerald-400' :
-                          event.risk_level === 'medium' ? 'text-amber-400' : 'text-red-400'
-                        }`}>Risk: {event.risk_level.toUpperCase()}</p>
-                      )}
-                    </div>
-                    {event.created_at_local_tz && (
-                      <p className="text-[11px] text-[#4B5563] flex-shrink-0">
-                        {new Date(event.created_at_local_tz).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* Action buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={handleRevalidate}
-            disabled={validating}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-[#2A2D35] bg-[#0D0F14] text-sm font-medium text-white hover:border-[#3A3D45] disabled:opacity-50 transition-colors"
-          >
-            <RefreshCw size={13} className={validating ? 'animate-spin' : ''} />
-            {validating ? 'Checking…' : 'Re-validate'}
-          </button>
-          <button
-            onClick={exportGeoJSON}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-emerald-700 hover:bg-emerald-600 text-sm font-medium text-white transition-colors"
-          >
-            <Download size={13} /> Export GeoJSON
-          </button>
+      {/* ── Back nav ── */}
+      <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center gap-3 sticky top-0 z-20">
+        <Link href="/dashboard/coffee/eudr-check" className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-300 hover:bg-slate-600 transition">←</Link>
+        <div>
+          <p className="text-xs text-slate-400 uppercase tracking-wide">EUDR Risk Dashboard</p>
+          <p className="text-sm font-bold text-white">{plot?.plot_name || '—'}</p>
         </div>
       </div>
 
-      {/* FAB: camera */}
-      <div className="fixed bottom-6 right-5 z-30 flex flex-col items-center gap-1">
+      {/* ── Section 1: Status Banner ── */}
+      <div className={`${bannerConfig.bg} px-4 py-6`}>
+        <div className="max-w-2xl mx-auto flex items-center gap-4">
+          <span className="text-5xl">{bannerConfig.icon}</span>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest opacity-80">Deforestation Risk</p>
+            <h1 className="text-xl font-black mt-0.5">{bannerConfig.title}</h1>
+            <p className="text-sm opacity-80 mt-1">{bannerConfig.sub}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
+
+        {/* ── Section 2: Plot Map ── */}
+        <div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">📍 Plot Boundary Map</p>
+          <PlotMap polygon={plot?.gps_polygon} lat={plot?.gps_latitude ?? null} lng={plot?.gps_longitude ?? null} risk={risk} />
+          {(hasPolygon || hasPoint) && (
+            <p className="text-xs text-slate-500 mt-1.5">
+              {hasPolygon ? (
+                <>Plot polygon displayed over current satellite imagery. {risk === 'red' && <span className="text-red-400 font-semibold">Red border = conflict zone detected.</span>}</>
+              ) : (
+                'Point location displayed over current satellite imagery — sufficient for plots ≤4 ha.'
+              )}
+            </p>
+          )}
+        </div>
+
+        {/* ── Section 3: Risk Breakdown Cards ── */}
+        <div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Risk Breakdown</p>
+          <div className="space-y-3">
+
+            {/* Card A: Forest Baseline */}
+            <div className={`rounded-xl border-2 p-4 flex items-start gap-3 ${
+              eudr && eudr.forest_cover_pct !== null
+                ? eudr.risk_level === 'low' ? 'bg-green-950 border-green-600' : 'bg-red-950 border-red-600'
+                : 'bg-slate-800 border-slate-600'
+            }`}>
+              <span className="text-2xl flex-shrink-0">🌳</span>
+              <div className="flex-1">
+                <p className="font-bold text-white text-sm">Forest Baseline — Dec 31, 2020</p>
+            {eudr && eudr.forest_cover_pct !== null ? (
+                  <p className={`text-sm mt-0.5 font-semibold ${eudr.risk_level === 'low' ? 'text-green-400' : 'text-red-400'}`}>
+                    {eudr.risk_level === 'low'
+                      ? `✅ No forest detected. Forest cover: ${eudr.forest_cover_pct}%`
+                      : `🚫 Forest detected. Risk: ${eudr.risk_level?.toUpperCase()}. Cover: ${eudr.forest_cover_pct}%`}
+                  </p>
+                ) : (
+                  <p className="text-amber-400 text-sm mt-0.5 font-semibold">❓ Not yet assessed — run validation below</p>
+                )}
+              </div>
+            </div>
+
+            {/* Card B: Land Title */}
+            <div className={`rounded-xl border-2 p-4 flex items-start gap-3 ${
+              eudr?.notes ? 'bg-green-950 border-green-600' : 'bg-amber-950 border-amber-600'
+            }`}>
+              <span className="text-2xl flex-shrink-0">📄</span>
+              <div className="flex-1">
+                <p className="font-bold text-white text-sm">Legality Check — Land Title</p>
+                {eudr?.notes ? (
+                  <p className="text-green-400 text-sm mt-0.5 font-semibold">✅ Land ownership document uploaded</p>
+                ) : (
+                  <div>
+                    <p className="text-amber-400 text-sm mt-0.5 font-semibold">⚠️ Land title document missing</p>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                    >
+                      📎 Upload Land Title Now
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Card C: GPS Accuracy */}
+            <div className={`rounded-xl border-2 p-4 flex items-start gap-3 ${
+              hasSufficientGps ? 'bg-green-950 border-green-600' : hasPoint ? 'bg-amber-950 border-amber-600' : 'bg-red-950 border-red-600'
+            }`}>
+              <span className="text-2xl flex-shrink-0">📡</span>
+              <div className="flex-1">
+                <p className="font-bold text-white text-sm">GPS Coordinates</p>
+                {hasPolygon ? (
+                  <p className="text-green-400 text-sm mt-0.5 font-semibold">
+                    ✅ GPS recorded · Polygon boundary available
+                  </p>
+                ) : hasPoint ? (
+                  <p className={`text-sm mt-0.5 font-semibold ${isSmallPlot ? 'text-green-400' : 'text-amber-400'}`}>
+                    {isSmallPlot
+                      ? '✅ Point coordinate recorded · sufficient for this plot size'
+                      : '⚠️ Point coordinate only · polygon boundary required for this plot size'}
+                  </p>
+                ) : (
+                  <p className="text-red-400 text-sm mt-0.5 font-semibold">🚫 No GPS data — plot boundary required for EUDR</p>
+                )}
+                {plot?.area_hectares && (
+                  <p className="text-slate-400 text-xs mt-1">Plot size: {plot.area_hectares} ha {plot.area_hectares > 4 ? '· Polygon required (>4 ha)' : '· Point coordinate sufficient (≤4 ha)'}</p>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ── Section 4: Resolution Steps (if not green) ── */}
+        {risk !== 'green' && (
+          <div className="bg-slate-800 border-2 border-slate-600 rounded-xl p-4">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">🔧 Resolution Steps</p>
+            <div className="space-y-3">
+              {!hasSufficientGps && (
+                <div className="flex items-start gap-3 bg-slate-700 rounded-lg p-3">
+                  <span className="text-xl">1️⃣</span>
+                  <div>
+                    <p className="text-white text-sm font-bold">Record GPS Boundary</p>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      {hasPoint
+                        ? 'This plot is over 4 ha, so a full GPS polygon is required — walk the perimeter with the app open to capture it.'
+                        : 'Walk the farm perimeter with the app open to capture precise GPS polygon points.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {!eudr?.notes && (
+                <div className="flex items-start gap-3 bg-slate-700 rounded-lg p-3">
+                  <span className="text-xl">2️⃣</span>
+                  <div>
+                    <p className="text-white text-sm font-bold">Upload Land Title / Ownership Document</p>
+                    <p className="text-slate-400 text-xs mt-0.5">Scan or photograph your land title deed and upload it using the button on Card B above.</p>
+                  </div>
+                </div>
+              )}
+              {risk === 'red' && (
+                <div className="flex items-start gap-3 bg-red-900 rounded-lg p-3">
+                  <span className="text-xl">3️⃣</span>
+                  <div>
+                    <p className="text-white text-sm font-bold">Upload Photo Evidence</p>
+                    <p className="text-slate-400 text-xs mt-0.5">Take a photo of the coffee trees facing North to prove the land is coffee, not forest. The camera button below will capture evidence with GPS & timestamp.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Evidence Photos ── */}
+        {/* Note: evidence_photos field needs to be added to database schema if needed */}
+
+        {uploadMsg && (
+          <div className={`rounded-xl p-3 text-sm font-semibold ${uploadMsg.startsWith('✅') ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+            {uploadMsg}
+          </div>
+        )}
+
+        {/* ── Compliance Audit Trail ── */}
+        {auditTrail.length > 0 && (
+          <div className="bg-slate-800 border-2 border-slate-600 rounded-xl p-4">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">📋 Compliance Audit Trail</p>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {auditTrail.map((event, idx) => (
+                <div key={idx} className="bg-slate-700 rounded-lg p-2.5 text-xs">
+                  <div className="flex items-start gap-2">
+                    <span className="text-slate-400 flex-shrink-0 mt-0.5">
+                      {event.event_type === 'photo_evidence_uploaded' ? '📷' :
+                       event.event_type === 'eudr_assessment_run' ? '🔄' :
+                       event.event_type === 'plot_boundary_recorded' ? '📍' : '📝'}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-slate-300 font-semibold capitalize">
+                        {event.event_type?.replace(/_/g, ' ')}
+                      </p>
+                      {event.risk_level && (
+                        <p className={`text-xs mt-0.5 ${
+                          event.risk_level === 'low' ? 'text-green-400' :
+                          event.risk_level === 'medium' ? 'text-amber-400' : 'text-red-400'
+                        }`}>
+                          Risk: {event.risk_level.toUpperCase()}
+                        </p>
+                      )}
+                      {event.created_at_local_tz && (
+                        <p className="text-slate-500 text-xs mt-0.5">
+                          {new Date(event.created_at_local_tz).toLocaleDateString('en-KE')} {new Date(event.created_at_local_tz).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-2">Events recorded for compliance verification and dispute resolution</p>
+          </div>
+        )}
+
+        {/* ── Action Buttons ── */}
+        <div className="space-y-3">
+          <button
+            onClick={handleRevalidate}
+            disabled={validating}
+            className="w-full bg-blue-700 hover:bg-blue-600 disabled:bg-slate-700 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 text-base transition"
+          >
+            {validating ? (
+              <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Running satellite check...</>
+            ) : (
+              '🔄 Re-Validate Plot (Satellite)'
+            )}
+          </button>
+
+          <button
+            onClick={exportGeoJSON}
+            className="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-xl text-base transition"
+          >
+            📤 Export GeoJSON for Co-op / Buyer
+          </button>
+        </div>
+
+        {/* Last checked */}
+        {eudr?.assessment_date && (
+          <p className="text-center text-slate-500 text-xs">
+            Last compliance check: {new Date(eudr.assessment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </p>
+        )}
+      </div>
+
+      {/* ── FAB: Add Photo Evidence ── */}
+      <div className="fixed bottom-6 right-6 z-30">
         <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoEvidence} />
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="w-14 h-14 rounded-full bg-[#0D0F14] border border-[#2A2D35] hover:border-emerald-600 flex items-center justify-center shadow-xl transition-colors disabled:opacity-50"
-          title="Upload photo evidence"
+          className="w-16 h-16 bg-indigo-600 hover:bg-indigo-500 shadow-xl rounded-full flex items-center justify-center text-2xl transition active:scale-95 disabled:bg-slate-600"
+          title="Add photo evidence"
         >
-          {uploading
-            ? <div className="w-5 h-5 border-2 border-[#2A2D35] border-t-emerald-500 rounded-full animate-spin" />
-            : <Camera size={18} className="text-[#9CA3AF]" />
-          }
+          {uploading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '📷'}
         </button>
-        <p className="text-[10px] text-[#4B5563]">Evidence</p>
+        <p className="text-center text-xs text-slate-400 mt-1 whitespace-nowrap">Evidence</p>
       </div>
     </div>
   )

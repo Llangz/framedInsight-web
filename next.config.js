@@ -49,10 +49,11 @@ const nextConfig = {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://maps.googleapis.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' blob: data: https://*.supabase.co https://api.agromonitoring.com https://*.tile.openstreetmap.org",
+    // img-src covers <img>-based map tiles: OSM street tiles + Esri World Imagery satellite tiles
+    "img-src 'self' blob: data: https://*.supabase.co https://api.agromonitoring.com https://*.tile.openstreetmap.org https://server.arcgisonline.com",
     "font-src 'self' data: https://fonts.gstatic.com",
-    // AI APIs (Vercel AI SDK, Anthropic)
-    "connect-src 'self' https://*.supabase.co https://api.agromonitoring.com https://api2.tiaraconnect.io https://gateway.lipachat.com https://api.openai.com https://api.anthropic.com",
+    // AI APIs (Vercel AI SDK, Anthropic) + Nominatim for reverse-geocoding plot coordinates to county/ward
+    "connect-src 'self' https://*.supabase.co https://api.agromonitoring.com https://api2.tiaraconnect.io https://gateway.lipachat.com https://api.openai.com https://api.anthropic.com https://nominatim.openstreetmap.org",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

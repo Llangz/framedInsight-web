@@ -250,6 +250,20 @@ export default function PlotBoundaryMapper({
       esriSat.addTo(map)
       esriLabels.addTo(map)
 
+      // If Esri's satellite tiles keep failing on this connection (timeouts, rate
+      // limiting, flaky rural mobile data), fall back to OpenStreetMap automatically
+      // instead of leaving the farmer staring at blank grey tiles. They can still
+      // switch back manually via the layer control below.
+      let satTileErrors = 0
+      esriSat.on('tileerror', () => {
+        satTileErrors += 1
+        if (satTileErrors > 6 && map.hasLayer(esriSat)) {
+          map.removeLayer(esriSat)
+          map.removeLayer(esriLabels)
+          osm.addTo(map)
+        }
+      })
+
       // Layer control
       LD.control.layers(
         { 'Satellite (Esri)': esriSat, 'Street Map': osm },
