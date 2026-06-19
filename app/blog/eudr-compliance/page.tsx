@@ -56,7 +56,7 @@ const faqs = [
   },
   {
     q: 'What is the deadline?',
-    a: 'The enforcement date for large companies is June 30, 2025. For small operators and developing-country supply chains, the deadline was extended to December 30, 2026. Kenya coffee farmers should target December 2026 compliance.',
+    a: 'The enforcement deadline for large/medium operators is December 30, 2026. For micro/small operators (which includes the vast majority of Kenyan coffee farmers), the deadline is June 30, 2027. Kenya is classified as a standard-risk country, meaning full plot-level geolocation and deforestation-free evidence is required regardless of farm size.',
   },
   {
     q: 'What happens if I am not compliant?',

@@ -3,6 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import CoffeeSubNav from '../components/CoffeeSubNav'
+import {
+  EUDR_DEADLINE_SMALL_LABEL,
+  EUDR_DEADLINE_LARGE_LABEL,
+  daysUntilEudrDeadline,
+  KENYA_RISK_TIER_EXPLAINER,
+} from '@/lib/eudr-constants'
 
 type RiskLevel = 'green' | 'yellow' | 'red' | 'unknown'
 
@@ -136,13 +142,34 @@ export default function EUDRFleetClient({
           ))}
         </div>
 
+        {/* ── Deadline banner (sourced from eudr-constants — dates have shifted twice) ── */}
         <div className="bg-amber-950 border-2 border-amber-500 rounded-xl p-4 flex gap-3 items-start">
           <span className="text-2xl flex-shrink-0">📅</span>
           <div>
-            <p className="font-bold text-amber-300 text-sm">EUDR Enforcement — Dec 30, 2025</p>
-            <p className="text-amber-200 text-xs mt-1">
-              All plots must be fully verified before this date. Coffee exported to the EU must have due-diligence statements with GPS polygons and deforestation-free proof.
+            <p className="font-bold text-amber-300 text-sm">
+              EUDR Enforcement Deadline
             </p>
+            <p className="text-amber-200 text-xs mt-1 space-y-1">
+              <span className="block">
+                <strong>Small/micro operators</strong> (most Kenyan farmers): <strong>{EUDR_DEADLINE_SMALL_LABEL}</strong>
+                {' '}— {daysUntilEudrDeadline()} days away.
+              </span>
+              <span className="block">
+                <strong>Large/medium operators</strong>: {EUDR_DEADLINE_LARGE_LABEL}.
+              </span>
+              <span className="block mt-1">
+                Coffee exported to the EU must have due-diligence statements with GPS evidence and deforestation-free proof per plot.
+              </span>
+            </p>
+          </div>
+        </div>
+
+        {/* ── Kenya standard-risk tier explainer ──────────────────────────────── */}
+        <div className="bg-slate-800 border border-slate-600 rounded-xl p-4 flex gap-3 items-start">
+          <span className="text-xl flex-shrink-0">🇰🇪</span>
+          <div>
+            <p className="font-bold text-slate-200 text-sm">Kenya Risk Tier: Standard</p>
+            <p className="text-slate-400 text-xs mt-1 leading-relaxed">{KENYA_RISK_TIER_EXPLAINER}</p>
           </div>
         </div>
 

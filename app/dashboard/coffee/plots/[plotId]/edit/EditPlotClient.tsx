@@ -42,6 +42,7 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
     productive_trees: plot.productive_trees?.toString() || '',
     land_size_acres: plot.land_size_acres?.toString() || '',
     establishment_year: plot.establishment_year?.toString() || '',
+    afa_geo_mapping_id: plot.afa_geo_mapping_id || '',
   })
 
   function set(field: string, value: string) {
@@ -62,6 +63,7 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
         productive_trees: formData.productive_trees ? Number(formData.productive_trees) : null,
         land_size_acres: formData.land_size_acres ? Number(formData.land_size_acres) : null,
         establishment_year: formData.establishment_year ? Number(formData.establishment_year) : null,
+        afa_geo_mapping_id: formData.afa_geo_mapping_id.trim() || null,
       }
 
       // Include boundary data if mapper was used
@@ -248,6 +250,51 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* ── AFA / EUDR Compliance ── */}
+          <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-[#9CA3AF] uppercase tracking-widest">EUDR Compliance</h2>
+                <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
+                  AFA (Agriculture and Food Authority) is the government body co-ordinating Kenya's EUDR
+                  geo-mapping programme. Once your plot has been mapped by AFA or your cooperative, enter
+                  the ID they assign here — exporters and cooperatives need this to submit due-diligence
+                  statements to EU buyers.
+                </p>
+              </div>
+              {formData.afa_geo_mapping_id && (
+                <span className="flex-shrink-0 text-xs font-bold text-green-400 bg-green-950 border border-green-800 rounded-lg px-2.5 py-1">
+                  ✓ AFA Registered
+                </span>
+              )}
+            </div>
+
+            <div>
+              <label className={LABEL}>
+                AFA Geo-Mapping ID
+                <span className="ml-2 text-xs font-normal text-[#4B5563]">(optional — from AFA or your cooperative)</span>
+              </label>
+              <input
+                type="text"
+                className={FIELD}
+                placeholder="e.g. AFA-KE-2025-00123456"
+                value={formData.afa_geo_mapping_id}
+                onChange={e => set('afa_geo_mapping_id', e.target.value)}
+              />
+              {formData.afa_geo_mapping_id && (
+                <p className="mt-1.5 text-xs text-green-500">
+                  This plot will be shown as AFA-registered on your EUDR compliance dashboard.
+                </p>
+              )}
+              {!formData.afa_geo_mapping_id && (
+                <p className="mt-1.5 text-xs text-[#4B5563]">
+                  Don't have this yet? Contact your cooperative society or the nearest AFA county office.
+                  Kenya's geo-mapping programme is free for smallholder farmers.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* ── Save / Cancel ── */}

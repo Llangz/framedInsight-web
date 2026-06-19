@@ -23,7 +23,7 @@ const articles = [
     category: 'Compliance',
     categoryColor: 'text-green-700 bg-green-50',
     title: 'EUDR Compliance Guide for Kenyan Coffee Farmers',
-    excerpt: 'Plain-language, step-by-step guide to getting your coffee farm EU Deforestation Regulation compliant before the December 2026 deadline.',
+    excerpt: 'Plain-language, step-by-step guide to getting your coffee farm EU Deforestation Regulation compliant. Small/micro operators (most Kenyan farmers) have until June 30, 2027.',
     date: 'May 18, 2026',
     readTime: '12 min read',
     bgColor: 'bg-green-100',
