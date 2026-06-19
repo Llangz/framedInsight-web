@@ -24,6 +24,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { EUDR_POLYGON_THRESHOLD_HA, roundToEudrPrecision, getEudrGeolocationFormat } from '@/lib/eudr-constants'
 
 // ── Public contract ────────────────────────────────────────────────────────────
 
@@ -33,6 +34,15 @@ export interface BoundaryResult {
   perimeterM: number
   centroid: { lat: number; lng: number }
   pointCount: number
+  /**
+   * EUDR Art. 9(1)(d): plots ≥ 4 ha legally require the polygon; plots
+   * under 4 ha only require `centroid` as a single point. Both are always
+   * included in this result regardless of format, since the polygon is
+   * useful for the app's own UI even when not legally required — but
+   * consumers preparing a compliance submission (AFA, cooperative export
+   * documentation) should check this field to know which one to send.
+   */
+  eudrGeolocationFormat: 'point' | 'polygon'
 }
 
 interface Props {
@@ -77,11 +87,18 @@ function perimM(pts: LatLng[]): number {
 }
 
 function centroid(pts: LatLng[]): LatLng {
-  return { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lng: pts.reduce((s, p) => s + p.lng, 0) / pts.length }
+  return {
+    lat: roundToEudrPrecision(pts.reduce((s, p) => s + p.lat, 0) / pts.length),
+    lng: roundToEudrPrecision(pts.reduce((s, p) => s + p.lng, 0) / pts.length),
+  }
 }
 
 function toGeoJSON(pts: LatLng[]): any {
-  return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[...pts, pts[0]].map(p => [p.lng, p.lat])] }, properties: {} }
+  // EUDR requires ≥ 6 decimal places of precision on every coordinate —
+  // round here so the stored GeoJSON is compliant-precision by construction,
+  // not just whatever floating-point noise the GPS/Leaflet click produced.
+  const rounded = pts.map(p => [roundToEudrPrecision(p.lng), roundToEudrPrecision(p.lat)])
+  return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[...rounded, rounded[0]]] }, properties: {} }
 }
 
 function fmtDist(m: number) { return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m` }
@@ -438,9 +455,11 @@ export default function PlotBoundaryMapper({
     setMode('done')
     setSnapActive(false)
 
+    const computedAreaHa = areaHa(pts)
     const r: BoundaryResult = {
-      polygon: toGeoJSON(pts), areaHa: areaHa(pts),
+      polygon: toGeoJSON(pts), areaHa: computedAreaHa,
       perimeterM: perimM(pts), centroid: centroid(pts), pointCount: pts.length,
+      eudrGeolocationFormat: getEudrGeolocationFormat(computedAreaHa),
     }
     setResult(r)
     onComplete(r)
@@ -804,6 +823,15 @@ export default function PlotBoundaryMapper({
                   <div className="text-xs text-slate-500">{result.pointCount} pts</div>
                 </div>
               </div>
+            </div>
+            <div className="p-3 bg-slate-800/60 border border-white/10 rounded-xl flex items-start gap-2.5">
+              <svg className="h-4 w-4 mt-0.5 shrink-0 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {result.eudrGeolocationFormat === 'polygon'
+                  ? <>This plot is <strong className="text-slate-200">4 ha or larger</strong>, so EUDR requires the full polygon perimeter — already captured above.</>
+                  : <>This plot is <strong className="text-slate-200">under 4 ha</strong>, so a single GPS point at <strong className="text-slate-200">{result.centroid.lat}, {result.centroid.lng}</strong> already satisfies EUDR's geolocation requirement. The polygon is still saved for your own records.</>
+                }
+              </p>
             </div>
             <button
               type="button" onClick={clearAll}
