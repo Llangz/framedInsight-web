@@ -163,6 +163,12 @@ export default function SignupPage() {
         </div>
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="text-center mb-8">
+            <Link
+              href="/auth/signup-cooperative"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors mb-4"
+            >
+              Registering a Cooperative Society? Click here &rarr;
+            </Link>
             <h1 className="text-3xl font-bold text-gray-900">
               {t({ en: 'Create Your Account', sw: 'Fungua Akaunti Yako' })}
             </h1>

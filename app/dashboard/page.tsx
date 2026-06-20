@@ -11,6 +11,17 @@ export default async function DashboardPage() {
     redirect('/auth/login')
   }
 
+  // Redirect cooperative officers to their dashboard
+  const { data: coopOfficer } = await supabase
+    .from('cooperative_officers')
+    .select('cooperative_id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (coopOfficer) {
+    redirect('/dashboard/cooperative')
+  }
+
   // 1. Get farm membership
   const { data: farmManager, error: fmError } = await supabase
     .from('farm_managers')

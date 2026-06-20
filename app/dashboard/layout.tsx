@@ -2,12 +2,34 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getSubscriptionInfo } from '@/lib/subscription'
 import DashboardShell from './components/DashboardShell'
+import CoopDashboardShell from './components/CoopDashboardShell'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
+
+  // Check if cooperative officer
+  const { data: coopOfficer } = await supabase
+    .from('cooperative_officers')
+    .select('cooperative_id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (coopOfficer) {
+    const { data: coop } = await supabase
+      .from('cooperatives')
+      .select('cooperative_name')
+      .eq('id', coopOfficer.cooperative_id)
+      .single()
+
+    return (
+      <CoopDashboardShell coopName={coop?.cooperative_name || 'My Cooperative'}>
+        {children}
+      </CoopDashboardShell>
+    )
+  }
 
   const { data: fm } = await supabase
     .from('farm_managers')

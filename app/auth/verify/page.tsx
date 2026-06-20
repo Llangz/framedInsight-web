@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { createFarmOnVerifyAction } from './actions'
+import { createCooperativeOnVerifyAction } from './coop-actions'
 import { verifyPhoneOTP } from '@/lib/auth'
 
 function VerifyContent() {
@@ -65,8 +66,10 @@ function VerifyContent() {
       return
     }
 
-    // Step 2: If signup flow, create farm
+    // Step 2: If signup flow, create farm or cooperative
     const signupDataStr = sessionStorage.getItem('signupData')
+    const coopSignupDataStr = sessionStorage.getItem('coopSignupData')
+
     if (signupDataStr) {
       const signupData = JSON.parse(signupDataStr)
 
@@ -90,6 +93,27 @@ function VerifyContent() {
       }
 
       sessionStorage.removeItem('signupData')
+    } else if (coopSignupDataStr) {
+      const coopSignupData = JSON.parse(coopSignupDataStr)
+
+      const coopResult = await createCooperativeOnVerifyAction({
+        userId: otpResult.user.id,
+        phone: coopSignupData.phone,
+        email: coopSignupData.email || undefined,
+        cooperativeName: coopSignupData.cooperativeName,
+        county: coopSignupData.county,
+        subCounty: coopSignupData.subCounty || undefined,
+        ward: coopSignupData.ward || undefined,
+        primaryEnterprise: coopSignupData.primaryEnterprise,
+      })
+
+      if (!coopResult.success) {
+        setError(`Account created but cooperative setup failed: ${coopResult.error}. Please contact support.`)
+        setLoading(false)
+        return
+      }
+
+      sessionStorage.removeItem('coopSignupData')
     }
 
     // Clean up login session key if present
