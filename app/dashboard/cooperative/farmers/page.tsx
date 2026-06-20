@@ -14,11 +14,13 @@ export default async function CooperativeFarmersPage() {
   const supabase = await createClient()
 
   // 1. Fetch member farms
-  const { data: farms = [] } = await supabase
+  const { data: farmsData } = await supabase
     .from('farms')
     .select('id, farm_name, owner_name, phone, county, sub_county, ward, is_coop_managed, claim_token, coop_factory_id')
     .eq('managed_by_coop_id', access.coopId)
     .order('owner_name')
+
+  const farms = farmsData || []
 
   // 2. Fetch washing stations/factories for label mapping
   const { data: factories = [] } = await supabase

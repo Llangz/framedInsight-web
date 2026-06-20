@@ -1770,6 +1770,106 @@ export type Database = {
           },
         ]
       }
+      coop_factories: {
+        Row: {
+          branch_type: string | null
+          cooperative_id: string
+          created_at: string | null
+          factory_code: string | null
+          factory_name: string
+          id: string
+        }
+        Insert: {
+          branch_type?: string | null
+          cooperative_id: string
+          created_at?: string | null
+          factory_code?: string | null
+          factory_name: string
+          id?: string
+        }
+        Update: {
+          branch_type?: string | null
+          cooperative_id?: string
+          created_at?: string | null
+          factory_code?: string | null
+          factory_name?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_factories_cooperative_id_fkey"
+            columns: ["cooperative_id"]
+            isOneToOne: false
+            referencedRelation: "cooperatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cooperative_officers: {
+        Row: {
+          cooperative_id: string
+          created_at: string | null
+          id: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          cooperative_id: string
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          cooperative_id?: string
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cooperative_officers_cooperative_id_fkey"
+            columns: ["cooperative_id"]
+            isOneToOne: false
+            referencedRelation: "cooperatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cooperatives: {
+        Row: {
+          cooperative_name: string
+          county: string | null
+          created_at: string | null
+          id: string
+          primary_enterprise: string | null
+          sub_county: string | null
+          updated_at: string | null
+          ward: string | null
+        }
+        Insert: {
+          cooperative_name: string
+          county?: string | null
+          created_at?: string | null
+          id?: string
+          primary_enterprise?: string | null
+          sub_county?: string | null
+          updated_at?: string | null
+          ward?: string | null
+        }
+        Update: {
+          cooperative_name?: string
+          county?: string | null
+          created_at?: string | null
+          id?: string
+          primary_enterprise?: string | null
+          sub_county?: string | null
+          updated_at?: string | null
+          ward?: string | null
+        }
+        Relationships: []
+      }
       counties: {
         Row: {
           created_at: string | null
@@ -2035,6 +2135,8 @@ export type Database = {
       }
       farms: {
         Row: {
+          claim_token: string | null
+          coop_factory_id: string | null
           county: string | null
           created_at: string | null
           email: string | null
@@ -2044,8 +2146,10 @@ export type Database = {
           gps_longitude: number | null
           id: string
           is_active: boolean | null
+          is_coop_managed: boolean | null
           land_size_acres: number | null
           location: string | null
+          managed_by_coop_id: string | null
           owner_name: string
           phone: string
           primary_enterprise: string | null
@@ -2057,6 +2161,8 @@ export type Database = {
           ward: string | null
         }
         Insert: {
+          claim_token?: string | null
+          coop_factory_id?: string | null
           county?: string | null
           created_at?: string | null
           email?: string | null
@@ -2066,8 +2172,10 @@ export type Database = {
           gps_longitude?: number | null
           id?: string
           is_active?: boolean | null
+          is_coop_managed?: boolean | null
           land_size_acres?: number | null
           location?: string | null
+          managed_by_coop_id?: string | null
           owner_name: string
           phone: string
           primary_enterprise?: string | null
@@ -2079,6 +2187,8 @@ export type Database = {
           ward?: string | null
         }
         Update: {
+          claim_token?: string | null
+          coop_factory_id?: string | null
           county?: string | null
           created_at?: string | null
           email?: string | null
@@ -2088,8 +2198,10 @@ export type Database = {
           gps_longitude?: number | null
           id?: string
           is_active?: boolean | null
+          is_coop_managed?: boolean | null
           land_size_acres?: number | null
           location?: string | null
+          managed_by_coop_id?: string | null
           owner_name?: string
           phone?: string
           primary_enterprise?: string | null
@@ -2100,7 +2212,22 @@ export type Database = {
           updated_at?: string | null
           ward?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "farms_coop_factory_id_fkey"
+            columns: ["coop_factory_id"]
+            isOneToOne: false
+            referencedRelation: "coop_factories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farms_managed_by_coop_id_fkey"
+            columns: ["managed_by_coop_id"]
+            isOneToOne: false
+            referencedRelation: "cooperatives"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feed_records: {
         Row: {
@@ -4623,4 +4750,3 @@ export type GoatMilkRecord = Database['public']['Tables']['goat_milk_records']['
 export type MilkRecordInsert = Database['public']['Tables']['milk_records']['Insert']
 export type CowInsert = Database['public']['Tables']['cows']['Insert']
 export type VetVisitInsert = Database['public']['Tables']['vet_visits']['Insert']
-// ... add more as needed

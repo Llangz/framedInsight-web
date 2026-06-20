@@ -26,10 +26,11 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
   const [mapLoaded, setMapLoaded] = useState(false)
 
   useEffect(() => {
-    if (typeof window === 'undefined' || mapRef.current || !mapContainerRef.current) return
+    if (typeof window === 'undefined' || mapRef.current) return
 
     const initMap = async () => {
       try {
+        if (!mapContainerRef.current) return
         const L = (await import('leaflet')).default
         await import('leaflet/dist/leaflet.css')
 

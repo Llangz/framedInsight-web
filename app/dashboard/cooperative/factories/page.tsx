@@ -12,6 +12,8 @@ export default async function CooperativeFactoriesPage() {
   const supabase = await createClient()
 
   // 1. Fetch cooperative details
+  const { data: coop } = await supabase
+    .from('cooperatives')
     .select('primary_enterprise')
     .eq('id', access.coopId)
     .single()
@@ -27,12 +29,13 @@ export default async function CooperativeFactoriesPage() {
     .order('factory_name')
 
   // 3. Fetch farms to aggregate stats
-  const { data: farms = [] } = await supabase
+  const { data: farmsData } = await supabase
     .from('farms')
     .select('id, coop_factory_id')
     .eq('managed_by_coop_id', access.coopId)
 
-  const farmIds = (farms || []).map(f => f.id)
+  const farms = farmsData || []
+  const farmIds = farms.map(f => f.id)
 
   // 4. Fetch plots for tree counts
   let plots: any[] = []
@@ -83,7 +86,7 @@ export default async function CooperativeFactoriesPage() {
     <FactoriesClient
       factories={factoryStats}
       unassignedStats={unassignedStats}
-      primaryEnterprise={coop.primary_enterprise}
+      primaryEnterprise={coop.primary_enterprise || 'coffee'}
     />
   )
 }

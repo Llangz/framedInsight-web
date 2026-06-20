@@ -13,7 +13,7 @@ export default async function CooperativeDashboardOverview() {
   const supabase = await createClient()
 
   // 1. Fetch Cooperative details
-  const { data: coop } = await (supabase as any)
+  const { data: coop } = await supabase
     .from('cooperatives')
     .select('*')
     .eq('id', access.coopId)
@@ -24,12 +24,13 @@ export default async function CooperativeDashboardOverview() {
   }
 
   // 2. Fetch all farms managed by this cooperative
-  const { data: farms = [] } = await supabase
+  const { data: farmsData } = await supabase
     .from('farms')
     .select('id, farm_name, owner_name, county, sub_county, ward, land_size_acres, is_coop_managed, claim_token')
     .eq('managed_by_coop_id', access.coopId)
 
-  const farmIds = (farms || []).map(f => f.id)
+  const farms = farmsData || []
+  const farmIds = farms.map(f => f.id)
 
   // 3. Fetch all plots for these farms
   let plots: any[] = []

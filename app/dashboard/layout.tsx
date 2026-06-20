@@ -18,10 +18,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .single()
 
   if (coopOfficer) {
-    const { data: coop } = await supabase
-      .from('cooperatives')
-      .select('cooperative_name')
-      .eq('id', coopOfficer.cooperative_id)
+    const { data: coop } = await ((supabase as any).from('cooperatives')
+            .select('cooperative_name')
+            .eq('id', coopOfficer.cooperative_id))
       .single()
 
     return (
