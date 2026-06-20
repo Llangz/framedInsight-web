@@ -1,14 +1,8 @@
 import { redirect } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import { validateCoopAccess } from '@/lib/validate-coop-access'
 import { createClient } from '@/lib/supabase/server'
 import { Users, Trees, Landmark, Map, FileCheck2, Milestone } from 'lucide-react'
-
-// Dynamically import the map component to avoid SSR errors with Leaflet
-const CoopFleetMap = dynamic(
-  () => import('@/components/cooperative/CoopFleetMap'),
-  { ssr: false }
-)
+import CoopFleetMapWrapper from './CoopFleetMapWrapper'
 
 export default async function CooperativeDashboardOverview() {
   const access = await validateCoopAccess()
@@ -19,7 +13,7 @@ export default async function CooperativeDashboardOverview() {
   const supabase = await createClient()
 
   // 1. Fetch Cooperative details
-  const { data: coop } = await supabase
+  const { data: coop } = await (supabase as any)
     .from('cooperatives')
     .select('*')
     .eq('id', access.coopId)
@@ -186,7 +180,8 @@ export default async function CooperativeDashboardOverview() {
             </h3>
             <span className="text-xs text-zinc-500">{mapPlots.length} of {plots.length} plots visible</span>
           </div>
-          <CoopFleetMap plots={mapPlots} className="h-[420px]" />
+
+          <CoopFleetMapWrapper plots={mapPlots} className="h-[420px]" />
         </div>
 
         {/* Varieties and Claim overview (right 1 col) */}

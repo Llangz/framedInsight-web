@@ -12,12 +12,9 @@ export default async function CooperativeFactoriesPage() {
   const supabase = await createClient()
 
   // 1. Fetch cooperative details
-  const { data: coop } = await supabase
-    .from('cooperatives')
     .select('primary_enterprise')
     .eq('id', access.coopId)
     .single()
-
   if (!coop) {
     redirect('/onboarding')
   }

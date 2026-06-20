@@ -39,7 +39,7 @@ export default async function CooperativeFarmersPage() {
       .in('farm_id', farmIds)
 
     plots?.forEach(p => {
-      const stats = plotStatsMap.get(p.farm_id) || { count: 0; totalTrees: 0; hasPolygon: false }
+      const stats = plotStatsMap.get(p.farm_id) || { count: 0, totalTrees: 0, hasPolygon: false }
       stats.count += 1
       stats.totalTrees += p.total_trees || 0
       if (p.gps_polygon) stats.hasPolygon = true
