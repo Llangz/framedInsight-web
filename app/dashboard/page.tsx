@@ -27,7 +27,7 @@ export default async function DashboardPage() {
     .from('farm_managers')
     .select('farm_id, role')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (fmError || !farmManager?.farm_id) {
     console.warn('Dashboard: No farm found for user, redirecting to onboarding')

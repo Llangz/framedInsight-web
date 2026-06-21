@@ -14,7 +14,7 @@ export default async function RecordActivityPage() {
     .from("farm_managers")
     .select("farm_id")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!manager) {
     redirect("/onboarding");

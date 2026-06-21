@@ -22,7 +22,7 @@ export default async function PoultryWarningsPage() {
     .from('farm_managers')
     .select('farm_id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
   if (!fm) redirect('/onboarding')
 
   const farmId = fm.farm_id

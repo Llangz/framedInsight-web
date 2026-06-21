@@ -37,7 +37,7 @@ export default function AddMilkRecordPage() {
           .from('farm_managers')
           .select('farm_id')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
         
         if (fm) {
           setFarmId(fm.farm_id)

@@ -57,7 +57,7 @@ export default function ReportDiseasePage() {
         .from('farm_managers')
         .select('farm_id')
         .eq('user_id', session.user.id)
-        .single()
+        .maybeSingle()
 
       if (fmError) throw fmError
 
@@ -156,7 +156,7 @@ export default function ReportDiseasePage() {
         .from('farm_managers')
         .select('farm_id')
         .eq('user_id', session.user.id)
-        .single()
+        .maybeSingle()
 
       if (!farmManager) throw new Error('No farm found')
 

@@ -17,7 +17,7 @@ export default async function EditBatchPage({
     .from('farm_managers')
     .select('farm_id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (!farmManager) redirect('/onboarding')
 

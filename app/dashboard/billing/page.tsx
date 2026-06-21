@@ -23,7 +23,7 @@ export default async function BillingPage() {
     .from('farm_managers')
     .select('farm_id, role')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (!fm?.farm_id) redirect('/onboarding')
 

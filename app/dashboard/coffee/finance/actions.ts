@@ -17,7 +17,7 @@ export async function addTransaction(transactionData: Omit<TransactionInsert, 'f
     .from("farm_managers")
     .select("farm_id")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!farmManager) throw new Error("Farm profile not found");
 

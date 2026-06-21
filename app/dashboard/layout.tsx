@@ -34,7 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .from('farm_managers')
     .select('farm_id, role')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (!fm?.farm_id) redirect('/onboarding')
 

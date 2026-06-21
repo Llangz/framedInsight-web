@@ -26,7 +26,7 @@ export async function addCow(formData: AddCowFormData) {
     .from('farm_managers')
     .select('farm_id')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (fmError || !farmManager) throw new Error("Farm profile not found. Please complete onboarding.");
 
@@ -73,7 +73,7 @@ export async function updateCow(cowId: string, updates: Partial<CowInsert>) {
     .from('farm_managers')
     .select('farm_id')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (fmError || !farmManager) throw new Error('Farm profile not found');
 

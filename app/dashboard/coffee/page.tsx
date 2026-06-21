@@ -16,7 +16,7 @@ export default async function CoffeePage() {
     .from('farm_managers')
     .select('farm_id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (fmError || !farmManager?.farm_id) {
     console.warn('Coffee Dashboard: No farm found for user')

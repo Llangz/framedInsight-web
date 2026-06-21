@@ -19,7 +19,7 @@ export async function updateCow(
     .from('farm_managers')
     .select('farm_id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (!farmManager) throw new Error('Farm profile not found')
 
@@ -47,7 +47,7 @@ export async function deleteCow(cowId: string) {
     .from('farm_managers')
     .select('farm_id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (!farmManager) throw new Error('Farm profile not found')
 

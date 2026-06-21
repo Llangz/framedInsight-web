@@ -12,7 +12,7 @@ export default async function SmallRuminantsMilkPage() {
     .from("farm_managers")
     .select("farm_id")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
   
   if (!fm) redirect("/onboarding");
   

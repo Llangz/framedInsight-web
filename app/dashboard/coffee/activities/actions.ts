@@ -45,7 +45,7 @@ export async function recordActivity(formData: ActivityFormData) {
     .from("farm_managers")
     .select("farm_id")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!manager) throw new Error("Farm manager record not found");
 

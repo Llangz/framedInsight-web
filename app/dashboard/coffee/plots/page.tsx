@@ -15,7 +15,7 @@ export default async function CoffeePlotsPage() {
     .from('farm_managers')
     .select('farm_id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (!farmManager) {
     redirect('/onboarding')

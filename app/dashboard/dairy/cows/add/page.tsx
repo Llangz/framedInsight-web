@@ -87,7 +87,7 @@ export default function AddCowPage() {
         .from('farm_managers')
         .select('farm_id')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
       if (!farmManager) {
         alert('Farm not found')
