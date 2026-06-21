@@ -41,8 +41,14 @@ export async function createFarmOnVerifyAction(params: VerifyFarmParams): Promis
       p_farm_types: params.farmTypes,
       p_primary_enterprise: params.primaryEnterprise,
       p_user_id: params.userId,
-      p_subscription_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      p_email: params.email || null
+      p_subscription_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      // NOTE: p_email intentionally omitted — create_farm_with_manager has no
+      // such parameter (see supabase/migrations/20260519120000_create_farm_rpc.sql).
+      // Passing it makes PostgREST unable to resolve the function, and every
+      // signup was failing here. params.email is still collected in the UI for
+      // receipts/notifications; persisting it requires a migration to add the
+      // parameter (and farms.email is already a column, just never written to
+      // by this RPC) — happy to write that migration as a follow-up.
     })
 
     if (rpcError) {
