@@ -31,13 +31,11 @@ export async function createCooperativeOnVerifyAction(
     return { success: false, error: 'Server misconfiguration.' }
   }
 
-  // Use service role client to write data that bypasses basic RLS.
   const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
   try {
-    // 1. Call the secure RPC function to create cooperative and officer association
     const { data: cooperativeId, error: rpcError } = await supabaseAdmin.rpc(
       'create_cooperative_with_officer',
       {
@@ -47,22 +45,38 @@ export async function createCooperativeOnVerifyAction(
         p_ward: params.ward || null,
         p_primary_enterprise: params.primaryEnterprise,
         p_user_id: params.userId,
+        p_email: params.email || null,
       }
     )
 
     if (rpcError) {
       console.error('Error creating cooperative via RPC:', rpcError)
-      return { success: false, error: rpcError.message }
+
+      if (rpcError.code === '23505') {
+        return {
+          success: false,
+          error: 'This phone number is already linked to a cooperative account. Try logging in instead, or contact support if you believe this is an error.'
+        }
+      }
+
+      return {
+        success: false,
+        error: 'Something went wrong setting up your cooperative. Please try again or contact support.'
+      }
     }
 
     if (!cooperativeId) {
       return { success: false, error: 'Cooperative created but no ID returned' }
     }
 
-    // Update user's profile or metadata if needed
-    // In this app, we can also update auth.users metadata if relevant
+    // updateUserById REPLACES user_metadata wholesale rather than merging it —
+    // fetch the existing metadata first so we don't wipe out phone_number
+    // (set by verify-otp), which would otherwise break future OTP-login
+    // matching for this user.
+    const { data: existingUser } = await supabaseAdmin.auth.admin.getUserById(params.userId)
     await supabaseAdmin.auth.admin.updateUserById(params.userId, {
       user_metadata: {
+        ...(existingUser?.user?.user_metadata || {}),
         role: 'cooperative_officer',
         cooperative_id: cooperativeId,
       },
@@ -74,7 +88,7 @@ export async function createCooperativeOnVerifyAction(
     console.error('Unexpected error creating cooperative:', error)
     return {
       success: false,
-      error: error.message || 'Unknown error',
+      error: 'Something went wrong setting up your cooperative. Please try again or contact support.',
     }
   }
 }

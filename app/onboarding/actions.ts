@@ -31,7 +31,21 @@ export async function createFarmAction(params: CreateFarmParams): Promise<FarmCr
 
     if (rpcError) {
       console.error('Error creating farm via RPC:', rpcError)
-      return { success: false, error: rpcError.message }
+
+      // Postgres unique_violation (e.g. farms_phone_key) — never leak the raw
+      // constraint message to the user. This phone is already linked to a farm,
+      // most likely the user's own existing farm under a stale session.
+      if (rpcError.code === '23505') {
+        return {
+          success: false,
+          error: 'This phone number is already linked to a farm. Try logging in instead, or contact support if you believe this is an error.'
+        }
+      }
+
+      return {
+        success: false,
+        error: 'Something went wrong setting up your farm. Please try again or contact support.'
+      }
     }
 
     if (!farmId) {
@@ -44,7 +58,7 @@ export async function createFarmAction(params: CreateFarmParams): Promise<FarmCr
     console.error('Unexpected error creating farm:', error)
     return {
       success: false,
-      error: error.message || 'Unknown error',
+      error: 'Something went wrong setting up your farm. Please try again or contact support.',
     }
   }
 }

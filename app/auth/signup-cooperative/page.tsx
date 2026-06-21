@@ -96,6 +96,7 @@ export default function CooperativeSignupPage() {
         cooperative_name: formData.cooperativeName,
         county: formData.county,
         primary_enterprise: formData.primaryEnterprise,
+        email: formData.email || null,
         account_type: 'cooperative',
       })
 

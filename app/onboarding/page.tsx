@@ -11,7 +11,14 @@ type OnboardingStep = 'farm_info' | 'location' | 'enterprises' | 'creating'
 export default function OnboardingPage() {
   const router = useRouter()
   const supabase = createClient()
-  
+
+  // Guard: don't show the onboarding form to a user who already has a farm.
+  // Without this, a stale/incorrect redirect to /onboarding (e.g. a session
+  // resolving to a different user id than the one originally linked to the
+  // farm) leads straight into "Finish Setup" trying to create a duplicate
+  // farm and crashing on the unique phone constraint.
+  const [checkingExisting, setCheckingExisting] = useState(true)
+
   const [step, setStep] = useState<OnboardingStep>('farm_info')
   const [formData, setFormData] = useState({
     farmName: '',
@@ -30,6 +37,37 @@ export default function OnboardingPage() {
   const counties = getCounties()
   const constituencies = formData.countyId ? getConstituencies(formData.countyId) : []
   const wards = formData.subCountyId ? getWards(formData.subCountyId) : []
+
+  useEffect(() => {
+    let active = true
+
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        if (active) setCheckingExisting(false)
+        return
+      }
+
+      // .maybeSingle(), not .single() — zero rows is the expected, common
+      // case here (a genuinely new user) and should not be treated as an error.
+      const { data: fm } = await supabase
+        .from('farm_managers')
+        .select('farm_id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!active) return
+
+      if (fm?.farm_id) {
+        router.replace('/dashboard')
+        return
+      }
+
+      setCheckingExisting(false)
+    })()
+
+    return () => { active = false }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,6 +126,14 @@ export default function OnboardingPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (checkingExisting) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4">
+        <div className="w-10 h-10 border-2 border-neutral-800 border-t-green-500 rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (

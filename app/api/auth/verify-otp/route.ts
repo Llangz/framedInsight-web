@@ -56,7 +56,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Validate OTP format (must be exactly 6 digits)
-  if (!/^\d{6}$/.test(String(otp).trim())) {
+  const submittedOtp = String(otp).trim()
+  if (!/^\d{6}$/.test(submittedOtp)) {
     return NextResponse.json(
       { error: 'Invalid OTP format. Please enter a 6-digit code.' },
       { status: 400 }
@@ -111,14 +112,16 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 3. Validate the code (timing-safe comparison) ─────────────────────────
-    const submittedOtp = String(otp).trim()
     const storedOtp = String(record.otp_code).trim()
     
-    // Use timing-safe comparison to prevent timing attacks
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(submittedOtp),
-      Buffer.from(storedOtp)
-    )
+    // CRITICAL FIX: timingSafeEqual requires buffers of identical length
+    let isValid = false
+    if (submittedOtp.length === storedOtp.length) {
+      isValid = crypto.timingSafeEqual(
+        Buffer.from(submittedOtp),
+        Buffer.from(storedOtp)
+      )
+    }
 
     if (!isValid) {
       // Increment failed attempts
@@ -140,67 +143,44 @@ export async function POST(req: NextRequest) {
     }
 
     // ── OTP verified ── proceed to create/retrieve auth user ─────────────────
-    const metadata = record.metadata || {}
-    const ghostEmail = metadata.email
-      || `user${normalisedPhone.replace(/\D/g, '')}@framedinsight.app`
-    const randomPassword = crypto.randomBytes(32).toString('hex')
+    // Identity key is ALWAYS derived purely from the phone number
+    const ghostEmail = `user${normalisedPhone.replace(/\D/g, '')}@framedinsight.app`
+    
+    // Fallback static password structure tied to the user profile or a unified static system
+    // because we use a password-less design via admin API.
+    const staticPasswordForGhost = `A1!_${crypto.createHash('sha256').update(ghostEmail + serviceKey).digest('hex')}`
 
     // ── 4. Find or create auth user ───────────────────────────────────────────
     let userId: string
 
-    const { data: newUserData, error: createErr } = await admin.auth.admin.createUser({
-      email: ghostEmail,
-      password: randomPassword,
-      email_confirm: true,
-      user_metadata: {
-        ...metadata,
-        phone_number: normalisedPhone,
-        auth_method: 'phone_otp',
-      },
-    })
+    // Optimized Fix: Try fetching the user by email directly first instead of listing 1000 users.
+    const { data: getUserData } = await admin.auth.admin.getUserByEmail(ghostEmail)
 
-    if (createErr) {
-      if (createErr.message.includes('already') || createErr.message.includes('exists')) {
-        const { data: { users }, error: listErr } = await admin.auth.admin.listUsers({
-          page: 1, perPage: 1000,
-        })
+    if (getUserData?.user) {
+      userId = getUserData.user.id
+    } else {
+      // Create user if they do not exist
+      const { data: newUserData, error: createErr } = await admin.auth.admin.createUser({
+        email: ghostEmail,
+        password: staticPasswordForGhost,
+        email_confirm: true,
+        user_metadata: {
+          phone_number: normalisedPhone,
+          auth_method: 'phone_otp',
+        },
+      })
 
-        if (listErr) {
-          console.error('[verify-otp] listUsers failed:', listErr.message)
-          return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
-        }
-
-        const existing = users.find(
-          (u) => u.email === ghostEmail || u.user_metadata?.phone_number === normalisedPhone
-        )
-
-        if (!existing) {
-          console.error('[verify-otp] createUser said duplicate but listUsers found nothing for:', phoneTag)
-          return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
-        }
-
-        const { error: updErr } = await admin.auth.admin.updateUserById(existing.id, {
-          password: randomPassword,
-          email_confirm: true,
-        })
-        if (updErr) {
-          console.error('[verify-otp] updateUserById failed:', updErr.message)
-          return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
-        }
-
-        userId = existing.id
-      } else {
+      if (createErr) {
         console.error('[verify-otp] createUser error:', createErr.message)
         return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
       }
-    } else {
       userId = newUserData.user.id
     }
 
     // ── 5. Sign in to create a browser session ────────────────────────────────
     const { data: signInData, error: signInErr } = await ssrClient.auth.signInWithPassword({
       email: ghostEmail,
-      password: randomPassword,
+      password: staticPasswordForGhost,
     })
 
     if (signInErr || !signInData.session) {
@@ -239,7 +219,7 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (err: any) {
-    console.error('[verify-otp] Error for:', phoneTag, '|', err.message)
+    console.error('[verify-otp] Error for:', phoneTag, '|', err?.message || err)
     return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
   }
 }

@@ -26,15 +26,11 @@ export async function createFarmOnVerifyAction(params: VerifyFarmParams): Promis
     return { success: false, error: 'Server misconfiguration.' }
   }
 
-  // Use service role key to bypass RLS for this multi-table creation flow.
-  // This prevents the chicken-and-egg problem where the user can't select the farm they just created
-  // because they haven't been added to farm_managers yet.
   const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   })
 
   try {
-    // 1. Call the secure RPC function to create farm and manager association
     const { data: farmId, error: rpcError } = await supabaseAdmin.rpc('create_farm_with_manager', {
       p_farm_name: params.farmName,
       p_owner_name: params.ownerName,
@@ -45,12 +41,24 @@ export async function createFarmOnVerifyAction(params: VerifyFarmParams): Promis
       p_farm_types: params.farmTypes,
       p_primary_enterprise: params.primaryEnterprise,
       p_user_id: params.userId,
-      p_subscription_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      p_subscription_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      p_email: params.email || null
     })
 
     if (rpcError) {
       console.error('Error creating farm via RPC:', rpcError)
-      return { success: false, error: rpcError.message }
+
+      if (rpcError.code === '23505') {
+        return {
+          success: false,
+          error: 'This phone number is already linked to a farm. Try logging in instead, or contact support if you believe this is an error.'
+        }
+      }
+
+      return {
+        success: false,
+        error: 'Something went wrong setting up your farm. Please try again or contact support.'
+      }
     }
 
     if (!farmId) {
@@ -63,7 +71,7 @@ export async function createFarmOnVerifyAction(params: VerifyFarmParams): Promis
     console.error('Unexpected error creating farm:', error)
     return {
       success: false,
-      error: error.message || 'Unknown error',
+      error: 'Something went wrong setting up your farm. Please try again or contact support.',
     }
   }
 }
