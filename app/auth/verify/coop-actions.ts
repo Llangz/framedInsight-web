@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
+import { Database } from '@/lib/database.types'
 
 interface VerifyCooperativeParams {
   userId: string
@@ -31,7 +32,7 @@ export async function createCooperativeOnVerifyAction(
     return { success: false, error: 'Server misconfiguration.' }
   }
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
+  const supabaseAdmin = createClient<Database>(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 

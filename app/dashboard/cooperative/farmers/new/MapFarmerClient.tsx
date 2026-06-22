@@ -118,6 +118,15 @@ export default function MapFarmerClient({ factories }: { factories: FactoryOptio
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const [linkCopied, setLinkCopied] = useState(false)
+  const copyClaimLink = () => {
+    if (!result) return
+    const url = `${window.location.origin}/claim/${result.claimToken}`
+    navigator.clipboard.writeText(url)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0C10] p-4 md:p-8 font-['Outfit']">
       <div className="max-w-2xl mx-auto">
@@ -363,20 +372,29 @@ export default function MapFarmerClient({ factories }: { factories: FactoryOptio
             <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-6">
               <p className="text-sm font-bold text-[#9CA3AF] mb-2">Claim code for {farmerData.ownerName.split(' ')[0]}</p>
               <p className="text-xs text-[#6B7280] mb-4 leading-relaxed">
-                If this farmer gets a smartphone later, they can enter this code at signup to take over
-                managing their own farm — your cooperative keeps visibility for fleet reporting.
+                If this farmer gets a smartphone later, send them the link below (e.g. via SMS or WhatsApp) —
+                or they can type the code in manually at sign up. Either way, they verify their own phone
+                and take over managing their farm; your cooperative keeps visibility for fleet reporting.
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-3">
                 <div className="flex-1 bg-[#0A0C10] border border-[#2A2D35] rounded-lg px-4 py-3 text-center">
                   <span className="text-2xl font-mono font-bold text-green-400 tracking-widest">{result.claimToken}</span>
                 </div>
                 <button
                   onClick={copyClaimCode}
                   className="w-12 h-12 flex items-center justify-center bg-[#161921] hover:bg-[#1C202A] border border-[#2A2D35] rounded-lg text-[#9CA3AF] transition cursor-pointer"
+                  title="Copy code"
                 >
                   {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
                 </button>
               </div>
+              <button
+                onClick={copyClaimLink}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#161921] hover:bg-[#1C202A] border border-[#2A2D35] rounded-lg text-sm font-semibold text-[#9CA3AF] transition cursor-pointer"
+              >
+                {linkCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                {linkCopied ? 'Link copied' : 'Copy claim link to share'}
+              </button>
             </div>
 
             <div className="flex gap-3">

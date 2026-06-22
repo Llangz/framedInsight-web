@@ -150,16 +150,26 @@ export async function POST(req: NextRequest) {
     // because we use a password-less design via admin API.
     const staticPasswordForGhost = `A1!_${crypto.createHash('sha256').update(ghostEmail + serviceKey).digest('hex')}`
 
-    // ── 4. Find or create auth user ───────────────────────────────────────────
+    // ── 4. Find or create auth user, then sign in ─────────────────────────────
+    // Try signing in first — for a returning user this is a single call and
+    // immediately gives us a session. There is deliberately no "look up user
+    // by email" step here: admin.auth.admin.getUserByEmail does not exist on
+    // GoTrueAdminApi (only getUserById and paginated listUsers do), so calling
+    // it throws on every request. Sign-in-first avoids needing that lookup at
+    // all, since the ghost password is a deterministic function of the email.
     let userId: string
+    let session: { access_token: string; refresh_token: string; [key: string]: any }
 
-    // Optimized Fix: Try fetching the user by email directly first instead of listing 1000 users.
-    const { data: getUserData } = await admin.auth.admin.getUserByEmail(ghostEmail)
+    const { data: signInAttempt, error: signInAttemptErr } = await ssrClient.auth.signInWithPassword({
+      email: ghostEmail,
+      password: staticPasswordForGhost,
+    })
 
-    if (getUserData?.user) {
-      userId = getUserData.user.id
+    if (!signInAttemptErr && signInAttempt.session) {
+      userId = signInAttempt.user.id
+      session = signInAttempt.session
     } else {
-      // Create user if they do not exist
+      // No account yet for this phone — create one, then sign in.
       const { data: newUserData, error: createErr } = await admin.auth.admin.createUser({
         email: ghostEmail,
         password: staticPasswordForGhost,
@@ -170,22 +180,22 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      if (createErr) {
-        console.error('[verify-otp] createUser error:', createErr.message)
+      if (createErr || !newUserData?.user) {
+        console.error('[verify-otp] createUser error:', createErr?.message)
         return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
       }
       userId = newUserData.user.id
-    }
 
-    // ── 5. Sign in to create a browser session ────────────────────────────────
-    const { data: signInData, error: signInErr } = await ssrClient.auth.signInWithPassword({
-      email: ghostEmail,
-      password: staticPasswordForGhost,
-    })
+      const { data: signInData, error: signInErr } = await ssrClient.auth.signInWithPassword({
+        email: ghostEmail,
+        password: staticPasswordForGhost,
+      })
 
-    if (signInErr || !signInData.session) {
-      console.error('[verify-otp] signInWithPassword failed:', signInErr?.message)
-      return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+      if (signInErr || !signInData.session) {
+        console.error('[verify-otp] signInWithPassword failed after createUser:', signInErr?.message)
+        return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+      }
+      session = signInData.session
     }
 
     // ── 6. Delete the used OTP ────────────────────────────────────────────────
@@ -215,7 +225,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       user: { id: userId, phone: phoneTag },
-      session: signInData.session,
+      session,
     })
 
   } catch (err: any) {

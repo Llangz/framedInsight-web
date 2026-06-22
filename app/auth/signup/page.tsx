@@ -11,12 +11,13 @@ import { LanguageToggle, useTranslation, type Language } from '@/components/auth
 import { validateKenyanPhone, validateEmail, validateName, validateFarmName, validateCounty, KENYAN_COUNTIES } from '@/lib/validation'
 import { sendPhoneOTP } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
-import { Milk, Coffee, Rabbit, Check } from 'lucide-react'
+import { Milk, Coffee, Rabbit, Bird, Check, User, Building2, ArrowRight } from 'lucide-react'
 
 const enterpriseOptions = [
   { id: 'dairy',      label: 'Dairy',    icon: Milk    },
   { id: 'coffee',     label: 'Coffee',   icon: Coffee  },
   { id: 'sheep_goat', label: 'Livestock',icon: Rabbit  },
+  { id: 'poultry',    label: 'Poultry',  icon: Bird    },
 ]
 
 export default function SignupPage() {
@@ -44,7 +45,18 @@ export default function SignupPage() {
 
   const [errors, setErrors] = useState<any>({})
   const [loading, setLoading] = useState(false)
-  const [step, setStep] = useState<'details' | 'enterprises' | 'consents'>('details')
+  const [step, setStep] = useState<'choose' | 'details' | 'enterprises' | 'consents'>('choose')
+  const [claimCode, setClaimCode] = useState('')
+  const [claimCodeError, setClaimCodeError] = useState('')
+
+  const goToClaim = () => {
+    const code = claimCode.trim().toUpperCase()
+    if (!code) {
+      setClaimCodeError('Enter the code your cooperative gave you')
+      return
+    }
+    router.push(`/claim/${encodeURIComponent(code)}`)
+  }
 
   const validateStep1 = () => {
     const newErrors: any = {}
@@ -162,13 +174,102 @@ export default function SignupPage() {
           <LanguageToggle currentLanguage={language} onChange={setLanguage} />
         </div>
         <div className="bg-white rounded-lg shadow-lg p-8">
+          {step === 'choose' ? (
+            <>
+              <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {t({ en: 'Get Started with framedInsight', sw: 'Anza na framedInsight' })}
+                </h1>
+                <p className="text-gray-600 mt-2">
+                  {t({ en: '14 days of Pro features FREE', sw: 'Siku 14 za Pro BURE' })}
+                </p>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setStep('details')}
+                  className="group text-left p-6 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50/40 transition-all"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-primary-50 flex items-center justify-center mb-4 group-hover:bg-primary-100">
+                    <User className="w-6 h-6 text-primary-600" />
+                  </div>
+                  <h2 className="font-bold text-gray-900 text-lg">
+                    {t({ en: 'I\u2019m an Individual Farmer', sw: 'Mimi ni Mkulima Binafsi' })}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1.5">
+                    {t({
+                      en: 'Manage your own coffee, dairy, or livestock farm — plot mapping, EUDR compliance, and harvest tracking.',
+                      sw: 'Simamia shamba lako la kahawa, maziwa, au mifugo.',
+                    })}
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 mt-4">
+                    {t({ en: 'Continue', sw: 'Endelea' })} <ArrowRight className="w-4 h-4" />
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => router.push('/auth/signup-cooperative')}
+                  className="group text-left p-6 rounded-xl border-2 border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/40 transition-all"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center mb-4 group-hover:bg-emerald-100">
+                    <Building2 className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <h2 className="font-bold text-gray-900 text-lg">
+                    {t({ en: 'I Represent a Cooperative', sw: 'Ninawakilisha Chama' })}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1.5">
+                    {t({
+                      en: 'Map member farmers, aggregate production across your factories, and manage EUDR compliance for your society.',
+                      sw: 'Ramani wanachama, kusanya uzalishaji, na simamia ufuasi wa EUDR.',
+                    })}
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600 mt-4">
+                    {t({ en: 'Continue', sw: 'Endelea' })} <ArrowRight className="w-4 h-4" />
+                  </span>
+                </button>
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-gray-100">
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  {t({ en: 'Already mapped by your cooperative?', sw: 'Tayari umewekwa ramani na chama chako?' })}
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={claimCode}
+                    onChange={(e) => { setClaimCode(e.target.value); setClaimCodeError('') }}
+                    placeholder="e.g. KP-8X2-9YT"
+                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={goToClaim}
+                    className="px-5 py-2.5 bg-gray-900 text-white rounded-md font-semibold text-sm hover:bg-gray-800 transition-colors"
+                  >
+                    {t({ en: 'Claim my farm', sw: 'Dai shamba' })}
+                  </button>
+                </div>
+                {claimCodeError && <p className="text-red-600 text-sm mt-1.5">{claimCodeError}</p>}
+                <p className="text-xs text-gray-500 mt-2">
+                  {t({
+                    en: 'Your cooperative\u2019s field officer gives you this code after mapping your farm.',
+                    sw: 'Afisa wa shamba wa chama chako anakupa msimbo huu baada ya kuramani shamba lako.',
+                  })}
+                </p>
+              </div>
+            </>
+          ) : (
+          <>
           <div className="text-center mb-8">
-            <Link
-              href="/auth/signup-cooperative"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors mb-4"
+            <button
+              type="button"
+              onClick={() => setStep('choose')}
+              className="text-xs text-gray-400 hover:text-gray-600 mb-3"
             >
-              Registering a Cooperative Society? Click here &rarr;
-            </Link>
+              &larr; {t({ en: 'Change account type', sw: 'Badilisha aina ya akaunti' })}
+            </button>
             <h1 className="text-3xl font-bold text-gray-900">
               {t({ en: 'Create Your Account', sw: 'Fungua Akaunti Yako' })}
             </h1>
@@ -303,7 +404,7 @@ export default function SignupPage() {
             {step === 'enterprises' && (
               <div className="space-y-6">
                 <h3 className="text-sm font-semibold text-zinc-900">What do you farm?</h3>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {enterpriseOptions.map((ent) => {
                     const Icon    = ent.icon
                     const active  = formData.farmTypes.includes(ent.id)
@@ -399,6 +500,8 @@ export default function SignupPage() {
               </Link>
             </p>
           </div>
+          </>
+          )}
         </div>
       </div>
       <Footer />

@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 import { Enterprise, CreateFarmParams, FarmCreationResult } from '@/lib/create-farm'
 import { revalidatePath } from 'next/cache'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { Database } from '@/lib/database.types'
 
 export async function createFarmAction(params: CreateFarmParams): Promise<FarmCreationResult> {
   const supabaseAuth = await createClient()
 
   // Use service role to bypass RLS for initial provisioning
-  const supabaseAdmin = createAdminClient(
+  const supabaseAdmin = createAdminClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )

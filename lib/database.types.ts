@@ -1809,6 +1809,7 @@ export type Database = {
         Row: {
           cooperative_id: string
           created_at: string | null
+          email: string | null
           id: string
           role: string | null
           user_id: string
@@ -1816,6 +1817,7 @@ export type Database = {
         Insert: {
           cooperative_id: string
           created_at?: string | null
+          email?: string | null
           id?: string
           role?: string | null
           user_id: string
@@ -1823,6 +1825,7 @@ export type Database = {
         Update: {
           cooperative_id?: string
           created_at?: string | null
+          email?: string | null
           id?: string
           role?: string | null
           user_id?: string
@@ -4599,6 +4602,42 @@ export type Database = {
         Returns: boolean
       }
       delete_expired_otps: { Args: never; Returns: undefined }
+      create_farm_with_manager: {
+        Args: {
+          p_farm_name: string
+          p_owner_name: string
+          p_phone: string
+          p_county: string
+          p_sub_county: string | null
+          p_ward: string | null
+          p_farm_types: string[]
+          p_primary_enterprise: string
+          p_user_id: string
+          p_subscription_end_date: string
+          p_email?: string | null
+        }
+        Returns: string
+      }
+      create_cooperative_with_officer: {
+        Args: {
+          p_cooperative_name: string
+          p_county: string
+          p_sub_county: string | null
+          p_ward: string | null
+          p_primary_enterprise: string
+          p_user_id: string
+          p_email?: string | null
+        }
+        Returns: string
+      }
+      claim_cooperative_farm: {
+        Args: {
+          p_claim_token: string
+          p_user_id: string
+          p_phone: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

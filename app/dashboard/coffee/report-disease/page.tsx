@@ -60,6 +60,7 @@ export default function ReportDiseasePage() {
         .maybeSingle()
 
       if (fmError) throw fmError
+      if (!farmManager) throw new Error('No farm found for this account')
 
       const { data: coffeePlots, error: cpError } = await supabase
         .from('coffee_plots')
