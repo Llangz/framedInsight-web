@@ -1,16 +1,19 @@
 import Link from 'next/link'
-import { Lock, Smartphone, CreditCard, ShieldCheck, ArrowRight, MessageSquare, Satellite, Bot } from 'lucide-react'
+import { Lock, Smartphone, CreditCard, ShieldCheck, ArrowRight, MessageSquare, Satellite, Bot, Bird } from 'lucide-react'
 
 const trustBadges = [
   { icon: Lock,        label: 'Data Protected'  },
   { icon: Smartphone,  label: 'Any Phone'       },
   { icon: CreditCard,  label: 'M-PESA Ready'    },
   { icon: ShieldCheck, label: 'EUDR Compliant'  },
+  { icon: Bird,        label: 'Poultry Ready'   },
 ]
 
 const chatMessages = [
   { from: 'farmer', text: 'Tuyei produced 18 liters today' },
   { from: 'ai',     text: 'Milk recorded — 18 L for Tuyei\nFarm total today: 51 L' },
+  { from: 'farmer', text: 'Layer batch B — 240 eggs today' },
+  { from: 'ai',     text: 'Egg production logged ✓\nFCR this week: 1.82 — on target' },
   { from: 'farmer', text: 'Coffee leaves turning brown, plot A' },
   { from: 'ai',     text: 'Possible: Coffee Leaf Rust\nSend a photo for confirmation' },
 ]
@@ -24,7 +27,7 @@ export function Hero() {
         <div className="lg:flex-1">
           <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600 mb-8">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Now in Kenya · 5,000+ farms
+            Now in Kenya · 5,000+ farms · Cooperatives welcome
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl leading-[1.1]">
@@ -33,12 +36,13 @@ export function Hero() {
           </h1>
 
           <p className="mt-6 text-lg text-zinc-600 leading-relaxed max-w-xl">
-            Record milk, report diseases, and get expert AI advice — all through a WhatsApp chat.
-            No app download. No complex software. Just your phone.
+            Record milk, log egg production, report diseases, and get expert AI advice — all
+            through WhatsApp. Dairy, coffee, small ruminants, poultry, and cooperative management
+            in one platform. No app download. Just your phone.
           </p>
 
           {/* Stats row */}
-          <div className="mt-10 flex items-center gap-8">
+          <div className="mt-10 flex items-center gap-8 flex-wrap">
             <div>
               <p className="text-2xl font-bold text-zinc-900">5,000+</p>
               <p className="text-sm text-zinc-500">Active farmers</p>
@@ -50,8 +54,13 @@ export function Hero() {
             </div>
             <div className="h-8 w-px bg-zinc-200" />
             <div>
-              <p className="text-2xl font-bold text-zinc-900">100%</p>
-              <p className="text-sm text-zinc-500">EUDR compliant</p>
+              <p className="text-2xl font-bold text-zinc-900">4</p>
+              <p className="text-sm text-zinc-500">Enterprises supported</p>
+            </div>
+            <div className="h-8 w-px bg-zinc-200" />
+            <div>
+              <p className="text-2xl font-bold text-zinc-900">EUDR</p>
+              <p className="text-sm text-zinc-500">Compliant (Dec 2026)</p>
             </div>
           </div>
 
@@ -127,10 +136,14 @@ export function Hero() {
           </div>
 
           {/* Floating badges */}
-          <div className="mt-4 flex gap-3 justify-end">
+          <div className="mt-4 flex gap-3 justify-end flex-wrap">
             <div className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm">
               <Satellite size={12} className="text-emerald-600" />
               Satellite scan — 2 days ago
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm">
+              <Bird size={12} className="text-amber-600" />
+              Flock alert — FCR within range
             </div>
           </div>
         </div>

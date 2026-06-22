@@ -1,6 +1,7 @@
 import {
   MessageSquare, MapPin, Satellite, Microscope,
-  TrendingUp, Bot, CalendarDays, BarChart2, Layers
+  TrendingUp, Bot, CalendarDays, BarChart2, Layers,
+  Bird, Building2
 } from 'lucide-react'
 
 const features = [
@@ -11,43 +12,53 @@ const features = [
   },
   {
     name: 'GPS Plot Mapping',
-    description: 'Map your coffee plots with GPS precision. EUDR-compliant coordinates with one-click export for EU export documentation.',
+    description: 'Map your coffee plots with GPS precision. EUDR-compliant coordinates with one-click Due Diligence Statement export for EU buyers.',
     icon: MapPin,
   },
   {
     name: 'Satellite Health Monitoring',
-    description: 'NDVI satellite imagery automatically scans your plots twice monthly. Get alerts when crop health declines before it is visible on the ground.',
+    description: 'NDVI satellite imagery automatically scans your plots twice monthly. Get early alerts when crop health declines before it\'s visible on the ground.',
     icon: Satellite,
   },
   {
     name: 'AI Disease Detection',
-    description: 'Send a photo of affected leaves. AI identifies Coffee Leaf Rust, mastitis, or pest infestations with 95%+ accuracy.',
+    description: 'Send a photo of affected leaves, a sick animal, or your flock. AI identifies Coffee Leaf Rust, mastitis, Newcastle disease, and more with 95%+ accuracy.',
     icon: Microscope,
   },
   {
-    name: 'Trend Detection & Alerts',
-    description: 'Automatically detect declining milk production, unusual patterns, and potential problems before they become serious.',
-    icon: TrendingUp,
+    name: 'Poultry Management',
+    description: 'Track flocks by batch, record daily egg production, monitor FCR, and get AI-powered early warning alerts for disease outbreaks before they spread.',
+    icon: Bird,
+  },
+  {
+    name: 'Cooperative Management',
+    description: 'Cooperative officers can map member farms, aggregate production across factories, manage EUDR traceability for the entire society, and onboard farmers without smartphones.',
+    icon: Building2,
   },
   {
     name: 'Expert AI Agents',
-    description: 'Chat with specialised AI experts trained on Kenyan agriculture: dairy vet, coffee agronomist, and livestock specialist.',
+    description: 'Chat with specialised AI experts trained on Kenyan agriculture: dairy vet, coffee agronomist, livestock specialist, and poultry advisor.',
     icon: Bot,
   },
   {
-    name: 'Regional Coffee Calendar',
-    description: 'Get location-specific recommendations: when to fertilise, spray, and harvest based on your exact region and altitude.',
-    icon: CalendarDays,
-  },
-  {
     name: 'Financial Analytics',
-    description: 'Track income and expenses across all enterprises. See profitability per cow, per plot, and enterprise-wide.',
+    description: 'Track income and expenses across all enterprises. See profitability per cow, per plot, per batch — and enterprise-wide P&L at a glance.',
     icon: BarChart2,
   },
   {
     name: 'Multi-Enterprise Support',
-    description: 'Manage dairy, coffee, and sheep/goats in one platform. Cross-enterprise insights and unified financial reporting.',
+    description: 'Manage dairy, coffee, small ruminants, and poultry in one platform. Unified financial reporting and cross-enterprise AI insights.',
     icon: Layers,
+  },
+  {
+    name: 'Trend Detection & Alerts',
+    description: 'Automatically detect declining milk yields, dropping egg production, unusual crop stress patterns, and potential problems before they become serious.',
+    icon: TrendingUp,
+  },
+  {
+    name: 'Regional Coffee Calendar',
+    description: 'Get location-specific recommendations: when to fertilise, spray, and harvest based on your exact region, altitude, and variety.',
+    icon: CalendarDays,
   },
 ]
 
@@ -65,7 +76,8 @@ export function Features() {
             Farm management made simple
           </h2>
           <p className="mt-4 text-base text-zinc-500 leading-relaxed">
-            From GPS mapping to AI insights, framedInsight combines satellite technology with the simplicity of WhatsApp.
+            From GPS mapping to AI insights, framedInsight unifies dairy, coffee, small ruminants,
+            poultry, and cooperative management in one platform built for Kenya.
           </p>
         </div>
 

@@ -12,12 +12,32 @@ const testimonials = [
     stars: 5,
   },
   {
-    body: 'I used to lose track of which cow was producing what. Now I just send a WhatsApp message and everything is recorded. The AI caught mastitis in Daisy before I saw any symptoms.',
+    body: 'I used to lose track of which cow was producing what. Now I just send a WhatsApp message and everything is recorded. The AI caught mastitis in Daisy before I even saw symptoms.',
     author: {
       name: 'Phileon Langat',
       role: 'Dairy Farmer, Bureti',
       metrics: '8 cows · 105 L/day',
       initial: 'P',
+    },
+    stars: 5,
+  },
+  {
+    body: 'Our layer flock had a Newcastle scare last season. framedInsight\'s early warning flagged abnormal mortality trends in batch C two days in — we isolated and vaccinated in time. Saved the whole shed.',
+    author: {
+      name: 'Peter Mwangi',
+      role: 'Poultry Farmer, Thika',
+      metrics: '2,400 layers · 3 batches',
+      initial: 'P',
+    },
+    stars: 5,
+  },
+  {
+    body: 'As a cooperative officer, mapping 340 member farms used to take months. With framedInsight I map a farmer\'s plot in the field with my phone and generate their claim code on the spot. EUDR reporting for our factory is now one click.',
+    author: {
+      name: 'Agnes Njeri',
+      role: 'Cooperative Officer, Othaya FCS',
+      metrics: '340 members · 3 factories',
+      initial: 'A',
     },
     stars: 5,
   },
@@ -43,7 +63,7 @@ const testimonials = [
   },
 ]
 
-const regions = ["Nyeri", "Murang'a", "Kiambu", "Nakuru", "Bomet", "Trans Nzoia", "Meru"]
+const regions = ["Kericho", "Nyamira", "Nyeri", "Murang'a", "Kiambu", "Nakuru", "Bomet", "Trans Nzoia", "Meru", "Nandi", "Thika", "Kisii"]
 
 export function Testimonials() {
   return (
@@ -62,7 +82,7 @@ export function Testimonials() {
           </p>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {testimonials.map((t, i) => (
             <div
               key={i}

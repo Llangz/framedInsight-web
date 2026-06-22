@@ -162,7 +162,7 @@ export default function SignupPage() {
   }
 
   // Shared input classes — forces light background + dark text regardless of global dark theme
-  const inputBase = 'mt-1 block w-full px-3 py-2 border rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm'
+  const inputBase = 'mt-1 block w-full px-3 py-2 border rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm'
   const inputNormal = `${inputBase} border-gray-300`
   const inputError  = `${inputBase} border-red-300`
 
@@ -189,10 +189,10 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={() => setStep('details')}
-                  className="group text-left p-6 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50/40 transition-all"
+                  className="group text-left p-6 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50/40 transition-all"
                 >
-                  <div className="w-12 h-12 rounded-lg bg-primary-50 flex items-center justify-center mb-4 group-hover:bg-primary-100">
-                    <User className="w-6 h-6 text-primary-600" />
+                  <div className="w-12 h-12 rounded-lg bg-amber-50 flex items-center justify-center mb-4 group-hover:bg-amber-100">
+                    <User className="w-6 h-6 text-amber-600" />
                   </div>
                   <h2 className="font-bold text-gray-900 text-lg">
                     {t({ en: 'I\u2019m an Individual Farmer', sw: 'Mimi ni Mkulima Binafsi' })}
@@ -203,7 +203,7 @@ export default function SignupPage() {
                       sw: 'Simamia shamba lako la kahawa, maziwa, au mifugo.',
                     })}
                   </p>
-                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 mt-4">
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-600 mt-4">
                     {t({ en: 'Continue', sw: 'Endelea' })} <ArrowRight className="w-4 h-4" />
                   </span>
                 </button>
@@ -241,7 +241,7 @@ export default function SignupPage() {
                     value={claimCode}
                     onChange={(e) => { setClaimCode(e.target.value); setClaimCodeError('') }}
                     placeholder="e.g. KP-8X2-9YT"
-                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                   />
                   <button
                     type="button"
@@ -280,9 +280,9 @@ export default function SignupPage() {
 
           {/* Progress Indicator */}
           <div className="flex justify-center mb-8 space-x-2">
-            <div className={`w-3 h-3 rounded-full ${step === 'details'     ? 'bg-primary-600' : 'bg-gray-300'}`} />
-            <div className={`w-3 h-3 rounded-full ${step === 'enterprises' ? 'bg-primary-600' : 'bg-gray-300'}`} />
-            <div className={`w-3 h-3 rounded-full ${step === 'consents'    ? 'bg-primary-600' : 'bg-gray-300'}`} />
+            <div className={`w-3 h-3 rounded-full ${step === 'details'     ? 'bg-emerald-600' : 'bg-gray-300'}`} />
+            <div className={`w-3 h-3 rounded-full ${step === 'enterprises' ? 'bg-emerald-600' : 'bg-gray-300'}`} />
+            <div className={`w-3 h-3 rounded-full ${step === 'consents'    ? 'bg-emerald-600' : 'bg-gray-300'}`} />
           </div>
 
           <form onSubmit={handleSubmit}>
@@ -393,7 +393,7 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="w-full px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-medium"
+                  className="w-full px-6 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 font-medium"
                 >
                   Next →
                 </button>
@@ -474,7 +474,7 @@ export default function SignupPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <span className="flex items-center gap-2">
@@ -495,7 +495,7 @@ export default function SignupPage() {
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link href="/auth/login" className="text-primary-600 hover:underline font-medium">
+              <Link href="/auth/login" className="text-emerald-600 hover:underline font-medium">
                 Login
               </Link>
             </p>
