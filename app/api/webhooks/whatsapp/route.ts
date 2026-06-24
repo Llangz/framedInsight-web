@@ -392,6 +392,37 @@ async function saveSession(
 }
 
 // ─────────────────────────────────────────────
+// Webhook signature verification (LipaChat / Meta WhatsApp Cloud API spec)
+//
+// LipaChat computes an HMAC-SHA256 of the *raw* request body using your App
+// Secret (LIPACHAT_WEBHOOK_SECRET) and sends it as:
+//   X-Hub-Signature-256: sha256=<hex digest>
+//
+// This MUST run against the raw body string — parsing to JSON first and then
+// re-serializing changes whitespace/key order and breaks the hash, so we read
+// req.text() before anything else and only JSON.parse it after the signature
+// has already been checked.
+// ─────────────────────────────────────────────
+function isValidLipaChatSignature(rawBody: string, signatureHeader: string | null, secret: string): boolean {
+  if (!signatureHeader) return false
+
+  const prefix = 'sha256='
+  if (!signatureHeader.startsWith(prefix)) return false
+  const receivedHex = signatureHeader.slice(prefix.length)
+
+  const expectedHex = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')
+
+  // Buffers must be equal length before timingSafeEqual will accept them —
+  // an attacker-controlled header of the wrong length would otherwise throw
+  // instead of just failing the comparison.
+  const receivedBuf = Buffer.from(receivedHex, 'hex')
+  const expectedBuf = Buffer.from(expectedHex, 'hex')
+  if (receivedBuf.length !== expectedBuf.length) return false
+
+  return crypto.timingSafeEqual(receivedBuf, expectedBuf)
+}
+
+// ─────────────────────────────────────────────
 // GET — health check
 // ─────────────────────────────────────────────
 export async function GET() {
@@ -402,17 +433,31 @@ export async function GET() {
 // POST — main handler
 // ─────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  let body: any
-  try { body = await req.json() } catch { return NextResponse.json({ ok: true }) }
+  const rawBody = await req.text()
 
-  console.log('PAYLOAD:', JSON.stringify(body))
+  const webhookSecret = process.env.LIPACHAT_WEBHOOK_SECRET
+  if (!webhookSecret) {
+    console.error('[whatsapp-webhook] LIPACHAT_WEBHOOK_SECRET not configured — rejecting all requests')
+    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
+  }
+
+  const signatureHeader = req.headers.get('x-hub-signature-256')
+  if (!isValidLipaChatSignature(rawBody, signatureHeader, webhookSecret)) {
+    console.warn('[whatsapp-webhook] Rejected request: missing or invalid X-Hub-Signature-256')
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  }
+
+  let body: any
+  try { body = JSON.parse(rawBody) } catch { return NextResponse.json({ ok: true }) }
 
   const senderNumber: string = body.from || ''
   const rawText: string      = body.text || body.message || ''
   const msgType: string      = (body.type || '').toUpperCase()
   const interactive          = body.interactive || null
 
-  console.log(`FROM=${senderNumber} TYPE=${msgType} TEXT="${rawText}"`)
+  // Masked logging - no PII
+  const maskedPhone = senderNumber ? senderNumber.slice(0, 6) + '***' : 'unknown'
+  console.log(`FROM=${maskedPhone} TYPE=${msgType}`)
 
   if (!senderNumber) return NextResponse.json({ ok: true })
 

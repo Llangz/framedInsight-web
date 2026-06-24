@@ -22,14 +22,20 @@ export async function GET(req: NextRequest) {
   const supabase = createClient(supabaseUrl, serviceKey)
 
   try {
-    // 1. Fetch pending alerts with farm details
-    // We only fetch alerts that haven't been sent yet and are not acknowledged
+        // 1. Fetch pending alerts with farm details
+    // We only fetch alerts that haven't been sent yet and are not acknowledged.
+    // LIMIT 200 + oldest-first: without a limit, a backlog (e.g. after an
+    // outage) grows unbounded and risks a single cron run timing out or
+    // hammering the WhatsApp API in one burst. Oldest-first means the
+    // backlog clears in order instead of newest alerts perpetually jumping
+    // the queue ahead of older unsent ones.
     const { data: alerts, error } = await supabase
       .from('alerts')
       .select('id, farm_id, alert_type, alert_priority, message, created_at, farms(phone, farm_name)')
       .is('sent_at', null)
       .is('acknowledged_at', null)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(200)
 
     if (error) throw error
 

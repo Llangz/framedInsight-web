@@ -1,0 +1,47 @@
+/**
+ * app/trace/[passportCode]/page.tsx
+ *
+ * PUBLIC route — no authentication required.
+ * Renders the Coffee Digital Passport for a given passport code.
+ * Designed to be scanned via QR code on a coffee bag.
+ *
+ * Design brief: soil-to-shelf provenance. Dark background with
+ * warm parchment gold as the primary accent — evoking coffee
+ * parchment and dried cherry. Typography is purposeful and dense.
+ * The signature element: a live animated chain showing the five
+ * custody handoffs from plot to export.
+ */
+
+import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
+import { getPublicPassport } from '@/lib/passport/passport.service'
+import PassportClient from './PassportClient'
+
+interface Props {
+  params: Promise<{ passportCode: string }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { passportCode } = await params
+  const passport = await getPublicPassport(passportCode)
+  if (!passport) return { title: 'Passport Not Found' }
+
+  const story = passport.public_story as any
+  return {
+    title: `${story?.cooperative ?? 'Coffee'} · ${passportCode} | framedInsight`,
+    description: `Origin passport for ${story?.factory ?? 'cooperative coffee'} from ${story?.county ?? 'Kenya'}. ${story?.farm_count ?? ''} farmers · ${story?.varieties?.join(', ') ?? ''} · ${story?.processing ?? 'Washed'}.`,
+    openGraph: {
+      title: `${story?.cooperative ?? 'Cooperative Coffee'} Origin Passport`,
+      description: `Lot ${passportCode} — ${story?.county ?? 'Kenya'}, ${story?.harvest_season ?? ''}`,
+      images: story?.hero_image_url ? [story.hero_image_url] : [],
+    },
+  }
+}
+
+export default async function TracePage({ params }: Props) {
+  const { passportCode } = await params
+  const passport = await getPublicPassport(passportCode)
+  if (!passport) notFound()
+
+  return <PassportClient passport={passport} passportCode={passportCode} />
+}

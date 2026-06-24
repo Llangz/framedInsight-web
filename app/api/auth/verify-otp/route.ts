@@ -142,60 +142,121 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── OTP verified ── proceed to create/retrieve auth user ─────────────────
+        // ── OTP verified ── proceed to create/retrieve auth user ─────────────────
     // Identity key is ALWAYS derived purely from the phone number
     const ghostEmail = `user${normalisedPhone.replace(/\D/g, '')}@framedinsight.app`
-    
-    // Fallback static password structure tied to the user profile or a unified static system
-    // because we use a password-less design via admin API.
-    const staticPasswordForGhost = `A1!_${crypto.createHash('sha256').update(ghostEmail + serviceKey).digest('hex')}`
 
-    // ── 4. Find or create auth user, then sign in ─────────────────────────────
-    // Try signing in first — for a returning user this is a single call and
-    // immediately gives us a session. There is deliberately no "look up user
-    // by email" step here: admin.auth.admin.getUserByEmail does not exist on
-    // GoTrueAdminApi (only getUserById and paginated listUsers do), so calling
-    // it throws on every request. Sign-in-first avoids needing that lookup at
-    // all, since the ghost password is a deterministic function of the email.
+    // ── Ghost password derivation (Issue #10) ─────────────────────────────────
+    // Previously: SHA256(ghostEmail + SERVICE_ROLE_KEY) — every user's auth
+    // credential was deterministically derivable from one shared, high-value
+    // secret, and could never be rotated without invalidating every account.
+    //
+    // Now: HMAC-SHA256 keyed by a per-phone random salt stored in
+    // auth_phone_salts. New logins mint a salt up front. Existing users are
+    // migrated lazily, on their next successful login, with no bulk backfill
+    // job and no forced re-auth:
+    //   1. Salt exists for this phone → already migrated, sign in directly.
+    //   2. No salt, but the OLD scheme password still works → pre-migration
+    //      user. Sign them in on the old scheme, then rotate their Supabase
+    //      Auth password to the new scheme server-side and record the salt,
+    //      using the session we already have (no second sign-in needed).
+    //   3. Neither → genuinely new user, create on the new scheme directly.
+    function deriveSaltedPassword(salt: string): string {
+      return `A1!_${crypto.createHmac('sha256', salt).update(ghostEmail).digest('hex')}`
+    }
+    function deriveLegacyPassword(): string {
+      return `A1!_${crypto.createHash('sha256').update(ghostEmail + serviceKey).digest('hex')}`
+    }
+
     let userId: string
     let session: { access_token: string; refresh_token: string; [key: string]: any }
 
-    const { data: signInAttempt, error: signInAttemptErr } = await ssrClient.auth.signInWithPassword({
-      email: ghostEmail,
-      password: staticPasswordForGhost,
-    })
+    const { data: saltRow } = await admin
+      .from('auth_phone_salts')
+      .select('salt')
+      .eq('phone_number', normalisedPhone)
+      .maybeSingle()
 
-    if (!signInAttemptErr && signInAttempt.session) {
+    if (saltRow?.salt) {
+      // ── Case 1: already migrated — sign in on the salted scheme ──────────
+      const { data: signInAttempt, error: signInErr } = await ssrClient.auth.signInWithPassword({
+        email: ghostEmail,
+        password: deriveSaltedPassword(saltRow.salt),
+      })
+
+      if (signInErr || !signInAttempt.session) {
+        console.error('[verify-otp] Sign-in failed for already-migrated phone:', signInErr?.message)
+        return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+      }
       userId = signInAttempt.user.id
       session = signInAttempt.session
     } else {
-      // No account yet for this phone — create one, then sign in.
-      const { data: newUserData, error: createErr } = await admin.auth.admin.createUser({
+      // ── No salt on file yet — try the legacy scheme first ────────────────
+      const { data: legacyAttempt, error: legacyErr } = await ssrClient.auth.signInWithPassword({
         email: ghostEmail,
-        password: staticPasswordForGhost,
-        email_confirm: true,
-        user_metadata: {
+        password: deriveLegacyPassword(),
+      })
+
+      if (!legacyErr && legacyAttempt.session) {
+        // ── Case 2: pre-migration user — rotate them to the salted scheme ──
+        const newSalt = crypto.randomUUID()
+        const { error: updateErr } = await admin.auth.admin.updateUserById(legacyAttempt.user.id, {
+          password: deriveSaltedPassword(newSalt),
+        })
+
+        if (updateErr) {
+          // Non-fatal: this login still succeeds on the old scheme; we just
+          // retry the migration on their next login instead.
+          console.warn('[verify-otp] Could not rotate ghost password, will retry next login:', updateErr.message)
+        } else {
+          await admin.from('auth_phone_salts').upsert({
+            phone_number: normalisedPhone,
+            salt: newSalt,
+            migrated_at: new Date().toISOString(),
+          })
+          console.log('[verify-otp] Migrated ghost password to salted scheme for:', phoneTag)
+        }
+
+        userId = legacyAttempt.user.id
+        session = legacyAttempt.session
+      } else {
+        // ── Case 3: genuinely new user — create on the salted scheme ───────
+        const newSalt = crypto.randomUUID()
+        const newPassword = deriveSaltedPassword(newSalt)
+
+        const { data: newUserData, error: createErr } = await admin.auth.admin.createUser({
+          email: ghostEmail,
+          password: newPassword,
+          email_confirm: true,
+          user_metadata: {
+            phone_number: normalisedPhone,
+            auth_method: 'phone_otp',
+          },
+        })
+
+        if (createErr || !newUserData?.user) {
+          console.error('[verify-otp] createUser error:', createErr?.message)
+          return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+        }
+        userId = newUserData.user.id
+
+        await admin.from('auth_phone_salts').upsert({
           phone_number: normalisedPhone,
-          auth_method: 'phone_otp',
-        },
-      })
+          salt: newSalt,
+          migrated_at: new Date().toISOString(),
+        })
 
-      if (createErr || !newUserData?.user) {
-        console.error('[verify-otp] createUser error:', createErr?.message)
-        return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+        const { data: signInData, error: signInErr } = await ssrClient.auth.signInWithPassword({
+          email: ghostEmail,
+          password: newPassword,
+        })
+
+        if (signInErr || !signInData.session) {
+          console.error('[verify-otp] signInWithPassword failed after createUser:', signInErr?.message)
+          return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
+        }
+        session = signInData.session
       }
-      userId = newUserData.user.id
-
-      const { data: signInData, error: signInErr } = await ssrClient.auth.signInWithPassword({
-        email: ghostEmail,
-        password: staticPasswordForGhost,
-      })
-
-      if (signInErr || !signInData.session) {
-        console.error('[verify-otp] signInWithPassword failed after createUser:', signInErr?.message)
-        return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 })
-      }
-      session = signInData.session
     }
 
     // ── 6. Delete the used OTP ────────────────────────────────────────────────

@@ -6,7 +6,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Users, MapPin, Warehouse, FileCheck,
-  Settings, User, Bell, Menu, X, LogOut, Leaf, Building2
+  Settings, User, Bell, Menu, X, LogOut, Leaf, Building2,
+  Coffee, ClipboardList
 } from 'lucide-react'
 
 interface Props {
@@ -15,11 +16,13 @@ interface Props {
 }
 
 const NAV_ITEMS = [
-  { label: 'Overview',        href: '/dashboard/cooperative',          icon: LayoutDashboard },
-  { label: 'Member Farms',    href: '/dashboard/cooperative/farmers',    icon: Users           },
-  { label: 'Map a Farmer',    href: '/dashboard/cooperative/farmers/new',icon: MapPin          },
-  { label: 'Washing Stations', href: '/dashboard/cooperative/factories',  icon: Warehouse       },
-  { label: 'EUDR Compliance', href: '/dashboard/cooperative/eudr',       icon: FileCheck       },
+  { label: 'Overview',         href: '/dashboard/cooperative',                icon: LayoutDashboard },
+  { label: 'Member Farms',     href: '/dashboard/cooperative/farmers',        icon: Users           },
+  { label: 'Map a Farmer',     href: '/dashboard/cooperative/farmers/new',    icon: MapPin          },
+  { label: 'Washing Stations', href: '/dashboard/cooperative/factories',      icon: Warehouse       },
+  { label: 'Factory Intake',   href: '/dashboard/cooperative/intake',         icon: ClipboardList   },
+  { label: 'EUDR Compliance',  href: '/dashboard/cooperative/eudr',           icon: FileCheck       },
+  { label: 'Coffee Passports', href: '/dashboard/cooperative/passports',      icon: Coffee          },
 ]
 
 export default function CoopDashboardShell({ children, coopName }: Props) {

@@ -17,6 +17,49 @@ import { createClient } from '@supabase/supabase-js'
 // Always acknowledge to Safaricom — never return non-200
 const ACK = () => NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' })
 
+// ── Safaricom IP origin check (defense-in-depth) ─────────────────────────
+// These ranges are the commonly-cited Safaricom Daraja callback ranges, but
+// Safaricom does not publish them as a guaranteed, versioned allowlist the
+// way Meta/AWS do for their own services — they can change without notice.
+// Given that, this is intentionally a SOFT check: we log a warning and flag
+// the transaction when the origin doesn't match, but we still process it.
+// The real security boundary here is unchanged and remains the existing
+// idempotency check below (matching CheckoutRequestID against a row we
+// ourselves inserted at STK push time, and skipping anything not 'pending').
+// An attacker spoofing this IP range still can't forge a payment without
+// also guessing a live, unconsumed CheckoutRequestID.
+// If you'd rather hard-block, flip RETURN_403_ON_MISMATCH to true below —
+// just be aware that does risk silently dropping genuine Safaricom callbacks
+// if their egress ranges ever shift.
+const SAFARICOM_CIDRS = ['196.201.214.0/24', '196.201.213.0/24', '127.0.0.1/32']
+const RETURN_403_ON_MISMATCH = false
+
+function ipToInt(ip: string): number | null {
+  const parts = ip.trim().split('.')
+  if (parts.length !== 4) return null
+  let n = 0
+  for (const part of parts) {
+    const octet = Number(part)
+    if (!Number.isInteger(octet) || octet < 0 || octet > 255) return null
+    n = (n << 8) + octet
+  }
+  return n >>> 0
+}
+
+function isIpInCidr(ip: string, cidr: string): boolean {
+  const [range, bitsStr] = cidr.split('/')
+  const bits = parseInt(bitsStr, 10)
+  const ipInt = ipToInt(ip)
+  const rangeInt = ipToInt(range)
+  if (ipInt === null || rangeInt === null) return false
+  const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0
+  return (ipInt & mask) === (rangeInt & mask)
+}
+
+function isSafaricomIp(ip: string): boolean {
+  return SAFARICOM_CIDRS.some(cidr => isIpInCidr(ip, cidr))
+}
+
 function adminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -25,6 +68,17 @@ function adminClient() {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || 'unknown'
+
+  if (!isSafaricomIp(ip)) {
+    console.warn(`[mpesa-callback] Origin IP ${ip} is outside the known Safaricom ranges — processing anyway (soft check), but flagging for review`)
+    if (RETURN_403_ON_MISMATCH) {
+      return NextResponse.json({ ResultCode: 1, ResultDesc: 'Forbidden' }, { status: 403 })
+    }
+  }
+
   let body: any
   try {
     body = await req.json()
