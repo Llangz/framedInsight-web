@@ -105,6 +105,14 @@ function VerifyContent() {
         subCounty: coopSignupData.subCounty || undefined,
         ward: coopSignupData.ward || undefined,
         primaryEnterprise: coopSignupData.primaryEnterprise,
+        // registration_number flow — was previously collected at signup and
+        // stashed in sessionStorage, but never forwarded here, so it was
+        // silently dropped before reaching the RPC. countyCode is left out
+        // intentionally: it's now derived server-side in the RPC from the
+        // registration number itself (see 20260625_fix_county_code_derivation.sql),
+        // so there's no separate client-parsed value to pass through.
+        registrationNumber: coopSignupData.registrationNumber || undefined,
+        registeredOffice: coopSignupData.registeredOffice || undefined,
       })
 
       if (!coopResult.success) {
