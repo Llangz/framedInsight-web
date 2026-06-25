@@ -1,45 +1,54 @@
-# FramedInsight Schema Reference
+# FramedInsight Database Schema Reference
+
+Version: 2026.06
+
+Status: Living Document
 
 ---
 
-# TABLE: farms
+# Table of Contents
 
-## Purpose
+## Core Platform
+- farms
+- profiles
+- farm_managers
+- cooperative_officers
 
-Represents a farm managed within the system.
-
-## Columns
-
-| Column | Type | Description |
-|----------|----------|----------|
-| id | uuid | Primary key |
-| farm_name | text | Farm name |
-| managed_by_coop_id | uuid | Owning cooperative |
-
-## Relationships
-
-### Parent Tables
-
-- cooperatives
-
-### Child Tables
-
+## Coffee Module
 - coffee_plots
-- coffee_harvests
+- coffee_plants
+- coffee_activities
 - coffee_inputs
-- dairy_animals
-- poultry_flocks
+- coffee_harvests
+- coffee_quality_records
+- coffee_health_records
+- coffee_scouting_records
+- coffee_plot_weather
+- coffee_eudr_compliance
+- coffee_satellite_indices
+- coffee_satellite_fetch_log
+- export_lots
+- coffee_passports
 
-## Policies
+## Dairy Module
+...
 
-[List policies]
+## Poultry Module
+...
 
-## Triggers
+## Small Ruminants Module
+...
 
-[List triggers]
+## Cooperative Module
+...
 
-## Notes
+## Finance Module
+...
 
-This is the central ownership table.
+## Messaging Module
+...
+
+## AI Module
+...
 
 ---
