@@ -12,6 +12,9 @@ import { createClient } from '@/lib/supabase/server'
 import { validateCoopAccess } from '@/lib/validate-coop-access'
 import { revalidatePath } from 'next/cache'
 import { writeTraceabilityEvent } from '@/lib/passport/passport.service'
+import type { Database } from '@/lib/database.types'
+
+type BatchUpdate = Database['public']['Tables']['processing_batches']['Update']
 
 export interface CreateProcessingBatchParams {
   intakeLotId: string
@@ -132,7 +135,7 @@ export async function updateBatchProcessing(params: UpdateBatchProcessingParams)
 
   if (!batch) return { success: false as const, error: 'Batch not found' }
 
-  const updates: Record<string, any> = { updated_at: new Date().toISOString() }
+  const updates: BatchUpdate = { updated_at: new Date().toISOString() }
 
   if (params.fermentationStartTime !== undefined) updates.fermentation_start_time = params.fermentationStartTime
   if (params.fermentationEndTime !== undefined) updates.fermentation_end_time = params.fermentationEndTime

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { processFarmerIntent, executeIntent } from '@/lib/ai/intent-processor'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 
 // ─────────────────────────────────────────────
 // Types
@@ -410,7 +411,7 @@ function isValidLipaChatSignature(rawBody: string, signatureHeader: string | nul
   if (!signatureHeader.startsWith(prefix)) return false
   const receivedHex = signatureHeader.slice(prefix.length)
 
-  const expectedHex = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')
+  const expectedHex = createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')
 
   // Buffers must be equal length before timingSafeEqual will accept them —
   // an attacker-controlled header of the wrong length would otherwise throw
@@ -419,7 +420,7 @@ function isValidLipaChatSignature(rawBody: string, signatureHeader: string | nul
   const expectedBuf = Buffer.from(expectedHex, 'hex')
   if (receivedBuf.length !== expectedBuf.length) return false
 
-  return crypto.timingSafeEqual(receivedBuf, expectedBuf)
+  return timingSafeEqual(receivedBuf, expectedBuf)
 }
 
 // ─────────────────────────────────────────────
