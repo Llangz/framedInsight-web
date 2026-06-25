@@ -10,6 +10,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createHash } from 'crypto'
+import type { Json } from '@/lib/database.types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,7 +69,7 @@ export interface GeoSummary {
 function computeHash(
   entityId: string,
   eventType: string,
-  eventData: object,
+  eventData: Record<string, unknown>,
   previousHash: string | null,
   createdAt: string
 ): string {
@@ -99,7 +100,7 @@ export async function writeTraceabilityEvent({
   actorUserId?: string
   actorName?: string
   eventType: string
-  eventData: object
+  eventData: Record<string, unknown>
 }): Promise<void> {
   const supabase = await createClient()
 
@@ -124,7 +125,7 @@ export async function writeTraceabilityEvent({
     actor_user_id: actorUserId ?? null,
     actor_name: actorName ?? 'system',
     event_type: eventType,
-    event_data: eventData,
+    event_data: eventData as unknown as Json,
     previous_hash: previousHash,
     current_hash: currentHash,
     created_at: now,
@@ -171,7 +172,7 @@ export async function assemblePassportPayload(
       farms (id, owner_name, land_size_acres, gps_latitude, gps_longitude),
       coffee_plots (variety, gps_latitude, gps_longitude, gps_polygon, land_size_acres, eudr_risk_level, area_hectares)
     `)
-    .eq('lot_id', batch.intake_lot_id)
+    .eq('lot_id', batch.intake_lot_id ?? '')
     .eq('accepted', true)
 
   const deliveryList = deliveries ?? []
@@ -346,10 +347,10 @@ export async function createPassport({
       passport_code: passportCode,
       qr_url: traceUrl,
       status: 'draft',
-      public_story: mergedStory,
-      sustainability_metrics: mergedSustain,
-      quality_metrics: mergedQuality,
-      geo_summary: geoSummary,
+      public_story: mergedStory as unknown as Json,
+      sustainability_metrics: mergedSustain as unknown as Json,
+      quality_metrics: mergedQuality as unknown as Json,
+      geo_summary: geoSummary as unknown as Json,
     })
     .select('id, passport_code')
     .single()
