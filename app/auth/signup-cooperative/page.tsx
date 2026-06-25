@@ -27,12 +27,14 @@ export default function CooperativeSignupPage() {
   const [formData, setFormData] = useState({
     phone: '',
     email: '',
-    ownerName: '', // This will represent the admin officer's name
+    ownerName: '',
     cooperativeName: '',
     county: '',
     subCounty: '',
     ward: '',
     primaryEnterprise: '',
+    registrationNumber: '',   // CS/022/0142/2019
+    registeredOffice: '',
   })
 
   const [consents, setConsents] = useState({
@@ -61,6 +63,13 @@ export default function CooperativeSignupPage() {
     }
     const countyValidation = validateCounty(formData.county)
     if (!countyValidation.isValid) newErrors.county = countyValidation.error
+    // Validate registration number format if provided
+    if (formData.registrationNumber.trim()) {
+      const reg = formData.registrationNumber.trim().toUpperCase()
+      if (!/^CS\/\d{2,3}\/\d+\/\d{4}$/.test(reg)) {
+        newErrors.registrationNumber = 'Format must be CS/[CountyCode]/[Number]/[Year] e.g. CS/022/0142/2019'
+      }
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -115,6 +124,8 @@ export default function CooperativeSignupPage() {
         subCounty: formData.subCounty,
         ward: formData.ward,
         primaryEnterprise: formData.primaryEnterprise,
+        registrationNumber: formData.registrationNumber.trim().toUpperCase() || null,
+        registeredOffice: formData.registeredOffice.trim() || null,
         consents: consents,
         accountType: 'cooperative',
       }))
@@ -190,6 +201,41 @@ export default function CooperativeSignupPage() {
                     required
                   />
                   {errors.cooperativeName && <p className="text-red-600 text-sm mt-1">{errors.cooperativeName}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Cooperative Registration Number{' '}
+                    <span className="text-xs text-gray-400 font-normal">(Optional — add later in settings)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.registrationNumber}
+                    onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value.toUpperCase() })}
+                    placeholder="e.g. CS/022/0142/2019"
+                    className={errors.registrationNumber ? inputError : inputNormal}
+                  />
+                  {errors.registrationNumber
+                    ? <p className="text-red-600 text-sm mt-1">{errors.registrationNumber}</p>
+                    : <p className="text-xs text-gray-400 mt-1">
+                        Found on your certificate from the Commissioner for Co-operative Development.
+                        Format: CS/[CountyCode]/[Number]/[Year]
+                      </p>
+                  }
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Registered Office Address{' '}
+                    <span className="text-xs text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.registeredOffice}
+                    onChange={(e) => setFormData({ ...formData, registeredOffice: e.target.value })}
+                    placeholder="e.g. Othaya Town, Nyeri County"
+                    className={inputNormal}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

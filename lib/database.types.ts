@@ -1842,31 +1842,46 @@ export type Database = {
       }
       cooperatives: {
         Row: {
+          commissioner_ref: string | null
           cooperative_name: string
           county: string | null
+          county_code: string | null
           created_at: string | null
           id: string
           primary_enterprise: string | null
+          registered_office: string | null
+          registration_number: string | null
+          registration_year: number | null
           sub_county: string | null
           updated_at: string | null
           ward: string | null
         }
         Insert: {
+          commissioner_ref?: string | null
           cooperative_name: string
           county?: string | null
+          county_code?: string | null
           created_at?: string | null
           id?: string
           primary_enterprise?: string | null
+          registered_office?: string | null
+          registration_number?: string | null
+          registration_year?: number | null
           sub_county?: string | null
           updated_at?: string | null
           ward?: string | null
         }
         Update: {
+          commissioner_ref?: string | null
           cooperative_name?: string
           county?: string | null
+          county_code?: string | null
           created_at?: string | null
           id?: string
           primary_enterprise?: string | null
+          registered_office?: string | null
+          registration_number?: string | null
+          registration_year?: number | null
           sub_county?: string | null
           updated_at?: string | null
           ward?: string | null
@@ -5287,6 +5302,10 @@ export type Database = {
       }
     }
     Functions: {
+      validate_coop_registration_number: {
+        Args: { p_reg_number: string }
+        Returns: Json
+      }
       generate_passport_code: {
         Args: { p_cooperative_id: string; p_year?: number }
         Returns: string

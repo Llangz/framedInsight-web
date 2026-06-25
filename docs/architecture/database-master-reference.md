@@ -1,767 +1,109 @@
-# FramedInsight Database Master Reference
-
-Version: 2026.06
-
-Status: Living Architecture Document
-
----
-
-# 1. Platform Overview
-
-## Mission
-
-FramedInsight is an integrated agricultural intelligence platform designed to digitize, monitor, optimize, and trace agricultural enterprises from production through commercialization.
-
-The platform currently supports:
-
-- Coffee Farming
-- Dairy Farming
-- Poultry Farming
-- Small Ruminants
-- Cooperative Management
-- Financial Management
-- Sustainability Monitoring
-- Compliance Management
-- Digital Product Passports
-- Export Traceability
-
-The long-term objective is to create a complete digital representation of agricultural value chains from farm to consumer.
-
----
-
-# 2. Core Design Principles
-
-## Multi-Tenant Architecture
-
-FramedInsight follows a multi-tenant architecture.
-
-Each cooperative operates independently while sharing the same platform infrastructure.
-
-Ownership hierarchy:
-
-System
-└── Cooperative
-    └── Farm
-        └── Enterprise
-
-Examples:
-
-Coffee Enterprise
-Dairy Enterprise
-Poultry Enterprise
-Small Ruminants Enterprise
-
----
-
-## Security by Default
-
-Every business entity is protected through:
-
-- Row Level Security (RLS)
-- Cooperative ownership validation
-- Farm ownership validation
-- Role-based authorization
-
-No tenant should access another tenant's data.
-
----
-
-## Auditability
-
-All critical business actions must be traceable.
-
-Examples:
-
-- Harvest creation
-- Animal registration
-- Passport publication
-- Compliance assessment
-- Financial transactions
-
----
-
-## Extensibility
-
-New agricultural enterprises must be introduced without redesigning the platform.
-
-Examples:
-
-Future enterprises:
-
-- Tea
-- Avocado
-- Macadamia
-- Horticulture
-- Aquaculture
-
----
-
-# 3. Domain Architecture
-
-FramedInsight follows Domain Driven Design (DDD).
-
-## Domain Map
-
-Identity Domain
-Farm Domain
-Coffee Domain
-Dairy Domain
-Poultry Domain
-Small Ruminants Domain
-Finance Domain
-Compliance Domain
-Traceability Domain
-Messaging Domain
-AI Domain
-Administration Domain
-
----
-
-# 4. Identity Domain
-
-## Purpose
-
-Provides authentication, authorization and ownership management.
-
-## Responsibilities
-
-- User authentication
-- User authorization
-- Cooperative membership
-- Farm ownership
-- Role assignment
-
-## Key Components
-
-auth.users
-
-profiles
-
-farm_managers
-
-cooperative_officers
-
----
-
-# 5. Farm Domain
-
-## Purpose
-
-Represents the physical farming entity.
-
-The farm acts as the parent container for all production activities.
-
-## Core Table
-
-farms
-
-## Relationships
-
-farms
-├── coffee_plots
-├── dairy_animals
-├── poultry_flocks
-├── small_ruminants
-├── financial_records
-└── compliance_records
-
-## Responsibilities
-
-- Ownership
-- Location
-- Enterprise association
-- Compliance linkage
-
----
-
-# 6. Coffee Domain
-
-## Purpose
-
-Manage coffee production operations from planting to harvest.
-
----
-
-## Coffee Production
-
-Core Tables:
-
-coffee_plots
-
-coffee_plants
-
-coffee_activities
-
-coffee_inputs
-
-coffee_harvests
-
----
-
-### coffee_plots
-
-Represents a production block.
-
-Stores:
-
-- Plot boundaries
-- Variety information
-- Area
-- Production metadata
-
----
-
-### coffee_plants
-
-Represents coffee trees.
-
-Stores:
-
-- Variety
-- Planting dates
-- Population metrics
-
----
-
-### coffee_activities
-
-Stores operational activities.
-
-Examples:
-
-- Pruning
-- Fertilizer application
-- Spraying
-- Weeding
-- Irrigation
-
----
-
-### coffee_inputs
-
-Tracks:
-
-- Fertilizers
-- Herbicides
-- Fungicides
-- Insecticides
-
----
-
-### coffee_harvests
-
-Tracks:
-
-- Harvest dates
-- Yield
-- Produce type
-- Payment status
-
----
-
-# 7. Coffee Health Domain
-
-## Purpose
-
-Monitor coffee crop health.
-
-Tables:
-
-coffee_health_records
-
-coffee_scouting_records
-
----
-
-### coffee_health_records
-
-Tracks:
-
-- Diseases
-- Pests
-- Observations
-- Recommendations
-
----
-
-### coffee_scouting_records
-
-Tracks field inspections.
-
-Stores:
-
-- Pest incidence
-- Disease incidence
-- Intervention recommendations
-
----
-
-# 8. Coffee Quality Domain
-
-## Purpose
-
-Capture quality metrics.
-
-Tables:
-
-coffee_quality_records
-
----
-
-### Metrics
-
-- Moisture
-- Defects
-- Grade
-- Cup profile
-- Quality assessments
-
----
-
-# 9. Sustainability & Compliance Domain
-
-## Purpose
-
-Support certification and regulatory compliance.
-
----
-
-## EUDR Compliance
-
-Table:
-
-coffee_eudr_compliance
-
-Tracks:
-
-- Compliance status
-- Risk assessments
-- Verification results
-- Deforestation indicators
-
----
-
-## Satellite Monitoring
-
-Tables:
-
-coffee_satellite_indices
-
-coffee_satellite_fetch_log
-
-Purpose:
-
-Monitor:
-
-- NDVI
-- Vegetation health
-- Environmental indicators
-
----
-
-# 10. Dairy Domain
-
-## Purpose
-
-Manage dairy operations.
-
-Supports:
-
-- Animal registration
-- Breeding
-- Health
-- Production
-- Feeding
-
----
-
-## Core Entities
-
-dairy_animals
-
-dairy_milk_records
-
-dairy_health_records
-
-dairy_breeding_records
-
-dairy_feed_records
-
-dairy_calves
-
----
-
-## Dairy Workflow
-
-Animal
-↓
-Breeding
-↓
-Calving
-↓
-Milk Production
-↓
-Sales
-
----
-
-# 11. Poultry Domain
-
-## Purpose
-
-Manage poultry operations.
-
----
-
-## Core Entities
-
-poultry_flocks
-
-poultry_production_records
-
-poultry_health_records
-
-poultry_feed_records
-
----
-
-## Workflow
-
-Flock
-↓
-Feed
-↓
-Health
-↓
-Egg/Meat Production
-↓
-Sales
-
----
-
-# 12. Small Ruminants Domain
-
-## Purpose
-
-Manage:
-
-- Goats
-- Sheep
-
-Capabilities:
-
-- Registration
-- Breeding
-- Health
-- Production
-
----
-
-# 13. Cooperative Domain
-
-## Purpose
-
-Manage cooperative organizations.
-
----
-
-## Core Responsibilities
-
-- Membership
-- Governance
-- Compliance
-- Passport ownership
-
----
-
-## Relationships
-
-cooperative
-├── farms
-├── members
-├── coffee_passports
-└── export_lots
-
----
-
-# 14. Finance Domain
-
-## Purpose
-
-Financial tracking and reporting.
-
-Supports:
-
-- Revenue
-- Expenses
-- Payments
-- Enterprise profitability
-
----
-
-## Relationships
-
-Farm
-└── Financial Records
-
-Enterprise
-└── Financial Records
-
----
-
-# 15. Messaging Domain
-
-## Purpose
-
-Communication infrastructure.
-
-Supports:
-
-- Notifications
-- SMS
-- WhatsApp integrations
-- Queue processing
-
----
-
-# 16. AI Domain
-
-## Purpose
-
-Artificial intelligence and predictive analytics.
-
-Known Components:
-
-ai_predictions
-
-Future:
-
-- Yield forecasting
-- Disease prediction
-- Milk prediction
-- Harvest optimization
-
----
-
-# 17. Traceability Domain
-
-## Strategic Importance
-
-This domain transforms FramedInsight from a farm management system into a traceability platform.
-
----
-
-## Current Components
-
-export_lots
-
-coffee_passports
-
-v_passport_chain
-
----
-
-## Coffee Passport Architecture
-
-Cooperative
-↓
-Export Lot
-↓
-Coffee Passport
-↓
-Consumer
-
----
-
-### coffee_passports
-
-Purpose:
-
-Digital Product Passport.
-
-Supports:
-
-- Origin verification
-- Sustainability reporting
-- Consumer transparency
-- Buyer trust
-
----
-
-### Export Lots
-
-Purpose:
-
-Represent export-ready coffee.
-
-Stores:
-
-- Grade
-- Weight
-- Buyer information
-- Destination
-
----
-
-### v_passport_chain
-
-Purpose:
-
-Public-facing aggregation layer.
-
-Combines:
-
-- Passport data
-- Export lot data
-- Cooperative data
-
-Used by:
-
-- QR code pages
-- Consumer traceability pages
-- Buyer dashboards
-
----
-
-# 18. Security Architecture
-
-## Row Level Security
-
-FramedInsight heavily relies on PostgreSQL RLS.
-
-Common helper functions include:
-
-- can_manage_farm()
-- cooperative ownership validation
-- role validation functions
-
----
-
-## Access Levels
-
-Public
-
-Authenticated User
-
-Farm Manager
-
-Cooperative Officer
-
-Administrator
-
----
-
-# 19. Audit & Governance
-
-## Objectives
-
-- Accountability
-- Compliance
-- Traceability
-
----
-
-## Audit Events
-
-Harvest Created
-
-Harvest Updated
-
-Animal Registered
-
-Passport Published
-
-Compliance Updated
-
-Payment Recorded
-
----
-
-# 20. Future Roadmap
-
-## Coffee Factory Operations
-
-Planned:
-
-coffee_cherry_deliveries
-
-coffee_processing_batches
-
-coffee_batch_deliveries
-
----
-
-## Milling Operations
-
-Planned:
-
-coffee_milling_lots
-
-coffee_milling_lot_batches
-
----
-
-## End-to-End Traceability
-
-Planned:
-
-coffee_traceability_events
-
-Purpose:
-
-Immutable chain of custody.
-
----
-
-## Consumer Analytics
-
-Planned:
-
-coffee_qr_scans
-
-Metrics:
-
-- Country
-- Device
-- Browser
-- Scan Frequency
-
----
-
-# 21. Strategic Positioning
-
-FramedInsight is evolving into:
-
-Agricultural Intelligence Platform
-+
-Compliance Platform
-+
-Traceability Platform
-+
-Digital Product Passport Platform
-
-Target Users:
-
-- Farmers
-- Cooperatives
-- Processors
-- Exporters
-- Buyers
-- Certification Bodies
-- Governments
-
-End-State Vision:
-
-Farm
-↓
-Production
-↓
-Compliance
-↓
-Processing
-↓
-Export
-↓
-Digital Passport
-↓
-Consumer
+# Database Master Reference
+
+This is the single-page map of the `public` schema: every domain, what tables live in it, and how the domains connect. For column-level detail see `docs/database/schema-reference.md` and `docs/database/data-dictionary.md`. For the live database export this was built from, see `docs_source/schema_tables.md` (73 tables in `public`, confirmed against the live project — this count and table list is complete, unlike some of the other `docs_source/*.json` exports, which were capped at 100 rows by the export tool and are noted as truncated where relevant).
+
+## 1. Domain Map
+
+```
+                              ┌───────────────┐
+                              │ cooperatives  │
+                              └───────┬───────┘
+                       ┌──────────────┼───────────────┐
+              ┌────────▼──────┐ ┌─────▼──────────┐ ┌───▼────────────────┐
+              │ coop_factories│ │cooperative_     │ │ farms                │
+              │               │ │officers         │ │ (managed_by_coop_id) │
+              └───────┬───────┘ └─────────────────┘ └──────────┬──────────┘
+                      │                                         │
+        ┌─────────────┼─────────────────────────────────────────┼───────────────┐
+        │             │                                         │ farm_managers │
+        ▼             ▼                                         ▼ (user↔farm)  │
+┌───────────────┐ ┌─────────────────┐                  ┌──────────────────────┐
+│factory_intake_ │ │ farm_type_      │                  │  Enterprise tables    │
+│lots            │ │ configs         │                  │  (see §3)             │
+└──────┬─────────┘ └─────────────────┘                  └──────────────────────┘
+       │
+       ▼
+┌─────────────────┐     ┌───────────┐     ┌────────────┐     ┌──────────────────┐
+│lot_farmer_       │ →   │processing_│ →   │ mill_lots  │ →   │ export_lots       │
+│deliveries        │     │batches    │     │            │     │                   │
+└──────────────────┘     └───────────┘     └────────────┘     └────────┬──────────┘
+                                                                         ▼
+                                                                ┌──────────────────┐
+                                                                │ coffee_passports  │
+                                                                └──────────────────┘
+        all of the above also write to → traceability_events (immutable ledger)
+```
+
+## 2. Identity & Access Domain
+
+| Table | Responsibility |
+|---|---|
+| `farm_managers` | The core ownership join: `(user_id, farm_id, role)`. No `farm_id` column exists on this table itself in a denormalized sense — it *is* the denormalized link. |
+| `cooperative_officers` | Join between `auth.users` and `cooperatives`, with `role` (`admin` \| `officer`) and (added later) `email`. |
+| `auth_phone_salts` | Service-role-only table holding the salt used to derive each phone number's "ghost password" for bridging phone-OTP auth into Supabase's email/password-native Auth system. No RLS policies at all — deliberately. |
+| `phone_otp_codes` | Transient OTP codes, one row per phone number (unique constraint), 15-minute expiry. |
+| `rate_limits` | Generic per-user/per-endpoint rate limiting (`user_id`, `farm_id`, `endpoint`, `request_count`, `reset_at`). |
+| `audit_logs` | Service-role-written audit trail of sensitive actions (`action`, `actor_id`, `resource`, `details jsonb`). |
+
+**Two ownership paths, ORed together by RLS**: a user manages a farm if they have a `farm_managers` row for it, *or* if they're a `cooperative_officers` row for the cooperative the farm's `managed_by_coop_id` points to. See `docs/database/rls-policies.md` §"can_manage_farm".
+
+## 3. Farm & Enterprise Domain
+
+`farms` is the central tenant row. Every enterprise table below carries its own `farm_id`, except where noted as "indirect" (joins through an animal/cow/plot id instead — this matters for which RLS helper function applies; see `docs/database/rls-policies.md`).
+
+| Enterprise | Direct-`farm_id` tables | Indirect tables (join through animal/plot id) |
+|---|---|---|
+| Coffee | `coffee_plots`, `coffee_activities`, `coffee_harvests`, `coffee_health_records`, `coffee_inputs`, `coffee_eudr_compliance`, `coffee_scouting_records`, `coffee_satellite_indices`, `coffee_financials` | `coffee_quality_records` (→ `coffee_harvests.id`), `coffee_plants` *(carries its own `farm_id` too)*, `coffee_plot_weather` / `coffee_satellite_fetch_log` (→ `coffee_plots.id`) |
+| Dairy (cattle) | `cows`, `financial_records` | `milk_records`, `health_records`, `breeding_events`, `calving_records`, `calves`, `vet_visits` (all → `cows.id`) |
+| Poultry | `poultry_batches`, `poultry_health_records`, `poultry_feed_records`, `poultry_mortality` *(also carries `farm_id` directly alongside `batch_id`)* | `poultry_egg_records`, `poultry_sales` (→ `poultry_batches.id`) |
+| Small ruminants | `small_ruminants` | `goat_milk_records`, `milk_production`, `small_ruminant_health`, `small_ruminant_breeding`, `small_ruminant_sales`, `weight_records`, `kidding_lambing_records` (all → `small_ruminants.id`) |
+| Cross-enterprise reference | `farm_type_configs` (per-farm, per-enterprise UX settings: units, language, alert channels), `alerts`, `ai_predictions`, `business_events`, `feed_records` (generic, pre-dates the poultry-specific `poultry_feed_records`) | — |
+
+> **Naming trap to know about**: `milk_production` looks like it should be the dairy-cattle milk table, but its only animal FK is `animal_id → small_ruminants.id` — it's the **goat/sheep** milk table (used alongside, or possibly superseding, `goat_milk_records`; both exist live with near-identical shapes). The cattle milk table is `milk_records` (FK to `cows.id`). Don't assume table names map 1:1 to enterprise the way they read.
+
+## 4. Coffee Traceability Domain (cooperative-scale supply chain)
+
+Added in `20260624_coffee_passport_platform.sql`, this is the most structurally distinct part of the schema — it models a physical supply chain (cherries → wet mill → dry mill → exporter → consumer), not just farm records:
+
+```
+lot_farmer_deliveries  →  processing_batches  →  mill_lot_batches (join)  →  mill_lots  →  export_lot_mill_lots (join)  →  export_lots  →  coffee_passports
+        ▲                                                                                                                         │
+        └── factory_intake_lots                                                                                  traceability_events (append-only, hash-chained)
+```
+
+Every table in this chain carries `cooperative_id` directly (not just `farm_id`), because ownership here is at the cooperative/factory level, not the individual farmer level — a `coffee_passport` represents a *blended lot* from potentially hundreds of farmers, not one farm's harvest. See `docs/coffee/coffee-passports.md` and `docs/architecture/traceability-architecture.md` for the full mechanics.
+
+## 5. EUDR Compliance Domain
+
+`coffee_eudr_compliance` is the authoritative per-plot compliance record (`risk_level`, `deforestation_risk`, `forest_cover_pct`, `compliance_status`, `evidence_photos`), populated by the `check-eudr-risk` edge function querying Global Forest Watch's Hansen tree-cover-loss dataset. `coffee_plots` carries a denormalized copy (`eudr_risk_level`, `eudr_risk_assessed_at`, `eudr_risk_details`) for legacy reads on the plot-detail page — the edge function writes both. See `docs/coffee/eudr-module.md`.
+
+## 6. Reference / Lookup Domain
+
+Static or near-static data with no farm scoping:
+
+- `counties`, `constituencies`, `wards` — Kenya's administrative hierarchy (used for farm address fields and dropdowns; backed by a shapefile in `lib/Kenya_Wards/`).
+- `coffee_pest_library`, `coffee_disease_thresholds`, `coffee_calendar_regions` — shared agronomic reference data, mostly public-readable.
+
+## 7. Operational / Infrastructure Domain
+
+- `message_queue` / `message_results` — inbound WhatsApp message buffer and the AI intent-parser's output, drained every minute by pg_cron (see `docs/architecture/platform-overview.md` §8).
+- `whatsapp_messages` — the conversational log itself (separate from the processing queue).
+- `transactions` — M-Pesa Daraja STK Push payment records.
+- `api_request_logs`, `error_events`, `business_events` — observability tables, each with a matching `v_*_to_delete` cleanup view (see `docs/database/views-reference.md`).
+- `newsletter_subscribers` — marketing site signups, unrelated to the farm-management core.
+
+## 8. Architectural Principles (as implemented, not just aspirational)
+
+- **Multi-tenant by `farm_id`, with a second tenant axis via `cooperative_id`** for the supply-chain tables. Almost nothing in this schema works without one of these two scoping columns.
+- **RLS as the actual enforcement layer**, not just a backstop — there is no separate application-level authorization check duplicating what RLS already does for most tables (the API routes mostly rely on PostgREST + RLS, passing the user's JWT through). See `docs/database/rls-policies.md`.
+- **Denormalization where read performance matters**, with triggers keeping it in sync: `v_farm_summary` is a *materialized* view refreshed by `REFRESH MATERIALIZED VIEW CONCURRENTLY` on a statement-level trigger after writes to any of seven source tables — explicitly chosen over a plain view after the original (May 2026) version became a dashboard bottleneck, and over a blocking `REFRESH MATERIALIZED VIEW` (without `CONCURRENTLY`) because that would serialize all dashboard reads behind every write.
+- **Append-only ledgers where auditability matters more than convenience**: `traceability_events` blocks UPDATE/DELETE at the rule level (`CREATE RULE ... DO INSTEAD NOTHING`), not just by RLS policy — meaning even a service-role connection can't mutate history, only insert new events.
+- **Extensibility was a stated goal, and mostly held up**: poultry was added as a complete fourth enterprise without touching the coffee or dairy schemas, by following the same `batches/records-by-batch_id` shape the other enterprises already used.
+
+## 9. See Also
+
+- `docs/database/schema-reference.md` — every table, every column
+- `docs/database/data-dictionary.md` — business meaning of fields, enum-like values, denormalization gotchas
+- `docs/database/functions-reference.md`, `triggers-reference.md`, `views-reference.md`, `rls-policies.md`
+- `docs/architecture/traceability-architecture.md` — the hash-chained ledger in depth
+- `docs/architecture/platform-overview.md` — the platform from a product/stack perspective rather than a schema perspective
