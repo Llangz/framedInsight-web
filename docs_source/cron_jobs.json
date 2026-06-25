@@ -1,0 +1,13 @@
+[
+  {
+    "jobid": 1,
+    "schedule": "*/1 * * * *",
+    "command": " select invoke_process_message_queue(); ",
+    "nodename": "localhost",
+    "nodeport": 5432,
+    "database": "postgres",
+    "username": "postgres",
+    "active": true,
+    "jobname": "process-message-queue-every-minute"
+  }
+]

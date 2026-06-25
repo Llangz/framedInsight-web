@@ -1,0 +1,1002 @@
+[
+  {
+    "schemaname": "cron",
+    "tablename": "job",
+    "policyname": "cron_job_policy",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(username = CURRENT_USER)",
+    "with_check": null
+  },
+  {
+    "schemaname": "cron",
+    "tablename": "job_run_details",
+    "policyname": "cron_job_run_details_policy",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(username = CURRENT_USER)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "ai_predictions",
+    "policyname": "Users can insert AI predictions for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "ai_predictions",
+    "policyname": "Users can view AI predictions for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alerts",
+    "policyname": "Users can delete alerts for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alerts",
+    "policyname": "Users can insert alerts for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alerts",
+    "policyname": "Users can update alerts for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alerts",
+    "policyname": "Users can view alerts for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_request_logs",
+    "policyname": "Users can view their farm's API logs",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "((farm_id IS NULL) OR (auth.uid() IN ( SELECT farm_managers.user_id\n   FROM farm_managers\n  WHERE (farm_managers.farm_id = api_request_logs.farm_id))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "audit_logs",
+    "policyname": "Farm managers can view own audit logs",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "audit_logs",
+    "policyname": "Service role can manage audit logs",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(auth.role() = 'service_role'::text)",
+    "with_check": "(auth.role() = 'service_role'::text)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "breeding_events",
+    "policyname": "Users can delete breeding events for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm_by_cow_id(cow_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "breeding_events",
+    "policyname": "Users can insert breeding events for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm_by_cow_id(cow_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "breeding_events",
+    "policyname": "Users can update breeding events for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm_by_cow_id(cow_id)",
+    "with_check": "can_manage_farm_by_cow_id(cow_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "breeding_events",
+    "policyname": "Users can view breeding events for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm_by_cow_id(cow_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "business_events",
+    "policyname": "Users can view their farm's business events",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() IN ( SELECT farm_managers.user_id\n   FROM farm_managers\n  WHERE (farm_managers.farm_id = business_events.farm_id)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calves",
+    "policyname": "Users can delete calves for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm_by_cow_id(cow_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calves",
+    "policyname": "Users can insert calves for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm_by_cow_id(cow_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calves",
+    "policyname": "Users can update calves for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm_by_cow_id(cow_id)",
+    "with_check": "can_manage_farm_by_cow_id(cow_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calves",
+    "policyname": "Users can view calves for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm_by_cow_id(cow_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calving_records",
+    "policyname": "Users can delete calving records for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm_by_cow_id(cow_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calving_records",
+    "policyname": "Users can insert calving records for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm_by_cow_id(cow_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calving_records",
+    "policyname": "Users can update calving records for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm_by_cow_id(cow_id)",
+    "with_check": "can_manage_farm_by_cow_id(cow_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calving_records",
+    "policyname": "Users can view calving records for cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm_by_cow_id(cow_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_activities",
+    "policyname": "Cooperative officers can manage activities",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (farms f\n     JOIN cooperative_officers co ON ((co.cooperative_id = f.managed_by_coop_id)))\n  WHERE ((f.id = coffee_activities.farm_id) AND (co.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_activities",
+    "policyname": "Farmers manage their own activities",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_disease_thresholds",
+    "policyname": "Anyone can read coffee disease thresholds",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_eudr_compliance",
+    "policyname": "Cooperative officers can manage EUDR compliance",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (farms f\n     JOIN cooperative_officers co ON ((co.cooperative_id = f.managed_by_coop_id)))\n  WHERE ((f.id = coffee_eudr_compliance.farm_id) AND (co.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_eudr_compliance",
+    "policyname": "Users can manage their own EUDR records",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_eudr_compliance",
+    "policyname": "eudr_farm_access",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_eudr_compliance",
+    "policyname": "farm members can upsert their eudr compliance",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_eudr_compliance",
+    "policyname": "farm members can view their eudr compliance",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_financials",
+    "policyname": "Users can delete coffee financials for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_financials",
+    "policyname": "Users can insert coffee financials for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_financials",
+    "policyname": "Users can update coffee financials for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_financials",
+    "policyname": "Users can view coffee financials for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "policyname": "Cooperative officers can manage harvests",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (farms f\n     JOIN cooperative_officers co ON ((co.cooperative_id = f.managed_by_coop_id)))\n  WHERE ((f.id = coffee_harvests.farm_id) AND (co.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "policyname": "Farm managers can access their coffee harvests",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "policyname": "Users can delete coffee harvests for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "policyname": "Users can insert coffee harvests for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "policyname": "Users can update coffee harvests for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "policyname": "Users can view coffee harvests for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_health_records",
+    "policyname": "Users can delete coffee health records for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_health_records",
+    "policyname": "Users can insert coffee health records for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_health_records",
+    "policyname": "Users can update coffee health records for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_health_records",
+    "policyname": "Users can view coffee health records for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_inputs",
+    "policyname": "Users can delete coffee inputs for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_inputs",
+    "policyname": "Users can insert coffee inputs for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_inputs",
+    "policyname": "Users can update coffee inputs for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_inputs",
+    "policyname": "Users can view coffee inputs for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_passports",
+    "policyname": "Coop officers can manage their passports",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers\n  WHERE ((cooperative_officers.cooperative_id = coffee_passports.cooperative_id) AND (cooperative_officers.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_passports",
+    "policyname": "Published passports are publicly readable",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(status = 'published'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plants",
+    "policyname": "Users can delete coffee plants for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plants",
+    "policyname": "Users can insert coffee plants for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plants",
+    "policyname": "Users can update coffee plants for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plants",
+    "policyname": "Users can view coffee plants for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plot_weather",
+    "policyname": "Farm managers can read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (farm_managers fm\n     JOIN coffee_plots cp ON ((cp.farm_id = fm.farm_id)))\n  WHERE ((fm.user_id = auth.uid()) AND (cp.id = coffee_plot_weather.plot_id))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plot_weather",
+    "policyname": "Service role full access",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "policyname": "Cooperative officers can manage plots",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (farms f\n     JOIN cooperative_officers co ON ((co.cooperative_id = f.managed_by_coop_id)))\n  WHERE ((f.id = coffee_plots.farm_id) AND (co.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "policyname": "Farm managers can access their coffee plots",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "policyname": "Farmers can manage their own plots",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_quality_records",
+    "policyname": "Users can delete coffee quality records for harvests they manag",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM coffee_harvests ch\n  WHERE ((ch.id = coffee_quality_records.harvest_id) AND can_manage_farm(ch.farm_id))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_quality_records",
+    "policyname": "Users can insert coffee quality records for harvests they manag",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM coffee_harvests ch\n  WHERE ((ch.id = coffee_quality_records.harvest_id) AND can_manage_farm(ch.farm_id))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_quality_records",
+    "policyname": "Users can update coffee quality records for harvests they manag",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM coffee_harvests ch\n  WHERE ((ch.id = coffee_quality_records.harvest_id) AND can_manage_farm(ch.farm_id))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM coffee_harvests ch\n  WHERE ((ch.id = coffee_quality_records.harvest_id) AND can_manage_farm(ch.farm_id))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_quality_records",
+    "policyname": "Users can view coffee quality records for harvests they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM coffee_harvests ch\n  WHERE ((ch.id = coffee_quality_records.harvest_id) AND can_manage_farm(ch.farm_id))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_satellite_indices",
+    "policyname": "Farmers view their own satellite indices",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_satellite_indices",
+    "policyname": "Service role can manage satellite data",
+    "permissive": "PERMISSIVE",
+    "roles": "{service_role}",
+    "cmd": "ALL",
+    "qual": "true",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_satellite_indices",
+    "policyname": "Service role manages satellite indices",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(auth.role() = 'service_role'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_satellite_indices",
+    "policyname": "Users can view own farm satellite data",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_scouting_records",
+    "policyname": "Farmers manage their own scouting records",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coop_factories",
+    "policyname": "Cooperative officers can manage factories",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers\n  WHERE ((cooperative_officers.cooperative_id = coop_factories.cooperative_id) AND (cooperative_officers.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coop_factories",
+    "policyname": "Cooperative officers can view factories",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers\n  WHERE ((cooperative_officers.cooperative_id = coop_factories.cooperative_id) AND (cooperative_officers.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cooperative_officers",
+    "policyname": "Cooperative admins can add officers",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM cooperative_officers co\n  WHERE ((co.cooperative_id = cooperative_officers.cooperative_id) AND (co.user_id = auth.uid()) AND (co.role = 'admin'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cooperative_officers",
+    "policyname": "Cooperative officers can view fellow officers",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers co\n  WHERE ((co.cooperative_id = cooperative_officers.cooperative_id) AND (co.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cooperatives",
+    "policyname": "Cooperative admins can update their cooperative",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers\n  WHERE ((cooperative_officers.cooperative_id = cooperatives.id) AND (cooperative_officers.user_id = auth.uid()) AND (cooperative_officers.role = 'admin'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cooperatives",
+    "policyname": "Cooperative officers can view their cooperative",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers\n  WHERE ((cooperative_officers.cooperative_id = cooperatives.id) AND (cooperative_officers.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cows",
+    "policyname": "Farm managers can access their cows",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))",
+    "with_check": "(farm_id IN ( SELECT farm_managers.farm_id\n   FROM farm_managers\n  WHERE (farm_managers.user_id = auth.uid())))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cows",
+    "policyname": "Users can delete cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cows",
+    "policyname": "Users can insert cows for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cows",
+    "policyname": "Users can update cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cows",
+    "policyname": "Users can view cows they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "error_events",
+    "policyname": "Users can view their farm's error events",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "((farm_id IS NULL) OR (auth.uid() IN ( SELECT farm_managers.user_id\n   FROM farm_managers\n  WHERE (farm_managers.farm_id = error_events.farm_id))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "export_lot_mill_lots",
+    "policyname": "Coop officers can manage export lot linkages",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (export_lots el\n     JOIN cooperative_officers co ON ((co.cooperative_id = el.cooperative_id)))\n  WHERE ((el.id = export_lot_mill_lots.export_lot_id) AND (co.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "export_lots",
+    "policyname": "Coop officers can manage export lots",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers\n  WHERE ((cooperative_officers.cooperative_id = export_lots.cooperative_id) AND (cooperative_officers.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farm_managers",
+    "policyname": "fm_service_admin_all",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(auth.role() = 'service_role'::text)",
+    "with_check": "(auth.role() = 'service_role'::text)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farm_managers",
+    "policyname": "fm_users_insert",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farm_managers",
+    "policyname": "fm_users_manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farm_type_configs",
+    "policyname": "Users can delete farm type configs they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farm_type_configs",
+    "policyname": "Users can insert farm type configs they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farm_type_configs",
+    "policyname": "Users can update farm type configs they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": "can_manage_farm(farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farm_type_configs",
+    "policyname": "Users can view farm type configs they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farms",
+    "policyname": "Cooperative officers can delete farms",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers co\n  WHERE ((co.cooperative_id = farms.managed_by_coop_id) AND (co.user_id = auth.uid()) AND (co.role = 'admin'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farms",
+    "policyname": "Cooperative officers can update farms",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers co\n  WHERE ((co.cooperative_id = farms.managed_by_coop_id) AND (co.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farms",
+    "policyname": "Cooperative officers can view farms",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM cooperative_officers co\n  WHERE ((co.cooperative_id = farms.managed_by_coop_id) AND (co.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farms",
+    "policyname": "service_admin_all",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(auth.role() = 'service_role'::text)",
+    "with_check": "(auth.role() = 'service_role'::text)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farms",
+    "policyname": "users_insert",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farms",
+    "policyname": "users_select",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM farm_managers\n  WHERE ((farm_managers.farm_id = farms.id) AND (farm_managers.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "farms",
+    "policyname": "users_update",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM farm_managers\n  WHERE ((farm_managers.farm_id = farms.id) AND (farm_managers.user_id = auth.uid()))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM farm_managers\n  WHERE ((farm_managers.farm_id = farms.id) AND (farm_managers.user_id = auth.uid()))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "feed_records",
+    "policyname": "Users can delete feed records for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "can_manage_farm(farm_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "feed_records",
+    "policyname": "Users can insert feed records for farms they manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "can_manage_farm(farm_id)"
+  }
+]

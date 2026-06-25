@@ -1,0 +1,418 @@
+[
+  {
+    "trigger_schema": "storage",
+    "event_object_table": "buckets",
+    "trigger_name": "enforce_bucket_name_length_trigger",
+    "action_timing": "BEFORE",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION storage.enforce_bucket_name_length()"
+  },
+  {
+    "trigger_schema": "storage",
+    "event_object_table": "buckets",
+    "trigger_name": "enforce_bucket_name_length_trigger",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION storage.enforce_bucket_name_length()"
+  },
+  {
+    "trigger_schema": "storage",
+    "event_object_table": "buckets",
+    "trigger_name": "protect_buckets_delete",
+    "action_timing": "BEFORE",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION storage.protect_delete()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "calving_records",
+    "trigger_name": "trg_calf_same_farm",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION enforce_calf_same_farm()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "calving_records",
+    "trigger_name": "trg_calf_same_farm",
+    "action_timing": "BEFORE",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION enforce_calf_same_farm()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_activities",
+    "trigger_name": "update_coffee_activities_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_disease_thresholds",
+    "trigger_name": "update_coffee_disease_thresholds_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_eudr_compliance",
+    "trigger_name": "trg_coffee_eudr_compliance_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_coffee_eudr_compliance_updated_at()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_passports",
+    "trigger_name": "set_updated_at_coffee_passports",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_pest_library",
+    "trigger_name": "update_coffee_pest_library_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_plants",
+    "trigger_name": "update_coffee_plants_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_plots",
+    "trigger_name": "trigger_refresh_farm_summary_coffee",
+    "action_timing": "AFTER",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_plots",
+    "trigger_name": "trigger_refresh_farm_summary_coffee",
+    "action_timing": "AFTER",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_plots",
+    "trigger_name": "trigger_refresh_farm_summary_coffee",
+    "action_timing": "AFTER",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_plots",
+    "trigger_name": "update_coffee_plots_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "coffee_scouting_records",
+    "trigger_name": "update_coffee_scouting_records_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "cows",
+    "trigger_name": "trg_cow_parents_same_farm",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION enforce_cow_parents_same_farm()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "cows",
+    "trigger_name": "trg_cow_parents_same_farm",
+    "action_timing": "BEFORE",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION enforce_cow_parents_same_farm()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "cows",
+    "trigger_name": "trigger_refresh_farm_summary_cows",
+    "action_timing": "AFTER",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "cows",
+    "trigger_name": "trigger_refresh_farm_summary_cows",
+    "action_timing": "AFTER",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "cows",
+    "trigger_name": "trigger_refresh_farm_summary_cows",
+    "action_timing": "AFTER",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "cows",
+    "trigger_name": "update_cows_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "export_lots",
+    "trigger_name": "set_updated_at_export_lots",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "farms",
+    "trigger_name": "trg_farms_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "farms",
+    "trigger_name": "trigger_refresh_farm_summary_farms",
+    "action_timing": "AFTER",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "farms",
+    "trigger_name": "trigger_refresh_farm_summary_farms",
+    "action_timing": "AFTER",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "farms",
+    "trigger_name": "trigger_refresh_farm_summary_farms",
+    "action_timing": "AFTER",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "farms",
+    "trigger_name": "update_farms_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "milk_production",
+    "trigger_name": "milk_production_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_milk_production_updated_at()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "milk_records",
+    "trigger_name": "trigger_refresh_farm_summary_milk",
+    "action_timing": "AFTER",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "milk_records",
+    "trigger_name": "trigger_refresh_farm_summary_milk",
+    "action_timing": "AFTER",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "milk_records",
+    "trigger_name": "trigger_refresh_farm_summary_milk",
+    "action_timing": "AFTER",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "mill_lots",
+    "trigger_name": "set_updated_at_mill_lots",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "trigger_schema": "storage",
+    "event_object_table": "objects",
+    "trigger_name": "protect_objects_delete",
+    "action_timing": "BEFORE",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION storage.protect_delete()"
+  },
+  {
+    "trigger_schema": "storage",
+    "event_object_table": "objects",
+    "trigger_name": "update_objects_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION storage.update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "poultry_batches",
+    "trigger_name": "trg_poultry_batches_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION set_poultry_batch_updated_at()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "poultry_batches",
+    "trigger_name": "trigger_refresh_farm_summary_poultry_batches",
+    "action_timing": "AFTER",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "poultry_batches",
+    "trigger_name": "trigger_refresh_farm_summary_poultry_batches",
+    "action_timing": "AFTER",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "poultry_batches",
+    "trigger_name": "trigger_refresh_farm_summary_poultry_batches",
+    "action_timing": "AFTER",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "poultry_egg_records",
+    "trigger_name": "trigger_refresh_farm_summary_poultry_eggs",
+    "action_timing": "AFTER",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "poultry_egg_records",
+    "trigger_name": "trigger_refresh_farm_summary_poultry_eggs",
+    "action_timing": "AFTER",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "poultry_egg_records",
+    "trigger_name": "trigger_refresh_farm_summary_poultry_eggs",
+    "action_timing": "AFTER",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "processing_batches",
+    "trigger_name": "set_updated_at_processing_batches",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "small_ruminants",
+    "trigger_name": "trg_ruminant_parents_same_farm",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION enforce_ruminant_parents_same_farm()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "small_ruminants",
+    "trigger_name": "trg_ruminant_parents_same_farm",
+    "action_timing": "BEFORE",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION enforce_ruminant_parents_same_farm()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "small_ruminants",
+    "trigger_name": "trigger_refresh_farm_summary_ruminants",
+    "action_timing": "AFTER",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "small_ruminants",
+    "trigger_name": "trigger_refresh_farm_summary_ruminants",
+    "action_timing": "AFTER",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "small_ruminants",
+    "trigger_name": "trigger_refresh_farm_summary_ruminants",
+    "action_timing": "AFTER",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION refresh_farm_summary()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "small_ruminants",
+    "trigger_name": "update_small_ruminants_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION update_updated_at_column()"
+  },
+  {
+    "trigger_schema": "realtime",
+    "event_object_table": "subscription",
+    "trigger_name": "tr_check_filters",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION realtime.subscription_check_filters()"
+  },
+  {
+    "trigger_schema": "realtime",
+    "event_object_table": "subscription",
+    "trigger_name": "tr_check_filters",
+    "action_timing": "BEFORE",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION realtime.subscription_check_filters()"
+  },
+  {
+    "trigger_schema": "public",
+    "event_object_table": "transactions",
+    "trigger_name": "trg_transactions_updated_at",
+    "action_timing": "BEFORE",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION set_updated_at()"
+  }
+]

@@ -1,0 +1,602 @@
+[
+  {
+    "schemaname": "net",
+    "tablename": "_http_response",
+    "indexname": "_http_response_created_idx",
+    "indexdef": "CREATE INDEX _http_response_created_idx ON net._http_response USING btree (created)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "ai_predictions",
+    "indexname": "ai_predictions_pkey",
+    "indexdef": "CREATE UNIQUE INDEX ai_predictions_pkey ON public.ai_predictions USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "ai_predictions",
+    "indexname": "idx_ai_predictions_farm_id",
+    "indexdef": "CREATE INDEX idx_ai_predictions_farm_id ON public.ai_predictions USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alerts",
+    "indexname": "alerts_pkey",
+    "indexdef": "CREATE UNIQUE INDEX alerts_pkey ON public.alerts USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alerts",
+    "indexname": "idx_alerts_date",
+    "indexdef": "CREATE INDEX idx_alerts_date ON public.alerts USING btree (alert_date)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alerts",
+    "indexname": "idx_alerts_farm",
+    "indexdef": "CREATE INDEX idx_alerts_farm ON public.alerts USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alerts",
+    "indexname": "idx_alerts_farm_id",
+    "indexdef": "CREATE INDEX idx_alerts_farm_id ON public.alerts USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alerts",
+    "indexname": "idx_alerts_status",
+    "indexdef": "CREATE INDEX idx_alerts_status ON public.alerts USING btree (status)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_request_logs",
+    "indexname": "api_request_logs_pkey",
+    "indexdef": "CREATE UNIQUE INDEX api_request_logs_pkey ON public.api_request_logs USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_request_logs",
+    "indexname": "idx_api_logs_endpoint_created",
+    "indexdef": "CREATE INDEX idx_api_logs_endpoint_created ON public.api_request_logs USING btree (endpoint, created_at DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_request_logs",
+    "indexname": "idx_api_logs_farm_created",
+    "indexdef": "CREATE INDEX idx_api_logs_farm_created ON public.api_request_logs USING btree (farm_id, created_at DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_request_logs",
+    "indexname": "idx_api_logs_status_code",
+    "indexdef": "CREATE INDEX idx_api_logs_status_code ON public.api_request_logs USING btree (status_code)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_request_logs",
+    "indexname": "idx_api_logs_user_created",
+    "indexdef": "CREATE INDEX idx_api_logs_user_created ON public.api_request_logs USING btree (user_id, created_at DESC)"
+  },
+  {
+    "schemaname": "auth",
+    "tablename": "audit_log_entries",
+    "indexname": "audit_log_entries_pkey",
+    "indexdef": "CREATE UNIQUE INDEX audit_log_entries_pkey ON auth.audit_log_entries USING btree (id)"
+  },
+  {
+    "schemaname": "auth",
+    "tablename": "audit_log_entries",
+    "indexname": "audit_logs_instance_id_idx",
+    "indexdef": "CREATE INDEX audit_logs_instance_id_idx ON auth.audit_log_entries USING btree (instance_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "audit_logs",
+    "indexname": "audit_logs_pkey",
+    "indexdef": "CREATE UNIQUE INDEX audit_logs_pkey ON public.audit_logs USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "audit_logs",
+    "indexname": "idx_audit_logs_action",
+    "indexdef": "CREATE INDEX idx_audit_logs_action ON public.audit_logs USING btree (action, created_at DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "audit_logs",
+    "indexname": "idx_audit_logs_actor",
+    "indexdef": "CREATE INDEX idx_audit_logs_actor ON public.audit_logs USING btree (actor_id, created_at DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "audit_logs",
+    "indexname": "idx_audit_logs_created",
+    "indexdef": "CREATE INDEX idx_audit_logs_created ON public.audit_logs USING btree (created_at DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "audit_logs",
+    "indexname": "idx_audit_logs_farm",
+    "indexdef": "CREATE INDEX idx_audit_logs_farm ON public.audit_logs USING btree (farm_id, created_at DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "auth_phone_salts",
+    "indexname": "auth_phone_salts_pkey",
+    "indexdef": "CREATE UNIQUE INDEX auth_phone_salts_pkey ON public.auth_phone_salts USING btree (phone_number)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "breeding_events",
+    "indexname": "breeding_events_pkey",
+    "indexdef": "CREATE UNIQUE INDEX breeding_events_pkey ON public.breeding_events USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "breeding_events",
+    "indexname": "idx_breeding_cow",
+    "indexdef": "CREATE INDEX idx_breeding_cow ON public.breeding_events USING btree (cow_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "breeding_events",
+    "indexname": "idx_breeding_events_cow_id",
+    "indexdef": "CREATE INDEX idx_breeding_events_cow_id ON public.breeding_events USING btree (cow_id)"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "buckets",
+    "indexname": "bname",
+    "indexdef": "CREATE UNIQUE INDEX bname ON storage.buckets USING btree (name)"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "buckets",
+    "indexname": "buckets_pkey",
+    "indexdef": "CREATE UNIQUE INDEX buckets_pkey ON storage.buckets USING btree (id)"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "buckets_analytics",
+    "indexname": "buckets_analytics_pkey",
+    "indexdef": "CREATE UNIQUE INDEX buckets_analytics_pkey ON storage.buckets_analytics USING btree (id)"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "buckets_analytics",
+    "indexname": "buckets_analytics_unique_name_idx",
+    "indexdef": "CREATE UNIQUE INDEX buckets_analytics_unique_name_idx ON storage.buckets_analytics USING btree (name) WHERE (deleted_at IS NULL)"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "buckets_vectors",
+    "indexname": "buckets_vectors_pkey",
+    "indexdef": "CREATE UNIQUE INDEX buckets_vectors_pkey ON storage.buckets_vectors USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "business_events",
+    "indexname": "business_events_pkey",
+    "indexdef": "CREATE UNIQUE INDEX business_events_pkey ON public.business_events USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "business_events",
+    "indexname": "idx_business_events_event_type",
+    "indexdef": "CREATE INDEX idx_business_events_event_type ON public.business_events USING btree (event_type)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "business_events",
+    "indexname": "idx_business_events_farm_type_created",
+    "indexdef": "CREATE INDEX idx_business_events_farm_type_created ON public.business_events USING btree (farm_id, event_type, created_at DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "business_events",
+    "indexname": "idx_business_events_user_created",
+    "indexdef": "CREATE INDEX idx_business_events_user_created ON public.business_events USING btree (user_id, created_at DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calves",
+    "indexname": "calves_pkey",
+    "indexdef": "CREATE UNIQUE INDEX calves_pkey ON public.calves USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calves",
+    "indexname": "idx_calves_cow_id",
+    "indexdef": "CREATE INDEX idx_calves_cow_id ON public.calves USING btree (cow_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calving_records",
+    "indexname": "calving_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX calving_records_pkey ON public.calving_records USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "calving_records",
+    "indexname": "idx_calving_records_cow_id",
+    "indexdef": "CREATE INDEX idx_calving_records_cow_id ON public.calving_records USING btree (cow_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_activities",
+    "indexname": "coffee_activities_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_activities_pkey ON public.coffee_activities USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_activities",
+    "indexname": "idx_coffee_activities_date",
+    "indexdef": "CREATE INDEX idx_coffee_activities_date ON public.coffee_activities USING btree (activity_date DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_activities",
+    "indexname": "idx_coffee_activities_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_activities_farm_id ON public.coffee_activities USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_activities",
+    "indexname": "idx_coffee_activities_farm_year",
+    "indexdef": "CREATE INDEX idx_coffee_activities_farm_year ON public.coffee_activities USING btree (farm_id, EXTRACT(year FROM activity_date))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_activities",
+    "indexname": "idx_coffee_activities_plot_id",
+    "indexdef": "CREATE INDEX idx_coffee_activities_plot_id ON public.coffee_activities USING btree (plot_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_activities",
+    "indexname": "idx_coffee_activities_type",
+    "indexdef": "CREATE INDEX idx_coffee_activities_type ON public.coffee_activities USING btree (activity_type)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_calendar_regions",
+    "indexname": "coffee_calendar_regions_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_calendar_regions_pkey ON public.coffee_calendar_regions USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_calendar_regions",
+    "indexname": "idx_calendar_month",
+    "indexdef": "CREATE INDEX idx_calendar_month ON public.coffee_calendar_regions USING btree (month)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_calendar_regions",
+    "indexname": "idx_calendar_region",
+    "indexdef": "CREATE INDEX idx_calendar_region ON public.coffee_calendar_regions USING btree (region_name)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_disease_thresholds",
+    "indexname": "coffee_disease_thresholds_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_disease_thresholds_pkey ON public.coffee_disease_thresholds USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_disease_thresholds",
+    "indexname": "coffee_disease_thresholds_region_name_disease_pest_type_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_disease_thresholds_region_name_disease_pest_type_key ON public.coffee_disease_thresholds USING btree (region_name, disease_pest_type)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_disease_thresholds",
+    "indexname": "idx_thresholds_pest",
+    "indexdef": "CREATE INDEX idx_thresholds_pest ON public.coffee_disease_thresholds USING btree (disease_pest_type)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_disease_thresholds",
+    "indexname": "idx_thresholds_region",
+    "indexdef": "CREATE INDEX idx_thresholds_region ON public.coffee_disease_thresholds USING btree (region_name)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_eudr_compliance",
+    "indexname": "coffee_eudr_compliance_farm_id_idx",
+    "indexdef": "CREATE INDEX coffee_eudr_compliance_farm_id_idx ON public.coffee_eudr_compliance USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_eudr_compliance",
+    "indexname": "coffee_eudr_compliance_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_eudr_compliance_pkey ON public.coffee_eudr_compliance USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_eudr_compliance",
+    "indexname": "coffee_eudr_compliance_plot_id_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_eudr_compliance_plot_id_key ON public.coffee_eudr_compliance USING btree (plot_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_eudr_compliance",
+    "indexname": "idx_coffee_eudr_plot_id",
+    "indexdef": "CREATE INDEX idx_coffee_eudr_plot_id ON public.coffee_eudr_compliance USING btree (plot_id, compliance_status)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_financials",
+    "indexname": "coffee_financials_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_financials_pkey ON public.coffee_financials USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_financials",
+    "indexname": "idx_coffee_financials_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_financials_farm_id ON public.coffee_financials USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "indexname": "coffee_harvests_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_harvests_pkey ON public.coffee_harvests USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "indexname": "idx_coffee_harvests_farm_harvest_date",
+    "indexdef": "CREATE INDEX idx_coffee_harvests_farm_harvest_date ON public.coffee_harvests USING btree (farm_id, harvest_date DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "indexname": "idx_coffee_harvests_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_harvests_farm_id ON public.coffee_harvests USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "indexname": "idx_coffee_harvests_farm_year_season",
+    "indexdef": "CREATE INDEX idx_coffee_harvests_farm_year_season ON public.coffee_harvests USING btree (farm_id, harvest_year, harvest_season)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "indexname": "idx_coffee_harvests_pending_payments",
+    "indexdef": "CREATE INDEX idx_coffee_harvests_pending_payments ON public.coffee_harvests USING btree (farm_id, harvest_date) WHERE (payment_status = 'pending'::text)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "indexname": "idx_coffee_harvests_plot",
+    "indexdef": "CREATE INDEX idx_coffee_harvests_plot ON public.coffee_harvests USING btree (plot_name)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "indexname": "idx_harvests_payment_status",
+    "indexdef": "CREATE INDEX idx_harvests_payment_status ON public.coffee_harvests USING btree (payment_status)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_harvests",
+    "indexname": "idx_harvests_produce_type",
+    "indexdef": "CREATE INDEX idx_harvests_produce_type ON public.coffee_harvests USING btree (produce_type)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_health_records",
+    "indexname": "coffee_health_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_health_records_pkey ON public.coffee_health_records USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_health_records",
+    "indexname": "idx_coffee_health_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_health_farm_id ON public.coffee_health_records USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_health_records",
+    "indexname": "idx_coffee_health_plot",
+    "indexdef": "CREATE INDEX idx_coffee_health_plot ON public.coffee_health_records USING btree (plot_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_inputs",
+    "indexname": "coffee_inputs_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_inputs_pkey ON public.coffee_inputs USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_inputs",
+    "indexname": "idx_coffee_inputs_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_inputs_farm_id ON public.coffee_inputs USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_passports",
+    "indexname": "coffee_passports_passport_code_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_passports_passport_code_key ON public.coffee_passports USING btree (passport_code)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_passports",
+    "indexname": "coffee_passports_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_passports_pkey ON public.coffee_passports USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_passports",
+    "indexname": "idx_coffee_passports_code",
+    "indexdef": "CREATE INDEX idx_coffee_passports_code ON public.coffee_passports USING btree (passport_code)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_passports",
+    "indexname": "idx_coffee_passports_coop",
+    "indexdef": "CREATE INDEX idx_coffee_passports_coop ON public.coffee_passports USING btree (cooperative_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_passports",
+    "indexname": "idx_coffee_passports_export",
+    "indexdef": "CREATE INDEX idx_coffee_passports_export ON public.coffee_passports USING btree (export_lot_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_passports",
+    "indexname": "idx_coffee_passports_status",
+    "indexdef": "CREATE INDEX idx_coffee_passports_status ON public.coffee_passports USING btree (status)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_pest_library",
+    "indexname": "coffee_pest_library_pest_disease_code_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_pest_library_pest_disease_code_key ON public.coffee_pest_library USING btree (pest_disease_code)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_pest_library",
+    "indexname": "coffee_pest_library_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_pest_library_pkey ON public.coffee_pest_library USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_pest_library",
+    "indexname": "idx_pest_library_category",
+    "indexdef": "CREATE INDEX idx_pest_library_category ON public.coffee_pest_library USING btree (category)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_pest_library",
+    "indexname": "idx_pest_library_code",
+    "indexdef": "CREATE INDEX idx_pest_library_code ON public.coffee_pest_library USING btree (pest_disease_code)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plants",
+    "indexname": "coffee_plants_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_plants_pkey ON public.coffee_plants USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plants",
+    "indexname": "coffee_plants_qr_code_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_plants_qr_code_key ON public.coffee_plants USING btree (qr_code)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plants",
+    "indexname": "idx_coffee_plants_farm",
+    "indexdef": "CREATE INDEX idx_coffee_plants_farm ON public.coffee_plants USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plants",
+    "indexname": "idx_coffee_plants_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_plants_farm_id ON public.coffee_plants USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plants",
+    "indexname": "idx_coffee_plants_plot",
+    "indexdef": "CREATE INDEX idx_coffee_plants_plot ON public.coffee_plants USING btree (plot_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plot_weather",
+    "indexname": "coffee_plot_weather_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_plot_weather_pkey ON public.coffee_plot_weather USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plot_weather",
+    "indexname": "coffee_plot_weather_plot_id_date_key",
+    "indexdef": "CREATE UNIQUE INDEX coffee_plot_weather_plot_id_date_key ON public.coffee_plot_weather USING btree (plot_id, date)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plot_weather",
+    "indexname": "idx_weather_cbd_risk",
+    "indexdef": "CREATE INDEX idx_weather_cbd_risk ON public.coffee_plot_weather USING btree (cbd_risk_score DESC) WHERE (cbd_risk_score > 60)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plot_weather",
+    "indexname": "idx_weather_clr_risk",
+    "indexdef": "CREATE INDEX idx_weather_clr_risk ON public.coffee_plot_weather USING btree (clr_risk_score DESC) WHERE (clr_risk_score > 60)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plot_weather",
+    "indexname": "idx_weather_drought",
+    "indexdef": "CREATE INDEX idx_weather_drought ON public.coffee_plot_weather USING btree (drought_stress_score DESC) WHERE (drought_stress_score > 60)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plot_weather",
+    "indexname": "idx_weather_plot_date",
+    "indexdef": "CREATE INDEX idx_weather_plot_date ON public.coffee_plot_weather USING btree (plot_id, date DESC)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "indexname": "coffee_plots_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_plots_pkey ON public.coffee_plots USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_afa_id",
+    "indexdef": "CREATE INDEX idx_coffee_plots_afa_id ON public.coffee_plots USING btree (afa_geo_mapping_id) WHERE (afa_geo_mapping_id IS NOT NULL)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_eudr_risk",
+    "indexdef": "CREATE INDEX idx_coffee_plots_eudr_risk ON public.coffee_plots USING btree (eudr_risk_level)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_farm",
+    "indexdef": "CREATE INDEX idx_coffee_plots_farm ON public.coffee_plots USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_farm_id",
+    "indexdef": "CREATE INDEX idx_coffee_plots_farm_id ON public.coffee_plots USING btree (farm_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_polygon",
+    "indexdef": "CREATE INDEX idx_coffee_plots_polygon ON public.coffee_plots USING gin (gps_polygon)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "indexname": "idx_coffee_plots_region",
+    "indexdef": "CREATE INDEX idx_coffee_plots_region ON public.coffee_plots USING btree (region_name)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_plots",
+    "indexname": "idx_plots_region",
+    "indexdef": "CREATE INDEX idx_plots_region ON public.coffee_plots USING btree (region_name)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_quality_records",
+    "indexname": "coffee_quality_records_pkey",
+    "indexdef": "CREATE UNIQUE INDEX coffee_quality_records_pkey ON public.coffee_quality_records USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "coffee_quality_records",
+    "indexname": "idx_coffee_quality_harvest_id",
+    "indexdef": "CREATE INDEX idx_coffee_quality_harvest_id ON public.coffee_quality_records USING btree (harvest_id)"
+  }
+]
