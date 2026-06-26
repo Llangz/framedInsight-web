@@ -144,3 +144,23 @@ export function buildLotNumber(
   const seq = String(sequence).padStart(4, '0')
   return `${factoryCode.toUpperCase()}-${seasonCode}-${year}-${seq}`
 }
+
+/**
+ * Generate a canonical mill lot number.
+ * Format: ML-[YEAR]-[SEQUENCE]   e.g. ML-2026-0007
+ * Numbered per-cooperative rather than per-factory, since a single mill
+ * lot can aggregate processing batches from several washing stations.
+ */
+export function buildMillLotNumber(year: number, sequence: number): string {
+  const seq = String(sequence).padStart(4, '0')
+  return `ML-${year}-${seq}`
+}
+
+/**
+ * Generate a canonical export lot number.
+ * Format: EX-[YEAR]-[SEQUENCE]   e.g. EX-2026-0003
+ */
+export function buildExportLotNumber(year: number, sequence: number): string {
+  const seq = String(sequence).padStart(4, '0')
+  return `EX-${year}-${seq}`
+}

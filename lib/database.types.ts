@@ -2175,6 +2175,9 @@ export type Database = {
           subscription_end_date: string | null
           subscription_start_date: string | null
           subscription_tier: string | null
+          supplying_cooperative_id: string | null
+          supplying_factory_id: string | null
+          supplying_coop_name_unmatched: string | null
           updated_at: string | null
           ward: string | null
         }
@@ -2201,6 +2204,9 @@ export type Database = {
           subscription_end_date?: string | null
           subscription_start_date?: string | null
           subscription_tier?: string | null
+          supplying_cooperative_id?: string | null
+          supplying_factory_id?: string | null
+          supplying_coop_name_unmatched?: string | null
           updated_at?: string | null
           ward?: string | null
         }
@@ -2227,6 +2233,9 @@ export type Database = {
           subscription_end_date?: string | null
           subscription_start_date?: string | null
           subscription_tier?: string | null
+          supplying_cooperative_id?: string | null
+          supplying_factory_id?: string | null
+          supplying_coop_name_unmatched?: string | null
           updated_at?: string | null
           ward?: string | null
         }
@@ -2243,6 +2252,20 @@ export type Database = {
             columns: ["managed_by_coop_id"]
             isOneToOne: false
             referencedRelation: "cooperatives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farms_supplying_cooperative_id_fkey"
+            columns: ["supplying_cooperative_id"]
+            isOneToOne: false
+            referencedRelation: "cooperatives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farms_supplying_factory_id_fkey"
+            columns: ["supplying_factory_id"]
+            isOneToOne: false
+            referencedRelation: "coop_factories"
             referencedColumns: ["id"]
           },
         ]

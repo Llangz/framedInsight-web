@@ -35,8 +35,17 @@ interface Passport {
   } | null
 }
 
+interface ExportLotOption {
+  id: string
+  export_lot_number: string
+  status: string
+  buyer_name: string | null
+  buyer_country: string | null
+}
+
 interface Props {
   passports: Passport[]
+  exportLots: ExportLotOption[]
   coopId: string
   userId: string
 }
@@ -197,11 +206,12 @@ function PassportCard({ passport, onPublish }: { passport: Passport; onPublish: 
   )
 }
 
-export default function PassportsClient({ passports: initialPassports, coopId, userId }: Props) {
+export default function PassportsClient({ passports: initialPassports, exportLots, coopId, userId }: Props) {
   const [passports, setPassports] = useState(initialPassports)
   const [creating, setCreating] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [batchId, setBatchId] = useState('')
+  const [exportLotId, setExportLotId] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const handlePublish = async (passportId: string) => {
@@ -216,11 +226,17 @@ export default function PassportsClient({ passports: initialPassports, coopId, u
     if (!batchId.trim()) return
     setCreating(true)
     setError(null)
-    const res = await createPassportAction({ cooperativeId: coopId, processingBatchId: batchId.trim(), actorUserId: userId })
+    const res = await createPassportAction({
+      cooperativeId: coopId,
+      processingBatchId: batchId.trim(),
+      exportLotId: exportLotId || undefined,
+      actorUserId: userId,
+    })
     setCreating(false)
     if (!res.success) { setError(res.error ?? 'Failed'); return }
     setShowCreate(false)
     setBatchId('')
+    setExportLotId('')
     window.location.reload()
   }
 
@@ -288,6 +304,32 @@ export default function PassportsClient({ passports: initialPassports, coopId, u
               placeholder="uuid from processing_batches table"
               className="w-full px-4 py-2.5 bg-[#0A0C10] border border-[#2A2D35] rounded-xl text-white placeholder-zinc-600 text-sm outline-none focus:ring-2 focus:ring-[#C9A96E]/40 font-mono"
             />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+              Export lot <span className="text-zinc-600">(optional — links grade, weight & EUDR status)</span>
+            </label>
+            <select
+              value={exportLotId}
+              onChange={e => setExportLotId(e.target.value)}
+              className="w-full px-4 py-2.5 bg-[#0A0C10] border border-[#2A2D35] rounded-xl text-white text-sm outline-none focus:ring-2 focus:ring-[#C9A96E]/40"
+            >
+              <option value="">No export lot yet — draft origin story only</option>
+              {exportLots.map(e => (
+                <option key={e.id} value={e.id}>
+                  {e.export_lot_number}{e.buyer_country ? ` — ${e.buyer_country}` : ''} ({e.status})
+                </option>
+              ))}
+            </select>
+            {exportLots.length === 0 && (
+              <p className="text-[10px] text-zinc-500 mt-1.5">
+                No export lots yet —{' '}
+                <Link href="/dashboard/cooperative/intake/export-lots/new" className="underline">
+                  create one
+                </Link>{' '}
+                once a mill lot is ready, then come back here to link it.
+              </p>
+            )}
           </div>
           {error && (
             <p className="text-xs text-red-400 bg-red-950/30 border border-red-900/30 px-3 py-2 rounded-xl">{error}</p>

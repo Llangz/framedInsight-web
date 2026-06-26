@@ -13,7 +13,7 @@ import { getIntakeLots, getCoopFactories } from './actions'
 import {
   ClipboardList, Plus, Scale, Users, Package,
   CheckCircle2, Clock, Loader2, Archive, ChevronRight,
-  Coffee, AlertCircle,
+  Coffee, AlertCircle, Ship,
 } from 'lucide-react'
 
 // ── Status config ─────────────────────────────────────────────────────────────
@@ -27,6 +27,35 @@ const STATUS: Record<string, { label: string; color: string; bg: string; icon: t
 
 function fmt(d: string) {
   return new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// ── Stage tabs shared across the intake → mill → export pipeline ────────────
+function StageTabs({ active }: { active: 'intake' | 'mill' | 'export' }) {
+  const tabs = [
+    { key: 'intake', label: 'Factory Intake', href: '/dashboard/cooperative/intake',              icon: ClipboardList },
+    { key: 'mill',   label: 'Mill Lots',      href: '/dashboard/cooperative/intake/mill-lots',     icon: Package       },
+    { key: 'export', label: 'Export Lots',    href: '/dashboard/cooperative/intake/export-lots',   icon: Ship          },
+  ] as const
+  return (
+    <div className="flex items-center gap-1 bg-[#0D0F14] border border-[#2A2D35] rounded-xl p-1 w-fit">
+      {tabs.map(t => {
+        const Icon = t.icon
+        const isActive = t.key === active
+        return (
+          <Link
+            key={t.key}
+            href={t.href}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              isActive ? 'bg-[#C9A96E] text-black' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Icon size={12} />
+            {t.label}
+          </Link>
+        )
+      })}
+    </div>
+  )
 }
 
 export default async function IntakePage() {
@@ -50,7 +79,9 @@ export default async function IntakePage() {
     <div className="p-6 space-y-6 max-w-7xl mx-auto font-['Outfit'] bg-[#0A0C10] min-h-screen text-white">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2A2D35] pb-6">
+      <div className="space-y-4 border-b border-[#2A2D35] pb-6">
+        <StageTabs active="intake" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-2">
             <ClipboardList size={26} className="text-[#C9A96E]" />
@@ -66,6 +97,7 @@ export default async function IntakePage() {
         >
           <Plus size={15} /> Open new lot
         </Link>
+        </div>
       </div>
 
       {/* ── Season summary stats ─────────────────────────────────────────── */}

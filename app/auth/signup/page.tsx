@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Header } from '@/components/ui/Header'
@@ -11,7 +11,10 @@ import { LanguageToggle, useTranslation, type Language } from '@/components/auth
 import { validateKenyanPhone, validateEmail, validateName, validateFarmName, validateCounty, KENYAN_COUNTIES } from '@/lib/validation'
 import { sendPhoneOTP } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
-import { Milk, Coffee, Rabbit, Bird, Check, User, Building2, ArrowRight } from 'lucide-react'
+import { getCooperativeDirectory, getFactoriesForCooperative, type CooperativeDirectoryEntry, type FactoryDirectoryEntry } from './cooperative-directory-actions'
+import { Milk, Coffee, Rabbit, Bird, Check, User, Building2, ArrowRight, Info } from 'lucide-react'
+
+const NOT_LISTED = '__NOT_LISTED__'
 
 const enterpriseOptions = [
   { id: 'dairy',      label: 'Dairy',    icon: Milk    },
@@ -35,6 +38,18 @@ export default function SignupPage() {
     ward: '',
     farmTypes: [] as string[],
   })
+
+  // Optional "cooperative you supply to" — coffee-only, self-declared,
+  // never auto-grants the cooperative any access. See migration
+  // 20260626_farmer_supplying_cooperative.sql for why this is a
+  // separate concept from officer-verified cooperative membership.
+  const [cooperativeOptions, setCooperativeOptions] = useState<CooperativeDirectoryEntry[]>([])
+  const [factoryOptions, setFactoryOptions] = useState<FactoryDirectoryEntry[]>([])
+  const [loadingCoops, setLoadingCoops] = useState(false)
+  const [loadingFactories, setLoadingFactories] = useState(false)
+  const [supplyingCoopId, setSupplyingCoopId] = useState('')
+  const [supplyingFactoryId, setSupplyingFactoryId] = useState('')
+  const [supplyingCoopUnmatched, setSupplyingCoopUnmatched] = useState('')
 
   const [consents, setConsents] = useState({
     termsAccepted: false,
@@ -102,6 +117,30 @@ export default function SignupPage() {
     }))
   }
 
+  const isCoffeeFarmer = formData.farmTypes.includes('coffee')
+
+  // Load the on-platform cooperative directory for this county once the
+  // farmer reaches the enterprises step with coffee selected.
+  useEffect(() => {
+    if (step !== 'enterprises' || !isCoffeeFarmer || !formData.county) return
+    setLoadingCoops(true)
+    getCooperativeDirectory(formData.county)
+      .then(({ cooperatives }) => setCooperativeOptions(cooperatives))
+      .finally(() => setLoadingCoops(false))
+  }, [step, isCoffeeFarmer, formData.county])
+
+  // Load factories for the selected cooperative
+  useEffect(() => {
+    if (!supplyingCoopId || supplyingCoopId === NOT_LISTED) {
+      setFactoryOptions([])
+      return
+    }
+    setLoadingFactories(true)
+    getFactoriesForCooperative(supplyingCoopId)
+      .then(({ factories }) => setFactoryOptions(factories))
+      .finally(() => setLoadingFactories(false))
+  }, [supplyingCoopId])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validateStep3()) return
@@ -135,6 +174,9 @@ export default function SignupPage() {
         ward: formData.ward,
         farmTypes: formData.farmTypes,
         consents: consents,
+        supplyingCooperativeId: supplyingCoopId && supplyingCoopId !== NOT_LISTED ? supplyingCoopId : undefined,
+        supplyingFactoryId: supplyingFactoryId || undefined,
+        supplyingCoopNameUnmatched: supplyingCoopId === NOT_LISTED ? (supplyingCoopUnmatched.trim() || undefined) : undefined,
       }))
 
       router.push(`/auth/verify`)
@@ -431,6 +473,85 @@ export default function SignupPage() {
                   })}
                 </div>
                 {errors.enterprises && <p className="text-red-600 text-xs">{errors.enterprises}</p>}
+
+                {/* ── Optional: cooperative you supply to (coffee farmers only) ── */}
+                {isCoffeeFarmer && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-zinc-900 flex items-center gap-1.5">
+                        <Building2 size={14} className="text-emerald-600" />
+                        Cooperative you supply to <span className="text-xs font-normal text-zinc-500">(optional)</span>
+                      </h4>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        If you deliver cherry to a Farmers&apos; Cooperative Society, let us know — it helps
+                        your coffee&apos;s story connect to the right factory once it&apos;s milled and exported.
+                        This doesn&apos;t give the cooperative access to your farm data.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-700 mb-1">Cooperative (FCS)</label>
+                      <select
+                        value={supplyingCoopId}
+                        onChange={(e) => { setSupplyingCoopId(e.target.value); setSupplyingFactoryId('') }}
+                        disabled={!formData.county || loadingCoops}
+                        className={inputNormal}
+                      >
+                        <option value="">
+                          {!formData.county ? 'Select your county on the previous step first' : loadingCoops ? 'Loading…' : 'Select your cooperative'}
+                        </option>
+                        {cooperativeOptions.map(c => (
+                          <option key={c.id} value={c.id}>{c.cooperative_name}</option>
+                        ))}
+                        <option value={NOT_LISTED}>My cooperative isn&apos;t listed</option>
+                      </select>
+                      {formData.county && !loadingCoops && cooperativeOptions.length === 0 && (
+                        <p className="flex items-start gap-1 text-[11px] text-zinc-500 mt-1.5">
+                          <Info size={11} className="shrink-0 mt-0.5" />
+                          No cooperatives from {formData.county} are on framedInsight yet — pick
+                          &ldquo;My cooperative isn&apos;t listed&rdquo; and tell us its name below.
+                        </p>
+                      )}
+                    </div>
+
+                    {supplyingCoopId === NOT_LISTED && (
+                      <div>
+                        <label className="block text-xs font-medium text-zinc-700 mb-1">Cooperative name</label>
+                        <input
+                          type="text"
+                          value={supplyingCoopUnmatched}
+                          onChange={(e) => setSupplyingCoopUnmatched(e.target.value)}
+                          placeholder="e.g. Baragwi Farmers Cooperative Society"
+                          className={inputNormal}
+                        />
+                      </div>
+                    )}
+
+                    {supplyingCoopId && supplyingCoopId !== NOT_LISTED && (
+                      <div>
+                        <label className="block text-xs font-medium text-zinc-700 mb-1">
+                          Factory / wet mill <span className="text-zinc-400">(optional)</span>
+                        </label>
+                        <select
+                          value={supplyingFactoryId}
+                          onChange={(e) => setSupplyingFactoryId(e.target.value)}
+                          disabled={loadingFactories}
+                          className={inputNormal}
+                        >
+                          <option value="">
+                            {loadingFactories ? 'Loading…' : factoryOptions.length === 0 ? 'No factories listed yet' : 'Select your factory'}
+                          </option>
+                          {factoryOptions.map(f => (
+                            <option key={f.id} value={f.id}>
+                              {f.factory_name}{f.factory_code ? ` (${f.factory_code})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex justify-between">
                   <button type="button" onClick={prevStep} className="px-4 py-2 border border-zinc-200 text-zinc-700 text-sm rounded-lg hover:bg-zinc-50 transition-colors">
                     Back

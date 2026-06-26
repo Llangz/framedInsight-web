@@ -84,6 +84,9 @@ function VerifyContent() {
         ward: signupData.ward || undefined,
         farmTypes: signupData.farmTypes,
         primaryEnterprise: signupData.farmTypes[0],
+        supplyingCooperativeId: signupData.supplyingCooperativeId || undefined,
+        supplyingFactoryId: signupData.supplyingFactoryId || undefined,
+        supplyingCoopNameUnmatched: signupData.supplyingCoopNameUnmatched || undefined,
       })
 
       if (!farmResult.success) {

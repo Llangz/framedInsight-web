@@ -16,6 +16,13 @@ interface VerifyFarmParams {
   ward?: string
   farmTypes: Enterprise[]
   primaryEnterprise: Enterprise
+  // Self-declared at signup — see 20260626_farmer_supplying_cooperative.sql.
+  // Deliberately NOT passed into create_farm_with_manager: this is
+  // informational/lead-generation only and must never be conflated with
+  // managed_by_coop_id (officer-verified membership that drives RLS).
+  supplyingCooperativeId?: string
+  supplyingFactoryId?: string
+  supplyingCoopNameUnmatched?: string
 }
 
 export async function createFarmOnVerifyAction(params: VerifyFarmParams): Promise<FarmCreationResult> {
@@ -69,6 +76,26 @@ export async function createFarmOnVerifyAction(params: VerifyFarmParams): Promis
 
     if (!farmId) {
       return { success: false, error: 'Farm created but no ID returned' }
+    }
+
+    // Optional self-declared supplying-cooperative fields. A separate
+    // lightweight update rather than RPC params, so the existing
+    // claim-aware RPC stays untouched and this stays easy to drop later
+    // if the directory-matched flow (Phase 2) replaces it.
+    if (params.supplyingCooperativeId || params.supplyingFactoryId || params.supplyingCoopNameUnmatched) {
+      const { error: updateError } = await supabaseAdmin
+        .from('farms')
+        .update({
+          supplying_cooperative_id: params.supplyingCooperativeId ?? null,
+          supplying_factory_id: params.supplyingFactoryId ?? null,
+          supplying_coop_name_unmatched: params.supplyingCoopNameUnmatched ?? null,
+        })
+        .eq('id', farmId)
+
+      if (updateError) {
+        // Non-fatal — the farm and account already exist successfully.
+        console.error('Failed to save supplying-cooperative fields:', updateError)
+      }
     }
 
     revalidatePath('/dashboard')

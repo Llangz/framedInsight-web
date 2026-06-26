@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 export async function createPassportAction(params: {
   cooperativeId: string
   processingBatchId: string
+  exportLotId?: string
   actorUserId: string
 }): Promise<{ success: boolean; passportCode?: string; error?: string }> {
   const access = await validateCoopAccess()
@@ -18,6 +19,7 @@ export async function createPassportAction(params: {
     const result = await createPassport({
       cooperativeId: params.cooperativeId,
       processingBatchId: params.processingBatchId,
+      exportLotId: params.exportLotId,
       actorUserId: params.actorUserId,
     })
     revalidatePath('/dashboard/cooperative/passports')
