@@ -30,6 +30,18 @@ export interface FactoryDirectoryEntry {
   factory_code: string | null
 }
 
+export interface FcsDirectoryEntry {
+  id: string
+  fcs_name: string
+  county: string
+  source_url: string
+}
+
+export interface FcsFactoryDirectoryEntry {
+  id: string
+  factory_name: string
+}
+
 export async function getCooperativeDirectory(county?: string) {
   const supabase = await createClient()
 
@@ -67,4 +79,53 @@ export async function getFactoriesForCooperative(cooperativeId: string) {
   }
 
   return { factories: (data ?? []) as FactoryDirectoryEntry[] }
+}
+
+/**
+ * Phase 2 fallback: the national coffee_fcs_directory reference table
+ * (real, sourced cooperatives — see 20260628_national_fcs_directory.sql —
+ * NOT framedInsight tenants). Used when the on-platform directory above
+ * has no match for the farmer's county, so they can still find their
+ * real cooperative even though it hasn't signed up yet. Excludes any
+ * row already matched_cooperative_id'd to a live tenant, since that one
+ * would already be showing up via getCooperativeDirectory above.
+ */
+export async function getFcsDirectory(county?: string) {
+  const supabase = await createClient()
+
+  let query = supabase
+    .from('coffee_fcs_directory')
+    .select('id, fcs_name, county, source_url')
+    .is('matched_cooperative_id', null)
+    .order('fcs_name')
+
+  if (county) {
+    query = query.eq('county', county)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('getFcsDirectory error:', error)
+    return { fcsEntries: [] as FcsDirectoryEntry[] }
+  }
+
+  return { fcsEntries: (data ?? []) as FcsDirectoryEntry[] }
+}
+
+export async function getFactoriesForFcsDirectory(fcsDirectoryId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('coffee_fcs_factories_directory')
+    .select('id, factory_name')
+    .eq('fcs_directory_id', fcsDirectoryId)
+    .order('factory_name')
+
+  if (error) {
+    console.error('getFactoriesForFcsDirectory error:', error)
+    return { factories: [] as FcsFactoryDirectoryEntry[] }
+  }
+
+  return { factories: (data ?? []) as FcsFactoryDirectoryEntry[] }
 }

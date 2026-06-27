@@ -17,6 +17,7 @@ import {
   ArrowLeft, Scale, Users, Package, ChevronDown, ChevronUp,
   Plus, CheckCircle2, Clock, AlertCircle, Loader2, Coffee,
   Thermometer, Droplets, Info, ClipboardList, Archive,
+  Shield, Download,
 } from 'lucide-react'
 import { addDeliveryToLot, updateLotProcessing } from '../actions'
 import { createProcessingBatch } from '../batch-actions'
@@ -55,6 +56,7 @@ interface Lot {
   moisture_content_pct: number | null
   drying_days: number | null
   nce_transaction_id: string | null
+  dds_reference_number: string | null
   status: string
   clerk_name: string | null
   notes: string | null
@@ -141,6 +143,11 @@ export default function LotDetailClient({ lot, deliveries: initialDeliveries, fa
   const [promotingBatch, setPromotingBatch] = useState(false)
   const [batchId, setBatchId]               = useState<string | null>(null)
 
+  // EUDR DDS bundle
+  const [ddsReference, setDdsReference] = useState(lot.dds_reference_number)
+  const [downloadingDds, setDownloadingDds] = useState(false)
+  const [ddsError, setDdsError] = useState<string | null>(null)
+
   const status = STATUS_CONFIG[lot.status] ?? STATUS_CONFIG.closed
   const factory = lot.coop_factories as any
   const canAddDelivery = lot.status === 'open'
@@ -216,6 +223,41 @@ export default function LotDetailClient({ lot, deliveries: initialDeliveries, fa
     setBatchId(res.batch.id)
   }
 
+  // ── Download EUDR DDS bundle ───────────────────────────────────────────────
+  const handleDownloadDds = async () => {
+    setDownloadingDds(true)
+    setDdsError(null)
+    try {
+      const res = await fetch('/api/cooperative/eudr/dds-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ factoryIntakeLotId: lot.id }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error ?? 'Failed to generate DDS bundle')
+      }
+      // Reference number is in the response filename, e.g. DDS-KE-2026-0007.zip
+      const disposition = res.headers.get('Content-Disposition') ?? ''
+      const match = disposition.match(/filename="(.+?)\.zip"/)
+      if (match) setDdsReference(match[1])
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${match?.[1] ?? 'dds-bundle'}.zip`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setDdsError(err.message ?? 'Failed to generate DDS bundle')
+    } finally {
+      setDownloadingDds(false)
+    }
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto font-['Outfit'] bg-[#0A0C10] min-h-screen text-white">
 
@@ -276,6 +318,43 @@ export default function LotDetailClient({ lot, deliveries: initialDeliveries, fa
             <span className="block text-xl font-bold text-[#C9A96E]">{m.value}</span>
           </div>
         ))}
+      </div>
+
+      {/* ── EUDR Due Diligence ───────────────────────────────────────────────── */}
+      <div className="bg-[#0D0F14] border border-emerald-900/30 rounded-2xl p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+              <Shield size={14} className="text-emerald-400" />
+              EUDR Due Diligence bundle
+            </h3>
+            <p className="text-xs text-zinc-500 mt-1 max-w-md">
+              GeoJSON of every mapped plot in this lot, plus a one-page PDF summary —
+              supporting evidence for your own DDS filing, not a substitute for it.
+            </p>
+            {ddsReference && (
+              <p className="text-[11px] text-emerald-400 font-mono mt-1.5">Reference: {ddsReference}</p>
+            )}
+          </div>
+          <button
+            onClick={handleDownloadDds}
+            disabled={downloadingDds || deliveries.length === 0}
+            className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold rounded-xl text-sm transition"
+          >
+            {downloadingDds ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            {downloadingDds ? 'Generating…' : ddsReference ? 'Regenerate bundle' : 'Download DDS bundle'}
+          </button>
+        </div>
+        {ddsError && (
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-red-400">
+            <AlertCircle size={12} /> {ddsError}
+          </p>
+        )}
+        {deliveries.length === 0 && (
+          <p className="mt-3 flex items-center gap-1.5 text-[11px] text-zinc-600">
+            <Info size={11} /> Add at least one delivery with a mapped plot before generating a bundle.
+          </p>
+        )}
       </div>
 
       {/* ── Processing record accordion ────────────────────────────────────── */}

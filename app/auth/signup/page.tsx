@@ -11,10 +11,15 @@ import { LanguageToggle, useTranslation, type Language } from '@/components/auth
 import { validateKenyanPhone, validateEmail, validateName, validateFarmName, validateCounty, KENYAN_COUNTIES } from '@/lib/validation'
 import { sendPhoneOTP } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
-import { getCooperativeDirectory, getFactoriesForCooperative, type CooperativeDirectoryEntry, type FactoryDirectoryEntry } from './cooperative-directory-actions'
+import { getCooperativeDirectory, getFactoriesForCooperative, getFcsDirectory, getFactoriesForFcsDirectory, type CooperativeDirectoryEntry, type FactoryDirectoryEntry, type FcsDirectoryEntry, type FcsFactoryDirectoryEntry } from './cooperative-directory-actions'
 import { Milk, Coffee, Rabbit, Bird, Check, User, Building2, ArrowRight, Info } from 'lucide-react'
 
 const NOT_LISTED = '__NOT_LISTED__'
+// The merged selector mixes two sources — on-platform tenants and the
+// national FCS reference directory — distinguished by value prefix so a
+// single <select> and onChange handler can serve both.
+const COOP_PREFIX = 'coop:'
+const FCS_PREFIX = 'fcs:'
 
 const enterpriseOptions = [
   { id: 'dairy',      label: 'Dairy',    icon: Milk    },
@@ -45,6 +50,8 @@ export default function SignupPage() {
   // separate concept from officer-verified cooperative membership.
   const [cooperativeOptions, setCooperativeOptions] = useState<CooperativeDirectoryEntry[]>([])
   const [factoryOptions, setFactoryOptions] = useState<FactoryDirectoryEntry[]>([])
+  const [fcsOptions, setFcsOptions] = useState<FcsDirectoryEntry[]>([])
+  const [fcsFactoryOptions, setFcsFactoryOptions] = useState<FcsFactoryDirectoryEntry[]>([])
   const [loadingCoops, setLoadingCoops] = useState(false)
   const [loadingFactories, setLoadingFactories] = useState(false)
   const [supplyingCoopId, setSupplyingCoopId] = useState('')
@@ -119,26 +126,43 @@ export default function SignupPage() {
 
   const isCoffeeFarmer = formData.farmTypes.includes('coffee')
 
-  // Load the on-platform cooperative directory for this county once the
-  // farmer reaches the enterprises step with coffee selected.
+  // Load the on-platform cooperative directory AND the national FCS
+  // reference directory for this county once the farmer reaches the
+  // enterprises step with coffee selected. Both render as separate
+  // groups in the same dropdown.
   useEffect(() => {
     if (step !== 'enterprises' || !isCoffeeFarmer || !formData.county) return
     setLoadingCoops(true)
-    getCooperativeDirectory(formData.county)
-      .then(({ cooperatives }) => setCooperativeOptions(cooperatives))
+    Promise.all([
+      getCooperativeDirectory(formData.county),
+      getFcsDirectory(formData.county),
+    ])
+      .then(([coopResult, fcsResult]) => {
+        setCooperativeOptions(coopResult.cooperatives)
+        setFcsOptions(fcsResult.fcsEntries)
+      })
       .finally(() => setLoadingCoops(false))
   }, [step, isCoffeeFarmer, formData.county])
 
-  // Load factories for the selected cooperative
+  // Load factories for the selected cooperative or FCS directory entry
   useEffect(() => {
     if (!supplyingCoopId || supplyingCoopId === NOT_LISTED) {
       setFactoryOptions([])
+      setFcsFactoryOptions([])
       return
     }
     setLoadingFactories(true)
-    getFactoriesForCooperative(supplyingCoopId)
-      .then(({ factories }) => setFactoryOptions(factories))
-      .finally(() => setLoadingFactories(false))
+    if (supplyingCoopId.startsWith(COOP_PREFIX)) {
+      getFactoriesForCooperative(supplyingCoopId.slice(COOP_PREFIX.length))
+        .then(({ factories }) => setFactoryOptions(factories))
+        .finally(() => setLoadingFactories(false))
+      setFcsFactoryOptions([])
+    } else if (supplyingCoopId.startsWith(FCS_PREFIX)) {
+      getFactoriesForFcsDirectory(supplyingCoopId.slice(FCS_PREFIX.length))
+        .then(({ factories }) => setFcsFactoryOptions(factories))
+        .finally(() => setLoadingFactories(false))
+      setFactoryOptions([])
+    }
   }, [supplyingCoopId])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -174,7 +198,8 @@ export default function SignupPage() {
         ward: formData.ward,
         farmTypes: formData.farmTypes,
         consents: consents,
-        supplyingCooperativeId: supplyingCoopId && supplyingCoopId !== NOT_LISTED ? supplyingCoopId : undefined,
+        supplyingCooperativeId: supplyingCoopId.startsWith(COOP_PREFIX) ? supplyingCoopId.slice(COOP_PREFIX.length) : undefined,
+        supplyingFcsDirectoryId: supplyingCoopId.startsWith(FCS_PREFIX) ? supplyingCoopId.slice(FCS_PREFIX.length) : undefined,
         supplyingFactoryId: supplyingFactoryId || undefined,
         supplyingCoopNameUnmatched: supplyingCoopId === NOT_LISTED ? (supplyingCoopUnmatched.trim() || undefined) : undefined,
       }))
@@ -500,15 +525,26 @@ export default function SignupPage() {
                         <option value="">
                           {!formData.county ? 'Select your county on the previous step first' : loadingCoops ? 'Loading…' : 'Select your cooperative'}
                         </option>
-                        {cooperativeOptions.map(c => (
-                          <option key={c.id} value={c.id}>{c.cooperative_name}</option>
-                        ))}
+                        {cooperativeOptions.length > 0 && (
+                          <optgroup label="On framedInsight">
+                            {cooperativeOptions.map(c => (
+                              <option key={c.id} value={`${COOP_PREFIX}${c.id}`}>{c.cooperative_name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {fcsOptions.length > 0 && (
+                          <optgroup label="Not yet on framedInsight">
+                            {fcsOptions.map(f => (
+                              <option key={f.id} value={`${FCS_PREFIX}${f.id}`}>{f.fcs_name}</option>
+                            ))}
+                          </optgroup>
+                        )}
                         <option value={NOT_LISTED}>My cooperative isn&apos;t listed</option>
                       </select>
-                      {formData.county && !loadingCoops && cooperativeOptions.length === 0 && (
+                      {formData.county && !loadingCoops && cooperativeOptions.length === 0 && fcsOptions.length === 0 && (
                         <p className="flex items-start gap-1 text-[11px] text-zinc-500 mt-1.5">
                           <Info size={11} className="shrink-0 mt-0.5" />
-                          No cooperatives from {formData.county} are on framedInsight yet — pick
+                          We don&apos;t have any cooperatives from {formData.county} yet — pick
                           &ldquo;My cooperative isn&apos;t listed&rdquo; and tell us its name below.
                         </p>
                       )}
@@ -527,7 +563,8 @@ export default function SignupPage() {
                       </div>
                     )}
 
-                    {supplyingCoopId && supplyingCoopId !== NOT_LISTED && (
+                    {/* On-platform tenant: factory is a real selectable record */}
+                    {supplyingCoopId.startsWith(COOP_PREFIX) && (
                       <div>
                         <label className="block text-xs font-medium text-zinc-700 mb-1">
                           Factory / wet mill <span className="text-zinc-400">(optional)</span>
@@ -547,6 +584,21 @@ export default function SignupPage() {
                             </option>
                           ))}
                         </select>
+                      </div>
+                    )}
+
+                    {/* National directory match: factories shown for context only —
+                        these aren't real platform records yet, so there's nothing to
+                        link to. Confirming the cooperative is the useful signal here. */}
+                    {supplyingCoopId.startsWith(FCS_PREFIX) && (
+                      <div className="rounded-lg bg-white border border-emerald-100 p-3">
+                        <p className="text-[11px] text-zinc-500">
+                          {loadingFactories
+                            ? 'Loading factories…'
+                            : fcsFactoryOptions.length > 0
+                              ? <>Known factories: <span className="text-zinc-700">{fcsFactoryOptions.map(f => f.factory_name).join(', ')}</span></>
+                              : 'This cooperative is not yet on framedInsight — your delivery details will be recorded once it joins.'}
+                        </p>
                       </div>
                     )}
                   </div>

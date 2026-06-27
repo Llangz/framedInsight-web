@@ -86,6 +86,7 @@ function VerifyContent() {
         primaryEnterprise: signupData.farmTypes[0],
         supplyingCooperativeId: signupData.supplyingCooperativeId || undefined,
         supplyingFactoryId: signupData.supplyingFactoryId || undefined,
+        supplyingFcsDirectoryId: signupData.supplyingFcsDirectoryId || undefined,
         supplyingCoopNameUnmatched: signupData.supplyingCoopNameUnmatched || undefined,
       })
 

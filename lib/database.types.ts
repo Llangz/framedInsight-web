@@ -1770,6 +1770,80 @@ export type Database = {
           },
         ]
       }
+        coffee_fcs_directory: {
+        Row: {
+          id: string
+          fcs_name: string
+          county: string
+          source_url: string
+          source_note: string | null
+          verified_at: string
+          matched_cooperative_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          fcs_name: string
+          county: string
+          source_url: string
+          source_note?: string | null
+          verified_at?: string
+          matched_cooperative_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          fcs_name?: string
+          county?: string
+          source_url?: string
+          source_note?: string | null
+          verified_at?: string
+          matched_cooperative_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coffee_fcs_directory_matched_cooperative_id_fkey"
+            columns: ["matched_cooperative_id"]
+            isOneToOne: false
+            referencedRelation: "cooperatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coffee_fcs_factories_directory: {
+        Row: {
+          id: string
+          fcs_directory_id: string
+          factory_name: string
+          source_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          fcs_directory_id: string
+          factory_name: string
+          source_url?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          fcs_directory_id?: string
+          factory_name?: string
+          source_url?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coffee_fcs_factories_directory_fcs_directory_id_fkey"
+            columns: ["fcs_directory_id"]
+            isOneToOne: false
+            referencedRelation: "coffee_fcs_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+ 
       coop_factories: {
         Row: {
           branch_type: string | null
@@ -2180,6 +2254,7 @@ export type Database = {
           supplying_coop_name_unmatched: string | null
           updated_at: string | null
           ward: string | null
+          supplying_fcs_directory_id: string | null
         }
         Insert: {
           claim_token?: string | null
@@ -2209,6 +2284,7 @@ export type Database = {
           supplying_coop_name_unmatched?: string | null
           updated_at?: string | null
           ward?: string | null
+          supplying_fcs_directory_id?: string | null
         }
         Update: {
           claim_token?: string | null
@@ -2238,6 +2314,7 @@ export type Database = {
           supplying_coop_name_unmatched?: string | null
           updated_at?: string | null
           ward?: string | null
+          supplying_fcs_directory_id?: string | null
         }
         Relationships: [
           {
@@ -5389,6 +5466,7 @@ export type Database = {
       [_ in never]: never
     }
   }
+}
 }
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
