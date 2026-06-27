@@ -43,5 +43,13 @@ export default async function TracePage({ params }: Props) {
   const passport = await getPublicPassport(passportCode)
   if (!passport) notFound()
 
-  return <PassportClient passport={passport} passportCode={passportCode} />
+  // v_passport_chain selects buyer_name / buyer_country for potential
+  // internal use, but a server component passes ALL of its props into the
+  // client component's RSC payload — including fields the UI never
+  // renders. Strip them here so a competitor can't read who bought this
+  // lot via view-source/devtools, even though PassportClient never
+  // displays them.
+  const { buyer_name, buyer_country, ...publicPassport } = passport
+
+  return <PassportClient passport={publicPassport} passportCode={passportCode} />
 }

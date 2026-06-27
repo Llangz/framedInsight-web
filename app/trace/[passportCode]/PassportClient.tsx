@@ -14,7 +14,7 @@ import dynamic from 'next/dynamic'
 import {
   MapPin, Leaf, Award, Users, Sprout, Package,
   Ship, Coffee, CheckCircle, XCircle, Globe,
-  ChevronRight, Info, BarChart2, Layers
+  ChevronRight, Info, BarChart2, Layers, ShieldCheck, Building2
 } from 'lucide-react'
 
 // Leaflet must be dynamic-imported to avoid SSR issues
@@ -146,6 +146,12 @@ export default function PassportClient({ passport, passportCode }: Props) {
           <p className="mt-1 text-sm text-zinc-400">
             {story.factory && `${story.factory} · `}{story.county}{story.county ? ' County' : ''}, Kenya
           </p>
+          {passport.registration_number && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-[#7EC49A]">
+              <ShieldCheck size={11} />
+              Registered cooperative society · <span className="font-mono">{passport.registration_number}</span>
+            </p>
+          )}
 
           {/* ── Provenance chain ────────────────────────────────────────────── */}
           <div className="mt-8 flex items-center gap-0">
@@ -307,6 +313,44 @@ export default function PassportClient({ passport, passportCode }: Props) {
                   Tasting notes
                 </span>
                 <p className="text-sm text-zinc-200 italic">&ldquo;{story.tasting_notes}&rdquo;</p>
+              </div>
+            )}
+
+            {/* Legal registration — cooperative legitimacy for buyer due diligence */}
+            {(passport.registration_number || passport.registered_office) && (
+              <div className="bg-[#0D0F14] border border-[#2A2D35] rounded-2xl p-5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3 flex items-center gap-1.5">
+                  <Building2 size={12} className="text-[#C9A96E]" />
+                  Cooperative registration
+                </h3>
+                <div className="space-y-2.5 text-sm">
+                  {passport.registration_number && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-500">Registration number</span>
+                      <span className="font-mono font-semibold text-[#7EC49A] flex items-center gap-1.5">
+                        <ShieldCheck size={12} />
+                        {passport.registration_number}
+                      </span>
+                    </div>
+                  )}
+                  {passport.registered_office && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-zinc-500 shrink-0">Registered office</span>
+                      <span className="text-zinc-200 text-right">{passport.registered_office}</span>
+                    </div>
+                  )}
+                  {passport.commissioner_ref && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-zinc-500">Commissioner reference</span>
+                      <span className="font-mono text-zinc-300">{passport.commissioner_ref}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="mt-3 text-[10px] text-zinc-600 leading-relaxed">
+                  Issued by Kenya&apos;s Commissioner for Co-operative Development on incorporation —
+                  this verifies {story.cooperative ?? 'this cooperative'} is a legally registered
+                  Farmers&apos; Cooperative Society, not an informal trading group.
+                </p>
               </div>
             )}
           </>

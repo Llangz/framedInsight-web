@@ -45,6 +45,8 @@ export async function GET(
   const response = {
     passport_code: passport.passport_code,
     cooperative: passport.cooperative_name,
+    cooperative_registration_number: passport.registration_number ?? null,
+    cooperative_registered_office: passport.registered_office ?? null,
     county: passport.county,
     sub_county: passport.sub_county,
     ward: passport.ward,
@@ -66,6 +68,12 @@ export async function GET(
     trace_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://framed-insight-web.vercel.app'}/trace/${passportCode}`,
     powered_by: 'framedInsight · framed-insight-web.vercel.app',
   }
+
+  // buyer_name / buyer_country deliberately excluded — see the note on the
+  // same fields in app/trace/[passportCode]/page.tsx. commissioner_ref is
+  // also left out of the API response on purpose: it's a secondary,
+  // less-meaningful-to-a-buyer admin reference compared to the registration
+  // number, which is the one actually worth automating against.
 
   return NextResponse.json(response, {
     headers: {

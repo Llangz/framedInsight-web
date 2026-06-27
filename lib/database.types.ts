@@ -5294,10 +5294,11 @@ export type Database = {
           }
         ]
       }
-      v_passport_chain: {
+       v_passport_chain: {
         Row: {
           buyer_country: string | null
           buyer_name: string | null
+          commissioner_ref: string | null
           cooperative_id: string | null
           cooperative_name: string | null
           county: string | null
@@ -5315,6 +5316,8 @@ export type Database = {
           public_story: Json | null
           published_at: string | null
           quality_metrics: Json | null
+          registered_office: string | null
+          registration_number: string | null
           sca_cupping_score: number | null
           sub_county: string | null
           sustainability_metrics: Json | null
@@ -5323,7 +5326,6 @@ export type Database = {
         }
         Relationships: []
       }
-    }
     Functions: {
       validate_coop_registration_number: {
         Args: { p_reg_number: string }
