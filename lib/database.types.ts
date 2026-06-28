@@ -1774,7 +1774,12 @@ export type Database = {
         Row: {
           id: string
           fcs_name: string
-          county: string
+          nce_agent_code: string | null
+          nce_export_lot_code: string | null
+          has_flo_certification: boolean
+          has_cafe_practice: boolean
+          has_rainforest: boolean
+          has_eudr_dds: boolean
           source_url: string
           source_note: string | null
           verified_at: string
@@ -1784,7 +1789,12 @@ export type Database = {
         Insert: {
           id?: string
           fcs_name: string
-          county: string
+          nce_agent_code?: string | null
+          nce_export_lot_code?: string | null
+          has_flo_certification?: boolean
+          has_cafe_practice?: boolean
+          has_rainforest?: boolean
+          has_eudr_dds?: boolean
           source_url: string
           source_note?: string | null
           verified_at?: string
@@ -1794,7 +1804,12 @@ export type Database = {
         Update: {
           id?: string
           fcs_name?: string
-          county?: string
+          nce_agent_code?: string | null
+          nce_export_lot_code?: string | null
+          has_flo_certification?: boolean
+          has_cafe_practice?: boolean
+          has_rainforest?: boolean
+          has_eudr_dds?: boolean
           source_url?: string
           source_note?: string | null
           verified_at?: string
@@ -1816,6 +1831,7 @@ export type Database = {
           id: string
           fcs_directory_id: string
           factory_name: string
+          factory_code: string | null
           source_url: string | null
           created_at: string
         }
@@ -1823,6 +1839,7 @@ export type Database = {
           id?: string
           fcs_directory_id: string
           factory_name: string
+          factory_code?: string | null
           source_url?: string | null
           created_at?: string
         }
@@ -1830,6 +1847,7 @@ export type Database = {
           id?: string
           fcs_directory_id?: string
           factory_name?: string
+          factory_code?: string | null
           source_url?: string | null
           created_at?: string
         }
@@ -5403,6 +5421,7 @@ export type Database = {
         }
         Relationships: []
       }
+    }
     Functions: {
       validate_coop_registration_number: {
         Args: { p_reg_number: string }
@@ -5466,7 +5485,6 @@ export type Database = {
       [_ in never]: never
     }
   }
-}
 }
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
