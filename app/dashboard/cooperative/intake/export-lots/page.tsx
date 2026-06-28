@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { validateCoopAccess } from '@/lib/validate-coop-access'
 import { getExportLots } from './actions'
+import BuyerAccessControls from './BuyerAccessControls'
 import {
   Ship, Plus, ChevronRight, ClipboardList, Package,
   Clock, CheckCircle2, Anchor, Flag, Shield, ShieldAlert,
@@ -122,6 +123,7 @@ export default async function ExportLotsPage() {
                   <th className="px-6 py-4 text-center">EUDR</th>
                   <th className="px-6 py-4">Departure</th>
                   <th className="px-6 py-4 text-center">Status</th>
+                  <th className="px-6 py-4 text-right">Buyer room</th>
                   <th className="px-6 py-4" />
                 </tr>
               </thead>
@@ -159,6 +161,13 @@ export default async function ExportLotsPage() {
                           <StatusIcon size={9} />
                           {s.label}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <BuyerAccessControls
+                          exportLotId={e.id}
+                          token={e.buyer_access_token}
+                          revokedAt={e.buyer_access_revoked_at}
+                        />
                       </td>
                       <td className="px-6 py-4">
                         <Link

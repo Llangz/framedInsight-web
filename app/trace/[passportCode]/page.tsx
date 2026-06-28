@@ -52,7 +52,9 @@ export default async function TracePage({ params }: Props) {
   const { buyer_name, buyer_country, ...publicPassport } = passport
 
   // Fetch the public cryptographic traceability events ledger
-  const ledger = await getPublicPassportLedger(passport.passport_id)
+  const ledger = passport.passport_id
+    ? await getPublicPassportLedger(passport.passport_id)
+    : []
 
   return <PassportClient passport={publicPassport} passportCode={passportCode} ledger={ledger} />
 }

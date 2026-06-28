@@ -16,6 +16,7 @@ import {
   Ship, Coffee, CheckCircle, XCircle, Globe,
   ChevronRight, Info, BarChart2, Layers, ShieldCheck, Building2
 } from 'lucide-react'
+import { verifyChain, type LedgerVerificationResult } from './verify-ledger'
 
 // Leaflet must be dynamic-imported to avoid SSR issues
 const PassportMap = dynamic(() => import('./PassportMap'), { ssr: false })
@@ -24,6 +25,25 @@ interface Props {
   passport: any
   passportCode: string
   ledger?: any[]
+}
+
+function getEventName(eventType: string): string {
+  const names: Record<string, string> = {
+    passport_created: 'Origin Passport Registry Created',
+    passport_published: 'Origin Passport Published to Public',
+    batch_created: 'Processing Batch Created',
+    mill_lot_created: 'Dry Mill Lot Created',
+    export_lot_created: 'Export Lot Created',
+    eudr_dds_bundle_generated: 'EUDR DDS Bundle Generated',
+    buyer_data_room_accessed: 'Buyer Due Diligence Pack Accessed',
+  }
+
+  if (eventType.startsWith('status_changed_to_')) {
+    const status = eventType.replace('status_changed_to_', '').replaceAll('_', ' ')
+    return `Status Changed to ${status.charAt(0).toUpperCase()}${status.slice(1)}`
+  }
+
+  return names[eventType] ?? eventType.replaceAll('_', ' ')
 }
 
 // ── Chain step definition ──────────────────────────────────────────────────────
@@ -113,6 +133,8 @@ function CopyButton({ text }: { text: string }) {
 export default function PassportClient({ passport, passportCode, ledger = [] }: Props) {
   const [chainStep, setChainStep] = useState(0)
   const [activeTab, setActiveTab] = useState<'story'|'quality'|'sustainability'|'chain'>('story')
+  const [verificationResults, setVerificationResults] = useState<LedgerVerificationResult[] | null>(null)
+  const [isVerifying, setIsVerifying] = useState(false)
 
   const story       = (passport.public_story ?? {}) as any
   const sustain     = (passport.sustainability_metrics ?? {}) as any
@@ -132,6 +154,15 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
 
   const certifications: string[] = quality.certifications ?? []
   const varieties: string[]      = story.varieties ?? []
+  const treeCoverLossPct = sustain.avg_tree_cover_loss_pct ?? sustain.avg_forest_cover_pct
+
+  const handleVerifyLedger = async () => {
+    if (!passport.passport_id || !ledger.length) return
+    setIsVerifying(true)
+    const results = await verifyChain(passport.passport_id, ledger)
+    setVerificationResults(results)
+    setIsVerifying(false)
+  }
 
   return (
     <div className="min-h-screen bg-[#0A0C10] text-white font-['Outfit']">
@@ -482,10 +513,10 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
                   </div>
                 </div>
               )}
-              {sustain.avg_forest_cover_pct && (
+              {treeCoverLossPct !== undefined && (
                 <div className="flex justify-between text-xs pt-1">
-                  <span className="text-zinc-400">Avg tree/shade cover</span>
-                  <span className="text-zinc-200 font-semibold">{sustain.avg_forest_cover_pct}%</span>
+                  <span className="text-zinc-400">Avg detected tree-cover loss</span>
+                  <span className="text-zinc-200 font-semibold">{treeCoverLossPct}%</span>
                 </div>
               )}
             </div>
@@ -563,19 +594,33 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
                 </h4>
                 <p className="text-xs text-zinc-500 leading-relaxed">
                   This coffee&apos;s chain of custody is secured on an immutable, hash-chained ledger.
-                  Altering any historical record invalidates subsequent hashes, providing mathematical proof of origin.
+                  New ledger entries can be independently verified in your browser.
                 </p>
+                <button
+                  onClick={handleVerifyLedger}
+                  disabled={isVerifying || !passport.passport_id}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#C9A96E]/30 bg-[#C9A96E]/10 px-3 py-2 text-xs font-semibold text-[#C9A96E] transition-colors hover:bg-[#C9A96E]/15 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ShieldCheck size={13} />
+                  {isVerifying ? 'Verifying...' : 'Verify in browser'}
+                </button>
+
+                {verificationResults && (
+                  <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-3 text-xs text-zinc-400">
+                    <span className="font-semibold text-zinc-200">
+                      {verificationResults.filter(result => result.verified).length} independently verified
+                    </span>
+                    <span className="text-zinc-500">
+                      {' '}· {verificationResults.filter(result => result.ok && !result.verified).length} legacy recorded
+                      {' '}· {verificationResults.filter(result => !result.ok).length} failed
+                    </span>
+                  </div>
+                )}
 
                 <div className="space-y-3 mt-4">
                   {ledger.map((event, idx) => {
-                    const eventName = {
-                      passport_created: 'Origin Passport Registry Created',
-                      passport_published: 'Origin Passport Published to Public',
-                      delivery_added: 'Farmer Cherry Delivery Registered',
-                      parchment_recorded: 'Parchment Intake Processed',
-                      nce_linked: 'Nairobi Coffee Exchange Outturn Linked',
-                      status_changed: 'Batch Status Changed'
-                    }[event.event_type] || event.event_type
+                    const eventName = getEventName(event.event_type)
+                    const verification = verificationResults?.[idx]
 
                     const formattedDate = new Date(event.created_at).toLocaleString('en-US', {
                       month: 'short',
@@ -589,8 +634,25 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
                       <div key={idx} className="bg-[#0D0F14] border border-[#2A2D35] rounded-xl p-4 space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-xs font-semibold text-zinc-200">{eventName}</span>
-                          <span className="text-[10px] text-zinc-500 font-mono">{formattedDate}</span>
+                          <span className="flex items-center gap-2">
+                            {verification && (
+                              <span className={`text-[10px] font-semibold ${
+                                verification.ok
+                                  ? verification.verified ? 'text-[#7EC49A]' : 'text-amber-300'
+                                  : 'text-red-300'
+                              }`}>
+                                {verification.ok
+                                  ? verification.verified ? 'Verified' : 'Legacy'
+                                  : 'Failed'}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-zinc-500 font-mono">{formattedDate}</span>
+                          </span>
                         </div>
+
+                        {verification?.reason && (
+                          <p className="text-[10px] text-zinc-500">{verification.reason}</p>
+                        )}
 
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
                           <span className="text-zinc-500">

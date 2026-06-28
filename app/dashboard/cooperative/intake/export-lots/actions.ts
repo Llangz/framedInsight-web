@@ -13,6 +13,7 @@ import { validateCoopAccess } from '@/lib/validate-coop-access'
 import { revalidatePath } from 'next/cache'
 import { writeTraceabilityEvent } from '@/lib/passport/passport.service'
 import { buildExportLotNumber } from '@/lib/intake.types'
+import { randomBytes } from 'crypto'
 
 // ── Mill lots eligible to be exported ────────────────────────────────────────
 // status = 'milled' AND not already linked to another export lot.
@@ -242,4 +243,109 @@ export async function createExportLot(params: CreateExportLotParams) {
 
   revalidatePath('/dashboard/cooperative/intake/export-lots')
   return { success: true as const, exportLot }
+}
+
+// ── Buyer due-diligence access links ────────────────────────────────────────
+
+function buildBuyerAccessUrl(token: string) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://framed-insight-web.vercel.app'
+  return `${appUrl.replace(/\/$/, '')}/buyer/${token}`
+}
+
+export async function generateBuyerAccessLink(exportLotId: string) {
+  const access = await validateCoopAccess()
+  if (!access.success || !access.coopId) {
+    return { success: false as const, error: 'Unauthorized' }
+  }
+
+  const supabase = await createClient()
+
+  const { data: exportLot } = await supabase
+    .from('export_lots')
+    .select('id, export_lot_number, cooperative_id, buyer_access_token')
+    .eq('id', exportLotId)
+    .eq('cooperative_id', access.coopId)
+    .single()
+
+  if (!exportLot) {
+    return { success: false as const, error: 'Export lot not found or unauthorized' }
+  }
+
+  const token = randomBytes(32).toString('base64url')
+  const now = new Date().toISOString()
+
+  const { error } = await supabase
+    .from('export_lots')
+    .update({
+      buyer_access_token: token,
+      buyer_access_created_at: now,
+      buyer_access_revoked_at: null,
+    })
+    .eq('id', exportLotId)
+    .eq('cooperative_id', access.coopId)
+
+  if (error) {
+    return { success: false as const, error: error.message }
+  }
+
+  await writeTraceabilityEvent({
+    entityType: 'export_lot',
+    entityId: exportLot.id,
+    cooperativeId: access.coopId,
+    actorUserId: access.userId,
+    eventType: exportLot.buyer_access_token ? 'buyer_access_link_rotated' : 'buyer_access_link_created',
+    eventData: {
+      export_lot_number: exportLot.export_lot_number,
+      created_at: now,
+    },
+  })
+
+  revalidatePath('/dashboard/cooperative/intake/export-lots')
+  return { success: true as const, url: buildBuyerAccessUrl(token) }
+}
+
+export async function revokeBuyerAccessLink(exportLotId: string) {
+  const access = await validateCoopAccess()
+  if (!access.success || !access.coopId) {
+    return { success: false as const, error: 'Unauthorized' }
+  }
+
+  const supabase = await createClient()
+
+  const { data: exportLot } = await supabase
+    .from('export_lots')
+    .select('id, export_lot_number')
+    .eq('id', exportLotId)
+    .eq('cooperative_id', access.coopId)
+    .single()
+
+  if (!exportLot) {
+    return { success: false as const, error: 'Export lot not found or unauthorized' }
+  }
+
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('export_lots')
+    .update({ buyer_access_revoked_at: now })
+    .eq('id', exportLotId)
+    .eq('cooperative_id', access.coopId)
+
+  if (error) {
+    return { success: false as const, error: error.message }
+  }
+
+  await writeTraceabilityEvent({
+    entityType: 'export_lot',
+    entityId: exportLot.id,
+    cooperativeId: access.coopId,
+    actorUserId: access.userId,
+    eventType: 'buyer_access_link_revoked',
+    eventData: {
+      export_lot_number: exportLot.export_lot_number,
+      revoked_at: now,
+    },
+  })
+
+  revalidatePath('/dashboard/cooperative/intake/export-lots')
+  return { success: true as const }
 }

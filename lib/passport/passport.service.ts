@@ -11,6 +11,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createHash } from 'crypto'
 import type { Json, Database } from '@/lib/database.types'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ export interface SustainabilityMetrics {
   organic_certified: boolean
   rainforest_alliance: boolean
   fair_trade: boolean
+  avg_tree_cover_loss_pct?: number
   avg_forest_cover_pct?: number
   total_plot_area_acres?: number
   chemical_inputs?: string[]
@@ -66,6 +68,38 @@ export interface GeoSummary {
 
 // ── Hash helper ──────────────────────────────────────────────────────────────
 
+const HASH_ALGORITHM = 'v2_canonical' as const
+
+function normalizeForHash(value: unknown): unknown {
+  if (value === null) return null
+
+  if (Array.isArray(value)) {
+    return value.map(item => {
+      const normalized = normalizeForHash(item)
+      return normalized === undefined ? null : normalized
+    })
+  }
+
+  if (typeof value === 'object') {
+    const sorted: Record<string, unknown> = {}
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      const normalized = normalizeForHash((value as Record<string, unknown>)[key])
+      if (normalized !== undefined) sorted[key] = normalized
+    }
+    return sorted
+  }
+
+  if (typeof value === 'undefined' || typeof value === 'function' || typeof value === 'symbol') {
+    return undefined
+  }
+
+  return value
+}
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(normalizeForHash(value))
+}
+
 function computeHash(
   entityId: string,
   eventType: string,
@@ -73,7 +107,7 @@ function computeHash(
   previousHash: string | null,
   createdAt: string
 ): string {
-  const payload = JSON.stringify({
+  const payload = stableStringify({
     entityId,
     eventType,
     eventData,
@@ -103,6 +137,37 @@ export async function writeTraceabilityEvent({
   eventData: Record<string, unknown>
 }): Promise<void> {
   const supabase = await createClient()
+  await writeTraceabilityEventWithClient(supabase as SupabaseClient<Database>, {
+    entityType,
+    entityId,
+    cooperativeId,
+    actorUserId,
+    actorName,
+    eventType,
+    eventData,
+  })
+}
+
+export async function writeTraceabilityEventWithClient(
+  supabase: SupabaseClient<Database>,
+  {
+    entityType,
+    entityId,
+    cooperativeId,
+    actorUserId,
+    actorName,
+    eventType,
+    eventData,
+  }: {
+    entityType: string
+    entityId: string
+    cooperativeId: string
+    actorUserId?: string
+    actorName?: string
+    eventType: string
+    eventData: Record<string, unknown>
+  }
+): Promise<void> {
 
   // Get the previous hash for this entity chain
   const { data: last } = await supabase
@@ -128,6 +193,7 @@ export async function writeTraceabilityEvent({
     event_data: eventData as unknown as Json,
     previous_hash: previousHash,
     current_hash: currentHash,
+    hash_algorithm: HASH_ALGORITHM,
     created_at: now,
   })
 }
@@ -142,7 +208,8 @@ export async function writeTraceabilityEvent({
  */
 export async function assemblePassportPayload(
   processingBatchId: string,
-  cooperativeId: string
+  cooperativeId: string,
+  exportLotId?: string
 ): Promise<{
   publicStory: PublicStory
   sustainabilityMetrics: SustainabilityMetrics
@@ -163,6 +230,19 @@ export async function assemblePassportPayload(
     .single()
 
   if (!batch) throw new Error('Processing batch not found')
+
+  // Export-lot fields are the commercial source of truth for grade/SCA/moisture
+  // once a passport is attached to a market lot.
+  let exportLot: any = null
+  if (exportLotId) {
+    const { data } = await supabase
+      .from('export_lots')
+      .select('grade, processing_method, moisture_content_pct, sca_cupping_score')
+      .eq('id', exportLotId)
+      .eq('cooperative_id', cooperativeId)
+      .maybeSingle()
+    exportLot = data
+  }
 
   // 2. Farmer deliveries → farms → plots for this batch via intake_lot
   const { data: deliveries } = await supabase
@@ -211,6 +291,7 @@ export async function assemblePassportPayload(
   const avgForestCover = eudrRecords.length > 0
     ? eudrRecords.reduce((s, e) => s + (e.forest_cover_pct ?? 0), 0) / eudrRecords.length
     : undefined
+  const avgTreeCoverLoss = avgForestCover
 
   const totalPlotAcres = deliveryList.reduce((s, d) => {
     const acres = (d.coffee_plots as any)?.land_size_acres
@@ -256,7 +337,9 @@ export async function assemblePassportPayload(
     factory: factory?.factory_name ?? 'Cooperative Factory',
     cooperative: coop?.cooperative_name ?? '',
     varieties: varieties.length > 0 ? varieties : ['Unknown'],
-    processing: batch.washing_date ? 'Fully Washed' : 'Natural',
+    processing: exportLot?.processing_method
+      ? String(exportLot.processing_method)
+      : batch.washing_date ? 'Fully Washed' : 'Natural',
     harvest_season: `${batch.season === 'main' ? 'Main Crop' : 'Fly Crop'} ${batch.harvest_year ?? new Date().getFullYear()}`,
     farm_count: farmCount,
     avg_farm_size_acres: totalPlotAcres > 0 && farmCount > 0
@@ -271,20 +354,22 @@ export async function assemblePassportPayload(
     organic_certified: bestQuality?.organic_certified ?? false,
     rainforest_alliance: bestQuality?.rainforest_alliance ?? false,
     fair_trade: bestQuality?.fair_trade_certified ?? false,
-    avg_forest_cover_pct: avgForestCover ? Math.round(avgForestCover * 10) / 10 : undefined,
+    avg_tree_cover_loss_pct: avgTreeCoverLoss !== undefined
+      ? Math.round(avgTreeCoverLoss * 10) / 10
+      : undefined,
     total_plot_area_acres: Math.round(totalPlotAcres * 10) / 10,
   }
 
   const qualityMetrics: QualityMetrics = {
-    sca_score: bestQuality?.cupping_score ?? undefined,
+    sca_score: exportLot?.sca_cupping_score ?? bestQuality?.cupping_score ?? undefined,
     cupper_name: bestQuality?.cupper_name ?? undefined,
     cupping_date: bestQuality?.cupping_date ?? undefined,
     flavor_notes: bestQuality?.flavor_notes ?? undefined,
     aroma: bestQuality?.aroma_score ?? undefined,
     acidity: bestQuality?.acidity_score ?? undefined,
     body: bestQuality?.body_score ?? undefined,
-    grade: 'AB',
-    moisture_pct: batch.moisture_content_pct ?? undefined,
+    grade: exportLot?.grade ?? 'Unknown',
+    moisture_pct: exportLot?.moisture_content_pct ?? batch.moisture_content_pct ?? undefined,
     certifications: [
       bestQuality?.organic_certified && 'Organic',
       bestQuality?.utz_certified && 'UTZ',
@@ -331,7 +416,7 @@ export async function createPassport({
 
   // Assemble the payload from the chain
   const { publicStory, sustainabilityMetrics, qualityMetrics, geoSummary } =
-    await assemblePassportPayload(processingBatchId, cooperativeId)
+    await assemblePassportPayload(processingBatchId, cooperativeId, exportLotId)
 
   const mergedStory = { ...publicStory, ...(overrides?.publicStory ?? {}) }
   const mergedSustain = { ...sustainabilityMetrics, ...(overrides?.sustainabilityMetrics ?? {}) }
@@ -494,7 +579,7 @@ export async function getPublicPassportLedger(passportId: string) {
 
   const { data, error } = await adminClient
     .from('traceability_events')
-    .select('event_type, event_data, previous_hash, current_hash, actor_name, created_at')
+    .select('event_type, event_data, previous_hash, current_hash, hash_algorithm, actor_name, created_at')
     .eq('entity_id', passportId)
     .order('created_at', { ascending: true })
 

@@ -4186,6 +4186,9 @@ export type Database = {
           bag_weight_kg: number | null
           bill_of_lading: string | null
           buyer_country: string | null
+          buyer_access_created_at: string | null
+          buyer_access_revoked_at: string | null
+          buyer_access_token: string | null
           buyer_name: string | null
           container_number: string | null
           cooperative_id: string | null
@@ -4215,6 +4218,9 @@ export type Database = {
           bag_weight_kg?: number | null
           bill_of_lading?: string | null
           buyer_country?: string | null
+          buyer_access_created_at?: string | null
+          buyer_access_revoked_at?: string | null
+          buyer_access_token?: string | null
           buyer_name?: string | null
           container_number?: string | null
           cooperative_id?: string | null
@@ -4244,6 +4250,9 @@ export type Database = {
           bag_weight_kg?: number | null
           bill_of_lading?: string | null
           buyer_country?: string | null
+          buyer_access_created_at?: string | null
+          buyer_access_revoked_at?: string | null
+          buyer_access_token?: string | null
           buyer_name?: string | null
           container_number?: string | null
           cooperative_id?: string | null
@@ -4703,6 +4712,7 @@ export type Database = {
           entity_type: string
           event_data: Json
           event_type: string
+          hash_algorithm: string
           id: string
           previous_hash: string | null
         }
@@ -4716,6 +4726,7 @@ export type Database = {
           entity_type: string
           event_data?: Json
           event_type: string
+          hash_algorithm?: string
           id?: string
           previous_hash?: string | null
         }
@@ -4729,6 +4740,7 @@ export type Database = {
           entity_type?: string
           event_data?: Json
           event_type?: string
+          hash_algorithm?: string
           id?: string
           previous_hash?: string | null
         }
