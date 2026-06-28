@@ -58,6 +58,42 @@ export default function SignupPage() {
   const [supplyingFactoryId, setSupplyingFactoryId] = useState('')
   const [supplyingCoopUnmatched, setSupplyingCoopUnmatched] = useState('')
 
+  const [coopSearchTerm, setCoopSearchTerm] = useState('')
+  const [isCoopDropdownOpen, setIsCoopDropdownOpen] = useState(false)
+
+  // Handle autocomplete search value changes
+  const handleCoopSearchChange = (value: string) => {
+    setCoopSearchTerm(value)
+    
+    // Clear factory when cooperative changes
+    setSupplyingFactoryId('')
+
+    // Try to find an exact match in the lists
+    const exactCoop = cooperativeOptions.find(c => c.cooperative_name.toLowerCase() === value.trim().toLowerCase())
+    const exactFcs = fcsOptions.find(f => f.fcs_name.toLowerCase() === value.trim().toLowerCase())
+
+    if (exactCoop) {
+      setSupplyingCoopId(`${COOP_PREFIX}${exactCoop.id}`)
+      setSupplyingCoopUnmatched('')
+    } else if (exactFcs) {
+      setSupplyingCoopId(`${FCS_PREFIX}${exactFcs.id}`)
+      setSupplyingCoopUnmatched('')
+    } else {
+      // No exact match - treat it as a custom/unlisted FCS
+      setSupplyingCoopId(NOT_LISTED)
+      setSupplyingCoopUnmatched(value)
+    }
+  }
+
+  // Handle selection of a cooperative from the dropdown
+  const handleSelectCooperative = (id: string, name: string) => {
+    setSupplyingCoopId(id)
+    setCoopSearchTerm(name)
+    setSupplyingCoopUnmatched(id === NOT_LISTED ? name : '')
+    setSupplyingFactoryId('')
+    setIsCoopDropdownOpen(false)
+  }
+
   const [consents, setConsents] = useState({
     termsAccepted: false,
     privacyAccepted: false,
@@ -127,15 +163,14 @@ export default function SignupPage() {
   const isCoffeeFarmer = formData.farmTypes.includes('coffee')
 
   // Load the on-platform cooperative directory AND the national FCS
-  // reference directory for this county once the farmer reaches the
-  // enterprises step with coffee selected. Both render as separate
-  // groups in the same dropdown.
+  // reference directory once the farmer reaches the enterprises step with coffee selected.
+  // Both render as separate groups in the same dropdown.
   useEffect(() => {
-    if (step !== 'enterprises' || !isCoffeeFarmer || !formData.county) return
+    if (step !== 'enterprises' || !isCoffeeFarmer) return
     setLoadingCoops(true)
     Promise.all([
-      getCooperativeDirectory(formData.county),
-      getFcsDirectory(formData.county),
+      formData.county ? getCooperativeDirectory(formData.county) : Promise.resolve({ cooperatives: [] }),
+      getFcsDirectory(),
     ])
       .then(([coopResult, fcsResult]) => {
         setCooperativeOptions(coopResult.cooperatives)
@@ -143,6 +178,23 @@ export default function SignupPage() {
       })
       .finally(() => setLoadingCoops(false))
   }, [step, isCoffeeFarmer, formData.county])
+
+  // Synchronize search term with selected cooperative if options update
+  useEffect(() => {
+    if (!supplyingCoopId) {
+      setCoopSearchTerm('')
+      return
+    }
+    if (supplyingCoopId === NOT_LISTED) {
+      setCoopSearchTerm(supplyingCoopUnmatched)
+    } else if (supplyingCoopId.startsWith(COOP_PREFIX)) {
+      const match = cooperativeOptions.find(c => `${COOP_PREFIX}${c.id}` === supplyingCoopId)
+      if (match) setCoopSearchTerm(match.cooperative_name)
+    } else if (supplyingCoopId.startsWith(FCS_PREFIX)) {
+      const match = fcsOptions.find(f => `${FCS_PREFIX}${f.id}` === supplyingCoopId)
+      if (match) setCoopSearchTerm(match.fcs_name)
+    }
+  }, [supplyingCoopId, cooperativeOptions, fcsOptions, supplyingCoopUnmatched])
 
   // Load factories for the selected cooperative or FCS directory entry
   useEffect(() => {
@@ -232,6 +284,14 @@ export default function SignupPage() {
   const inputBase = 'mt-1 block w-full px-3 py-2 border rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm'
   const inputNormal = `${inputBase} border-gray-300`
   const inputError  = `${inputBase} border-red-300`
+
+  const filteredCoopOptions = cooperativeOptions.filter(c =>
+    c.cooperative_name.toLowerCase().includes(coopSearchTerm.toLowerCase())
+  )
+
+  const filteredFcsOptions = fcsOptions.filter(f =>
+    f.fcs_name.toLowerCase().includes(coopSearchTerm.toLowerCase())
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -514,52 +574,81 @@ export default function SignupPage() {
                       </p>
                     </div>
 
-                    <div>
+                    <div className="relative">
                       <label className="block text-xs font-medium text-zinc-700 mb-1">Cooperative (FCS)</label>
-                      <select
-                        value={supplyingCoopId}
-                        onChange={(e) => { setSupplyingCoopId(e.target.value); setSupplyingFactoryId('') }}
-                        disabled={!formData.county || loadingCoops}
+                      <input
+                        type="text"
+                        value={coopSearchTerm}
+                        onChange={(e) => handleCoopSearchChange(e.target.value)}
+                        onFocus={() => setIsCoopDropdownOpen(true)}
+                        onBlur={() => {
+                          // Small timeout to allow onMouseDown on the dropdown items to trigger
+                          setTimeout(() => setIsCoopDropdownOpen(false), 200)
+                        }}
+                        disabled={loadingCoops}
+                        placeholder={loadingCoops ? "Loading cooperatives..." : "Type to search or enter your cooperative..."}
                         className={inputNormal}
-                      >
-                        <option value="">
-                          {!formData.county ? 'Select your county on the previous step first' : loadingCoops ? 'Loading…' : 'Select your cooperative'}
-                        </option>
-                        {cooperativeOptions.length > 0 && (
-                          <optgroup label="On framedInsight">
-                            {cooperativeOptions.map(c => (
-                              <option key={c.id} value={`${COOP_PREFIX}${c.id}`}>{c.cooperative_name}</option>
-                            ))}
-                          </optgroup>
-                        )}
-                        {fcsOptions.length > 0 && (
-                          <optgroup label="Not yet on framedInsight">
-                            {fcsOptions.map(f => (
-                              <option key={f.id} value={`${FCS_PREFIX}${f.id}`}>{f.fcs_name}</option>
-                            ))}
-                          </optgroup>
-                        )}
-                        <option value={NOT_LISTED}>My cooperative isn&apos;t listed</option>
-                      </select>
-                      {formData.county && !loadingCoops && cooperativeOptions.length === 0 && fcsOptions.length === 0 && (
-                        <p className="flex items-start gap-1 text-[11px] text-zinc-500 mt-1.5">
-                          <Info size={11} className="shrink-0 mt-0.5" />
-                          We don&apos;t have any cooperatives from {formData.county} yet — pick
-                          &ldquo;My cooperative isn&apos;t listed&rdquo; and tell us its name below.
-                        </p>
+                      />
+                      {isCoopDropdownOpen && (
+                        <div className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-md bg-white border border-zinc-200 shadow-lg text-zinc-900 focus:outline-none text-sm">
+                          {filteredCoopOptions.length > 0 && (
+                            <div className="px-3 py-1.5 text-xs font-semibold text-zinc-500 bg-zinc-50">
+                              On framedInsight
+                            </div>
+                          )}
+                          {filteredCoopOptions.map(c => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onMouseDown={() => handleSelectCooperative(`${COOP_PREFIX}${c.id}`, c.cooperative_name)}
+                              className="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-700 cursor-pointer transition-colors"
+                            >
+                              {c.cooperative_name}
+                            </button>
+                          ))}
+
+                          {filteredFcsOptions.length > 0 && (
+                            <div className="px-3 py-1.5 text-xs font-semibold text-zinc-500 bg-zinc-50 border-t border-zinc-100">
+                              National reference directory
+                            </div>
+                          )}
+                          {filteredFcsOptions.map(f => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onMouseDown={() => handleSelectCooperative(`${FCS_PREFIX}${f.id}`, f.fcs_name)}
+                              className="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-700 cursor-pointer transition-colors"
+                            >
+                              {f.fcs_name}
+                            </button>
+                          ))}
+
+                          {coopSearchTerm.trim() !== '' && (
+                            <button
+                              type="button"
+                              onMouseDown={() => handleSelectCooperative(NOT_LISTED, coopSearchTerm)}
+                              className="w-full text-left px-3 py-2 font-medium hover:bg-amber-50 hover:text-amber-800 border-t border-zinc-100 cursor-pointer transition-colors"
+                            >
+                              Use custom: &ldquo;{coopSearchTerm}&rdquo;
+                            </button>
+                          )}
+
+                          {filteredCoopOptions.length === 0 && filteredFcsOptions.length === 0 && coopSearchTerm.trim() === '' && (
+                            <div className="px-3 py-2 text-xs text-zinc-500">
+                              Start typing to search cooperatives...
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 
-                    {supplyingCoopId === NOT_LISTED && (
-                      <div>
-                        <label className="block text-xs font-medium text-zinc-700 mb-1">Cooperative name</label>
-                        <input
-                          type="text"
-                          value={supplyingCoopUnmatched}
-                          onChange={(e) => setSupplyingCoopUnmatched(e.target.value)}
-                          placeholder="e.g. Baragwi Farmers Cooperative Society"
-                          className={inputNormal}
-                        />
+                    {supplyingCoopId === NOT_LISTED && supplyingCoopUnmatched && (
+                      <div className="flex items-start gap-1.5 text-xs text-amber-600 bg-amber-50/50 border border-amber-200/50 rounded-lg p-2.5 mt-2">
+                        <Info size={13} className="shrink-0 mt-0.5" />
+                        <p>
+                          Using custom cooperative: <strong className="font-semibold">&ldquo;{supplyingCoopUnmatched}&rdquo;</strong>.
+                          We will record this name and link it when they join.
+                        </p>
                       </div>
                     )}
 

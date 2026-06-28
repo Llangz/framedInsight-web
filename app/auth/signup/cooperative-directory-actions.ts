@@ -33,7 +33,6 @@ export interface FactoryDirectoryEntry {
 export interface FcsDirectoryEntry {
   id: string
   fcs_name: string
-  county: string
   source_url: string
 }
 
@@ -90,18 +89,14 @@ export async function getFactoriesForCooperative(cooperativeId: string) {
  * row already matched_cooperative_id'd to a live tenant, since that one
  * would already be showing up via getCooperativeDirectory above.
  */
-export async function getFcsDirectory(county?: string) {
+export async function getFcsDirectory() {
   const supabase = await createClient()
 
   let query = supabase
     .from('coffee_fcs_directory')
-    .select('id, fcs_name, county, source_url')
+    .select('id, fcs_name, source_url')
     .is('matched_cooperative_id', null)
     .order('fcs_name')
-
-  if (county) {
-    query = query.eq('county', county)
-  }
 
   const { data, error } = await query
 

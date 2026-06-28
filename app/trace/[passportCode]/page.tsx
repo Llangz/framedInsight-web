@@ -14,7 +14,7 @@
 
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { getPublicPassport } from '@/lib/passport/passport.service'
+import { getPublicPassport, getPublicPassportLedger } from '@/lib/passport/passport.service'
 import PassportClient from './PassportClient'
 
 interface Props {
@@ -51,5 +51,8 @@ export default async function TracePage({ params }: Props) {
   // displays them.
   const { buyer_name, buyer_country, ...publicPassport } = passport
 
-  return <PassportClient passport={publicPassport} passportCode={passportCode} />
+  // Fetch the public cryptographic traceability events ledger
+  const ledger = await getPublicPassportLedger(passport.passport_id)
+
+  return <PassportClient passport={publicPassport} passportCode={passportCode} ledger={ledger} />
 }

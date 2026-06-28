@@ -10,7 +10,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createHash } from 'crypto'
-import type { Json } from '@/lib/database.types'
+import type { Json, Database } from '@/lib/database.types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -459,6 +459,49 @@ export async function getPassportLedger(passportId: string) {
     .select('*')
     .eq('entity_id', passportId)
     .order('created_at', { ascending: true })
+
+  return data ?? []
+}
+
+// ── Fetch public traceability ledger for a published passport (bypasses RLS scoped to coop_officer) ──
+export async function getPublicPassportLedger(passportId: string) {
+  const supabase = await createClient()
+
+  // First, verify the passport exists and is published
+  const { data: passport } = await supabase
+    .from('coffee_passports')
+    .select('status')
+    .eq('id', passportId)
+    .single()
+
+  if (!passport || passport.status !== 'published') {
+    return []
+  }
+
+  // To fetch ledger history for public users (who do not satisfy the RLS policy cooperative_id = auth.jwt() -> ...),
+  // we use the admin client with the service role key.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceKey) {
+    console.error('getPublicPassportLedger: Missing environment variables for service client')
+    return []
+  }
+
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient<Database>(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  })
+
+  const { data, error } = await adminClient
+    .from('traceability_events')
+    .select('event_type, event_data, previous_hash, current_hash, actor_name, created_at')
+    .eq('entity_id', passportId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('getPublicPassportLedger error:', error)
+    return []
+  }
 
   return data ?? []
 }

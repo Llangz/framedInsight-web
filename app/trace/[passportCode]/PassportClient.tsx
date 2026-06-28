@@ -23,6 +23,7 @@ const PassportMap = dynamic(() => import('./PassportMap'), { ssr: false })
 interface Props {
   passport: any
   passportCode: string
+  ledger?: any[]
 }
 
 // ── Chain step definition ──────────────────────────────────────────────────────
@@ -89,8 +90,27 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="text-[10px] text-zinc-500 hover:text-[#C9A96E] hover:underline cursor-pointer focus:outline-none select-none transition-colors"
+    >
+      {copied ? 'Copied!' : 'Copy Hash'}
+    </button>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function PassportClient({ passport, passportCode }: Props) {
+export default function PassportClient({ passport, passportCode, ledger = [] }: Props) {
   const [chainStep, setChainStep] = useState(0)
   const [activeTab, setActiveTab] = useState<'story'|'quality'|'sustainability'|'chain'>('story')
 
@@ -494,43 +514,117 @@ export default function PassportClient({ passport, passportCode }: Props) {
 
         {/* SUPPLY CHAIN TAB */}
         {activeTab === 'chain' && (
-          <div className="space-y-3">
-            <p className="text-xs text-zinc-500">
-              Every step in this coffee&apos;s journey has been recorded and is verifiable.
-            </p>
-            {CHAIN_STEPS.map((step, i) => {
-              const Icon = step.icon
-              const isLast = i === CHAIN_STEPS.length - 1
-              const details = {
-                plot:    `${geo.plot_count ?? story.farm_count ?? '—'} plots · ${story.county ?? ''} County`,
-                factory: story.factory ? `${story.factory} · ${story.county ?? 'Kenya'}` : 'Cooperative washing station',
-                mill:    'Dry mill — parchment to clean coffee',
-                export:  `${passport.destination_port ? `Shipped to ${passport.destination_port}` : 'Mombasa export'}`,
-                cup:     'Consumer scan confirmed',
-              }[step.key] ?? ''
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-xs text-zinc-500">
+                Every step in this coffee&apos;s journey has been recorded and is verifiable.
+              </p>
+              {CHAIN_STEPS.map((step, i) => {
+                const Icon = step.icon
+                const isLast = i === CHAIN_STEPS.length - 1
+                const details = {
+                  plot:    `${geo.plot_count ?? story.farm_count ?? '—'} plots · ${story.county ?? ''} County`,
+                  factory: story.factory ? `${story.factory} · ${story.county ?? 'Kenya'}` : 'Cooperative washing station',
+                  mill:    'Dry mill — parchment to clean coffee',
+                  export:  `${passport.destination_port ? `Shipped to ${passport.destination_port}` : 'Mombasa export'}`,
+                  cup:     'Consumer scan confirmed',
+                }[step.key] ?? ''
 
-              return (
-                <div key={step.key} className="flex gap-3">
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="h-9 w-9 rounded-xl border flex items-center justify-center shrink-0"
-                      style={{ background: `${step.color}15`, borderColor: `${step.color}40` }}
-                    >
-                      <Icon size={14} style={{ color: step.color }} />
+                return (
+                  <div key={step.key} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className="h-9 w-9 rounded-xl border flex items-center justify-center shrink-0"
+                        style={{ background: `${step.color}15`, borderColor: `${step.color}40` }}
+                      >
+                        <Icon size={14} style={{ color: step.color }} />
+                      </div>
+                      {!isLast && <div className="w-px flex-1 bg-[#2A2D35] mt-1" style={{ minHeight: 20 }} />}
                     </div>
-                    {!isLast && <div className="w-px flex-1 bg-[#2A2D35] mt-1" style={{ minHeight: 20 }} />}
-                  </div>
-                  <div className={`pb-4 ${isLast ? '' : ''}`}>
-                    <span className="block text-sm font-semibold text-white">{step.label}</span>
-                    <span className="block text-xs text-zinc-500 mt-0.5">{details}</span>
-                    <div className="mt-1.5 flex items-center gap-1 text-[10px] text-[#4A7C59]">
-                      <CheckCircle size={9} />
-                      <span>Recorded on framedInsight</span>
+                    <div className={`pb-4 ${isLast ? '' : ''}`}>
+                      <span className="block text-sm font-semibold text-white">{step.label}</span>
+                      <span className="block text-xs text-zinc-500 mt-0.5">{details}</span>
+                      <div className="mt-1.5 flex items-center gap-1 text-[10px] text-[#4A7C59]">
+                        <CheckCircle size={9} />
+                        <span>Recorded on framedInsight</span>
+                      </div>
                     </div>
                   </div>
+                )
+              })}
+            </div>
+
+            {/* Cryptographic Hash Ledger Visualizer */}
+            {ledger && ledger.length > 0 && (
+              <div className="mt-8 border-t border-[#1E2028] pt-6 space-y-4">
+                <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-[#C9A96E] flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-[#C9A96E]" />
+                  Verify Cryptographic Ledger
+                </h4>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  This coffee&apos;s chain of custody is secured on an immutable, hash-chained ledger.
+                  Altering any historical record invalidates subsequent hashes, providing mathematical proof of origin.
+                </p>
+
+                <div className="space-y-3 mt-4">
+                  {ledger.map((event, idx) => {
+                    const eventName = {
+                      passport_created: 'Origin Passport Registry Created',
+                      passport_published: 'Origin Passport Published to Public',
+                      delivery_added: 'Farmer Cherry Delivery Registered',
+                      parchment_recorded: 'Parchment Intake Processed',
+                      nce_linked: 'Nairobi Coffee Exchange Outturn Linked',
+                      status_changed: 'Batch Status Changed'
+                    }[event.event_type] || event.event_type
+
+                    const formattedDate = new Date(event.created_at).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+
+                    return (
+                      <div key={idx} className="bg-[#0D0F14] border border-[#2A2D35] rounded-xl p-4 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-zinc-200">{eventName}</span>
+                          <span className="text-[10px] text-zinc-500 font-mono">{formattedDate}</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
+                          <span className="text-zinc-500">
+                            Actor: <strong className="text-zinc-300 font-normal">{event.actor_name}</strong>
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5 pt-1.5 border-t border-[#1E2028] text-[10px] font-mono text-zinc-500">
+                          <div className="flex flex-wrap justify-between items-center gap-1">
+                            <span>Prev Hash: <span className="text-zinc-400">{event.previous_hash ? `${event.previous_hash.slice(0, 16)}...` : 'GENESIS'}</span></span>
+                            {event.previous_hash && <CopyButton text={event.previous_hash} />}
+                          </div>
+                          <div className="flex flex-wrap justify-between items-center gap-1">
+                            <span>Curr Hash: <span className="text-[#7EC49A]">{event.current_hash.slice(0, 16)}...</span></span>
+                            <CopyButton text={event.current_hash} />
+                          </div>
+                        </div>
+
+                        {event.event_data && Object.keys(event.event_data).length > 0 && (
+                          <details className="text-[11px] text-zinc-400 group cursor-pointer">
+                            <summary className="text-[10px] text-zinc-500 hover:text-zinc-300 select-none py-1">
+                              View Event Payload
+                            </summary>
+                            <pre className="mt-1.5 p-3 rounded-lg bg-black/60 border border-[#2A2D35] overflow-x-auto text-[10px] text-zinc-400 font-mono cursor-default">
+                              {JSON.stringify(event.event_data, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
+              </div>
+            )}
           </div>
         )}
 
