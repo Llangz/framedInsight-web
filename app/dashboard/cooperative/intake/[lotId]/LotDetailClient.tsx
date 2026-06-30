@@ -19,7 +19,7 @@ import {
   Thermometer, Droplets, Info, ClipboardList, Archive,
   Shield, Download,
 } from 'lucide-react'
-import { addDeliveryToLot, updateLotProcessing } from '../actions'
+import { addDeliveryToLot, updateLotProcessing, recordLotPayment } from '../actions'
 import { createProcessingBatch } from '../batch-actions'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -148,6 +148,15 @@ export default function LotDetailClient({ lot, deliveries: initialDeliveries, fa
   const [downloadingDds, setDownloadingDds] = useState(false)
   const [ddsError, setDdsError] = useState<string | null>(null)
 
+  // Cherry payment (gate price + second payment) — Financial Transparency
+  const [showPayment, setShowPayment] = useState(false)
+  const [firstPayment, setFirstPayment]   = useState(lot.first_payment_kes_per_kg?.toString() ?? '')
+  const [secondPayment, setSecondPayment] = useState(lot.second_payment_kes_per_kg?.toString() ?? '')
+  const [paymentSeason, setPaymentSeason] = useState(lot.payment_season ?? '')
+  const [updatingPayment, setUpdatingPayment] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [paymentSaved, setPaymentSaved] = useState(false)
+
   const status = STATUS_CONFIG[lot.status] ?? STATUS_CONFIG.closed
   const factory = lot.coop_factories as any
   const canAddDelivery = lot.status === 'open'
@@ -210,6 +219,25 @@ export default function LotDetailClient({ lot, deliveries: initialDeliveries, fa
     setUpdatingProcessing(false)
     if (!res.success) { setProcessingError(res.error ?? 'Failed'); return }
     setShowProcessing(false)
+  }
+
+  // ── Record cherry payment (gate price / second payment) ─────────────────────
+  const handleUpdatePayment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setUpdatingPayment(true)
+    setPaymentError(null)
+    setPaymentSaved(false)
+
+    const res = await recordLotPayment({
+      lotId: lot.id,
+      firstPaymentKesPerKg: firstPayment ? parseFloat(firstPayment) : undefined,
+      secondPaymentKesPerKg: secondPayment ? parseFloat(secondPayment) : undefined,
+      paymentSeason: paymentSeason || undefined,
+    })
+
+    setUpdatingPayment(false)
+    if (!res.success) { setPaymentError(res.error ?? 'Failed'); return }
+    setPaymentSaved(true)
   }
 
   // ── Promote to processing batch ───────────────────────────────────────────
@@ -415,6 +443,58 @@ export default function LotDetailClient({ lot, deliveries: initialDeliveries, fa
               <button type="submit" disabled={updatingProcessing}
                 className="px-5 py-2.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 text-white font-bold rounded-xl text-sm transition">
                 {updatingProcessing ? 'Saving…' : 'Save processing record'}
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* ── Cherry payment accordion ────────────────────────────────────────── */}
+      {lot.status !== 'open' && (
+        <div className="bg-[#0D0F14] border border-[#2A2D35] rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setShowPayment(!showPayment)}
+            className="w-full flex items-center justify-between px-5 py-4 text-sm font-bold text-white hover:bg-zinc-900/30 transition"
+          >
+            <span className="flex items-center gap-2">
+              <Scale size={14} className="text-[#C9A96E]" />
+              Cherry payment
+            </span>
+            {showPayment ? <ChevronUp size={14} className="text-zinc-500" /> : <ChevronDown size={14} className="text-zinc-500" />}
+          </button>
+
+          {showPayment && (
+            <form onSubmit={handleUpdatePayment} className="px-5 pb-5 border-t border-[#2A2D35] pt-4 space-y-4">
+              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                Recorded here flows directly to the public passport&apos;s Financial
+                Transparency widget — buyers see what farmers were actually paid.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={LABEL}>Gate price (KES/kg cherry)</label>
+                  <input type="number" value={firstPayment} onChange={e => setFirstPayment(e.target.value)}
+                    placeholder={lot.first_payment_kes_per_kg?.toString() ?? 'e.g. 95'} className={FIELD} min={0} step={0.01} />
+                </div>
+                <div>
+                  <label className={LABEL}>Second payment (KES/kg, post-auction)</label>
+                  <input type="number" value={secondPayment} onChange={e => setSecondPayment(e.target.value)}
+                    placeholder={lot.second_payment_kes_per_kg?.toString() ?? 'Set once distributed'} className={FIELD} min={0} step={0.01} />
+                </div>
+              </div>
+              <div>
+                <label className={LABEL}>Payment season</label>
+                <input type="text" value={paymentSeason} onChange={e => setPaymentSeason(e.target.value)}
+                  placeholder={lot.payment_season ?? 'e.g. 2025/2026'} className={FIELD} />
+              </div>
+              {paymentError && (
+                <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertCircle size={11} />{paymentError}</p>
+              )}
+              {paymentSaved && (
+                <p className="text-xs text-[#7EC49A] flex items-center gap-1.5"><CheckCircle2 size={11} />Payment record saved</p>
+              )}
+              <button type="submit" disabled={updatingPayment}
+                className="px-5 py-2.5 bg-[#4A7C59] hover:bg-[#3d6a4a] disabled:opacity-40 text-white font-bold rounded-xl text-sm transition">
+                {updatingPayment ? 'Saving…' : 'Save payment record'}
               </button>
             </form>
           )}

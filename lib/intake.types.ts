@@ -34,6 +34,11 @@ export interface FactoryIntakeLotRow {
   clerk_name: string | null
   created_at: string | null
   updated_at: string | null
+  // Cherry payment (gate price + post-auction bonus) — see
+  // 20260701_financial_transparency_and_documents.sql
+  first_payment_kes_per_kg: number | null
+  second_payment_kes_per_kg: number | null
+  payment_season: string | null
 }
 
 export interface FactoryIntakeLotInsert {
@@ -65,6 +70,11 @@ export interface FactoryIntakeLotUpdate {
   status?: FactoryIntakeLotRow['status']
   notes?: string | null
   updated_at?: string
+  // Cherry payment (gate price + post-auction bonus) — see
+  // 20260701_financial_transparency_and_documents.sql
+  first_payment_kes_per_kg?: number | null
+  second_payment_kes_per_kg?: number | null
+  payment_season?: string | null
 }
 
 // ── lot_farmer_deliveries ────────────────────────────────────────────────────

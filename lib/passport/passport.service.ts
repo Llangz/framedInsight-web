@@ -506,12 +506,11 @@ export async function getPublicPassport(passportCode: string) {
 
   if (error || !data) return null
 
-  // Increment view count
-  await supabase
-    .from('coffee_passports')
-    .update({ view_count: (data.view_count ?? 0) + 1 })
-    .eq('passport_code', passportCode)
-
+  // NOTE: view_count is NOT incremented here.
+  // This function runs inside a cached server component (revalidate = 3600),
+  // so most page loads are served from the Vercel edge cache and never reach
+  // this code path. View counting is handled client-side via
+  // POST /api/passport/[passportCode]/view, which is always dynamic.
   return data
 }
 

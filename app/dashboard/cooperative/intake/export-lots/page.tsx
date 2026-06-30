@@ -6,11 +6,13 @@
  * new export lot from milled, unlinked mill lots.
  */
 
+import { Fragment } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { validateCoopAccess } from '@/lib/validate-coop-access'
 import { getExportLots } from './actions'
 import BuyerAccessControls from './BuyerAccessControls'
+import { DocumentsToggleButton, DocumentsRow } from './ExportLotDocumentsToggle'
 import {
   Ship, Plus, ChevronRight, ClipboardList, Package,
   Clock, CheckCircle2, Anchor, Flag, Shield, ShieldAlert,
@@ -124,6 +126,7 @@ export default async function ExportLotsPage() {
                   <th className="px-6 py-4">Departure</th>
                   <th className="px-6 py-4 text-center">Status</th>
                   <th className="px-6 py-4 text-right">Buyer room</th>
+                  <th className="px-6 py-4 text-right">Documents</th>
                   <th className="px-6 py-4" />
                 </tr>
               </thead>
@@ -133,7 +136,8 @@ export default async function ExportLotsPage() {
                   const StatusIcon = s.icon
                   const millLotCount = (e.export_lot_mill_lots as any[] | null)?.length ?? 0
                   return (
-                    <tr key={e.id} className="hover:bg-zinc-900/30 transition-colors">
+                    <Fragment key={e.id}>
+                    <tr className="hover:bg-zinc-900/30 transition-colors">
                       <td className="px-6 py-4">
                         <span className="font-mono font-bold text-[#C9A96E] text-xs">{e.export_lot_number}</span>
                         <span className="block text-[10px] text-zinc-500 mt-0.5">
@@ -169,6 +173,9 @@ export default async function ExportLotsPage() {
                           revokedAt={e.buyer_access_revoked_at}
                         />
                       </td>
+                      <td className="px-6 py-4 text-right">
+                        <DocumentsToggleButton exportLotId={e.id} />
+                      </td>
                       <td className="px-6 py-4">
                         <Link
                           href="/dashboard/cooperative/passports"
@@ -178,6 +185,8 @@ export default async function ExportLotsPage() {
                         </Link>
                       </td>
                     </tr>
+                    <DocumentsRow exportLotId={e.id} cooperativeId={access.coopId!} colSpan={10} />
+                    </Fragment>
                   )
                 })}
               </tbody>

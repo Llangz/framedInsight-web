@@ -152,6 +152,15 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
     return () => clearInterval(timer)
   }, [])
 
+  // Fire-and-forget view count tracking. Runs client-side because this
+  // page is served from the Vercel edge cache (revalidate = 3600) — a
+  // server-side increment in the page itself would rarely execute.
+  useEffect(() => {
+    fetch(`/api/passport/${passportCode}/view`, { method: 'POST' }).catch(() => {
+      // Non-critical — never surface a view-tracking failure to the visitor.
+    })
+  }, [passportCode])
+
   const certifications: string[] = quality.certifications ?? []
   const varieties: string[]      = story.varieties ?? []
   const treeCoverLossPct = sustain.avg_tree_cover_loss_pct ?? sustain.avg_forest_cover_pct
@@ -521,8 +530,8 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
               )}
             </div>
 
-            <div className="bg-[#0D0F14] border border-[#2A2D35] rounded-2xl p-5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">
+            <div className="bg-[#0D0F14] border border-[#2A2D35] rounded-2xl p-5 space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-4">
                 Certifications & practices
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -532,6 +541,46 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
                 <Badge label="Fair Trade" ok={!!sustain.fair_trade} />
               </div>
             </div>
+
+            {(passport.avg_first_payment_kes_per_kg || passport.avg_total_payout_kes_per_kg) && (
+              <div className="bg-[#0D0F14] border border-[#2A2D35] rounded-2xl p-5 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                  Financial Transparency
+                </h3>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  What farmers were actually paid for the cherry behind this lot —
+                  averaged across all contributing deliveries.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <StatCard
+                    label="Gate price paid"
+                    value={`KES ${passport.avg_first_payment_kes_per_kg ?? '—'}`}
+                    sub="Per kg cherry, at delivery"
+                  />
+                  {passport.avg_second_payment_kes_per_kg != null && (
+                    <StatCard
+                      label="Second payment"
+                      value={`KES ${passport.avg_second_payment_kes_per_kg}`}
+                      sub="Per kg cherry, post-auction bonus"
+                    />
+                  )}
+                  {passport.avg_total_payout_kes_per_kg != null && (
+                    <StatCard
+                      label="Total farmer return"
+                      value={`KES ${passport.avg_total_payout_kes_per_kg}`}
+                      sub="Per kg cherry, combined"
+                    />
+                  )}
+                  {passport.farmer_count != null && (
+                    <StatCard
+                      label="Farmers represented"
+                      value={passport.farmer_count.toLocaleString()}
+                      sub="Contributing this lot"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
 
             {sustain.total_plot_area_acres && (
               <StatCard

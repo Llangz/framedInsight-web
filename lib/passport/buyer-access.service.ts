@@ -32,7 +32,12 @@ export async function getBuyerDataRoom(token: string) {
 
   const { data: lot } = await admin
     .from('export_lots')
-    .select('*, cooperatives(cooperative_name, registration_number), coffee_passports(*)')
+    .select(`
+      *,
+      cooperatives(cooperative_name, registration_number),
+      coffee_passports(*),
+      export_lot_documents(id, document_type, document_label, file_name, file_size_bytes, uploaded_at, verified_at)
+    `)
     .eq('buyer_access_token', token)
     .is('buyer_access_revoked_at', null)
     .maybeSingle()
@@ -191,4 +196,55 @@ function emptyFeatureCollection(lot: any) {
     },
     features: [],
   }
+}
+
+// ── Buyer document download (signed URL) ──────────────────────────────────────
+// Same token-gated pattern as getBuyerDataRoom / getBuyerLotGeoJson: validates
+// the buyer_access_token, confirms the document belongs to that exact export
+// lot (not just any document in the system), then issues a short-lived
+// signed URL into the private 'export-lot-documents' bucket.
+
+export async function getBuyerDocumentDownloadUrl(token: string, documentId: string) {
+  const admin = await createAdminClient()
+  if (!admin) return null
+
+  const { data: lot } = await admin
+    .from('export_lots')
+    .select('id, export_lot_number, cooperative_id')
+    .eq('buyer_access_token', token)
+    .is('buyer_access_revoked_at', null)
+    .maybeSingle()
+
+  if (!lot) return null
+
+  const { data: doc } = await admin
+    .from('export_lot_documents')
+    .select('id, storage_path, file_name, document_type')
+    .eq('id', documentId)
+    .eq('export_lot_id', lot.id)
+    .maybeSingle()
+
+  if (!doc) return null
+
+  const { data: signed, error } = await admin.storage
+    .from('export-lot-documents')
+    .createSignedUrl(doc.storage_path, 60 * 5)
+
+  if (error || !signed) return null
+
+  await writeTraceabilityEventWithClient(admin, {
+    entityType: 'export_lot',
+    entityId: lot.id,
+    cooperativeId: lot.cooperative_id!,
+    eventType: 'buyer_document_downloaded',
+    actorName: 'buyer (token access)',
+    eventData: {
+      export_lot_number: lot.export_lot_number,
+      document_type: doc.document_type,
+      file_name: doc.file_name,
+      downloaded_at: new Date().toISOString(),
+    },
+  })
+
+  return { url: signed.signedUrl, fileName: doc.file_name }
 }

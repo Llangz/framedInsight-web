@@ -269,7 +269,68 @@ export async function updateLotProcessing(params: UpdateProcessingParams) {
   return { success: true as const, lot: data }
 }
 
-// ── Fetch all lots for this cooperative (list page) ──────────────────────────
+// ── Record cherry payment (gate price + second payment) ──────────────────────
+// Kenyan cooperatives typically pay farmers in two tranches: a gate price at
+// delivery (first_payment_kes_per_kg) and a bonus once the NCE auction
+// settles and net proceeds are distributed (second_payment_kes_per_kg, set
+// later — often months after the first payment). Both feed the passport's
+// Financial Transparency widget via v_export_lot_financial_summary.
+
+export interface RecordLotPaymentParams {
+  lotId: string
+  firstPaymentKesPerKg?: number
+  secondPaymentKesPerKg?: number
+  paymentSeason?: string   // e.g. '2025/2026'
+}
+
+export async function recordLotPayment(params: RecordLotPaymentParams) {
+  const access = await validateCoopAccess()
+  if (!access.success || !access.coopId) {
+    return { success: false as const, error: 'Unauthorized' }
+  }
+
+  if (
+    params.firstPaymentKesPerKg === undefined &&
+    params.secondPaymentKesPerKg === undefined &&
+    params.paymentSeason === undefined
+  ) {
+    return { success: false as const, error: 'No payment fields provided' }
+  }
+
+  const supabase = await createClient()
+
+  const { data: lot } = await supabase
+    .from('factory_intake_lots')
+    .select('id')
+    .eq('id', params.lotId)
+    .eq('cooperative_id', access.coopId)
+    .single()
+
+  if (!lot) return { success: false as const, error: 'Lot not found or unauthorized' }
+
+  const updates: FactoryIntakeLotUpdate = {
+    updated_at: new Date().toISOString(),
+  }
+  if (params.firstPaymentKesPerKg !== undefined) updates.first_payment_kes_per_kg = params.firstPaymentKesPerKg
+  if (params.secondPaymentKesPerKg !== undefined) updates.second_payment_kes_per_kg = params.secondPaymentKesPerKg
+  if (params.paymentSeason !== undefined) updates.payment_season = params.paymentSeason
+
+  const { data, error } = await supabase
+    .from('factory_intake_lots')
+    .update(updates)
+    .eq('id', params.lotId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('recordLotPayment error:', error)
+    return { success: false as const, error: error.message }
+  }
+
+  revalidatePath(`/dashboard/cooperative/intake/${params.lotId}`)
+  revalidatePath('/dashboard/cooperative/intake')
+  return { success: true as const, lot: data }
+}
 
 export async function getIntakeLots() {
   const access = await validateCoopAccess()
