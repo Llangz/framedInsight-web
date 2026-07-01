@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Users, MapPin, Warehouse, FileCheck,
   Settings, User, Bell, Menu, X, LogOut, Leaf, Building2,
-  Coffee, ClipboardList
+  Coffee, ClipboardList, Scale
 } from 'lucide-react'
 
 interface Props {
@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { label: 'Washing Stations', href: '/dashboard/cooperative/factories',      icon: Warehouse       },
   { label: 'Factory Intake',   href: '/dashboard/cooperative/intake',         icon: ClipboardList   },
   { label: 'EUDR Compliance',  href: '/dashboard/cooperative/eudr',           icon: FileCheck       },
+  { label: 'Legal Compliance', href: '/dashboard/cooperative/legality',       icon: Scale           },
   { label: 'Coffee Passports', href: '/dashboard/cooperative/passports',      icon: Coffee          },
 ]
 
