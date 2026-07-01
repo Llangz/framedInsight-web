@@ -12,15 +12,18 @@ import type { Metadata } from 'next'
 import {
   Award,
   CheckCircle2,
+  ClipboardList,
   Coffee,
   ExternalLink,
   FileCheck2,
   FileWarning,
   Globe2,
+  Info,
   KeyRound,
   Package,
   ShieldCheck,
   Ship,
+  XCircle,
 } from 'lucide-react'
 import { getBuyerDataRoom } from '@/lib/passport/buyer-access.service'
 
@@ -176,6 +179,105 @@ export default async function BuyerDataRoomPage({ params }: Props) {
             </div>
           </div>
         </section>
+
+        {/* ── Legal Compliance (EUDR Art 3b) ─────────────────────────────── */}
+        {(() => {
+          const legal = dataRoom.legality_declaration as any
+          if (!legal) return null
+          const items: { label: string; ok: boolean }[] = [
+            { label: 'AFA Milling License',       ok: !!legal.afa_milling_license_held },
+            { label: 'NSSF Compliant',            ok: !!legal.nssf_compliant },
+            { label: 'SHA / NHIF Compliant',      ok: !!legal.sha_compliant },
+            { label: 'Child Labour Policy',       ok: !!legal.child_labour_policy_in_place },
+            { label: 'Land Use Rights Confirmed', ok: !!legal.land_use_rights_confirmed },
+            { label: 'Third-Party Rights',        ok: !!legal.third_party_rights_confirmed },
+            { label: 'KRA Tax Compliant',         ok: !!legal.tax_compliant },
+          ]
+          const complete: number = legal.items_complete ?? items.filter(i => i.ok).length
+          const total: number    = legal.items_total   ?? 7
+          const fully: boolean   = legal.fully_declared ?? complete === total
+
+          return (
+            <section className="border border-[#2A2D35] bg-[#0D0F14] rounded-2xl p-5 space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.12em] text-zinc-400">
+                  <ClipboardList size={15} className="text-[#C9A96E]" />
+                  Legal Compliance — EUDR Art. 3(b)
+                </h2>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                  fully
+                    ? 'bg-emerald-950/40 border border-emerald-800/40 text-emerald-300'
+                    : 'bg-amber-950/40 border border-amber-700/40 text-amber-400'
+                }`}>
+                  {fully
+                    ? <><CheckCircle2 size={11} /> Fully declared</>
+                    : <><Info size={11} /> {complete}/{total} items</>}
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div>
+                <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
+                  <span>Self-declaration completeness</span>
+                  <span className="font-semibold text-zinc-300">{complete}/{total}</span>
+                </div>
+                <div className="h-2 bg-[#1A1D24] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${Math.round((complete / total) * 100)}%`,
+                      background: fully ? '#4A7C59' : '#C9A96E',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Item grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {items.map(item => (
+                  <div
+                    key={item.label}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
+                      item.ok
+                        ? 'bg-emerald-950/20 border-emerald-900/30 text-emerald-300'
+                        : 'bg-zinc-900/40 border-zinc-800/40 text-zinc-500'
+                    }`}
+                  >
+                    {item.ok
+                      ? <CheckCircle2 size={11} className="shrink-0" />
+                      : <XCircle      size={11} className="shrink-0" />}
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3 text-sm border-t border-[#1E2028] pt-4">
+                {legal.season && (
+                  <div>
+                    <span className="block text-xs text-zinc-500">Season attested</span>
+                    <span className="font-mono text-zinc-200">{legal.season}</span>
+                  </div>
+                )}
+                {legal.declared_at && (
+                  <div>
+                    <span className="block text-xs text-zinc-500">Declaration date</span>
+                    <span className="text-zinc-200">
+                      {new Date(legal.declared_at).toLocaleDateString('en-KE', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-zinc-600 leading-relaxed">
+                <Info size={10} className="inline mr-1 mb-0.5" />
+                This is a <strong className="text-zinc-500">self-declaration</strong> by the cooperative officer under EUDR Article 3(b).
+                It is not independently third-party verified. Conduct your own legal due diligence before filing your DDS.
+              </p>
+            </section>
+          )
+        })()}
 
         <section className="border border-[#2A2D35] bg-[#0D0F14] rounded-2xl p-5 space-y-4">
           <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.12em] text-zinc-400">

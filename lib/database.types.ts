@@ -4288,6 +4288,158 @@ export type Database = {
           },
         ]
       }
+      cooperative_legality_declarations: {
+        Row: {
+          afa_milling_license_expiry: string | null
+          afa_milling_license_held: boolean
+          afa_milling_license_number: string | null
+          child_labour_policy_in_place: boolean
+          child_labour_policy_notes: string | null
+          cooperative_id: string
+          created_at: string
+          declared_at: string | null
+          declared_by: string | null
+          id: string
+          kra_pin: string | null
+          land_use_rights_confirmed: boolean
+          land_use_rights_notes: string | null
+          notes: string | null
+          nssf_compliant: boolean
+          nssf_registration_number: string | null
+          season: string
+          sha_compliant: boolean
+          sha_registration_number: string | null
+          tax_compliant: boolean
+          third_party_rights_confirmed: boolean
+          updated_at: string
+        }
+        Insert: {
+          afa_milling_license_expiry?: string | null
+          afa_milling_license_held?: boolean
+          afa_milling_license_number?: string | null
+          child_labour_policy_in_place?: boolean
+          child_labour_policy_notes?: string | null
+          cooperative_id: string
+          created_at?: string
+          declared_at?: string | null
+          declared_by?: string | null
+          id?: string
+          kra_pin?: string | null
+          land_use_rights_confirmed?: boolean
+          land_use_rights_notes?: string | null
+          notes?: string | null
+          nssf_compliant?: boolean
+          nssf_registration_number?: string | null
+          season: string
+          sha_compliant?: boolean
+          sha_registration_number?: string | null
+          tax_compliant?: boolean
+          third_party_rights_confirmed?: boolean
+          updated_at?: string
+        }
+        Update: {
+          afa_milling_license_expiry?: string | null
+          afa_milling_license_held?: boolean
+          afa_milling_license_number?: string | null
+          child_labour_policy_in_place?: boolean
+          child_labour_policy_notes?: string | null
+          cooperative_id?: string
+          created_at?: string
+          declared_at?: string | null
+          declared_by?: string | null
+          id?: string
+          kra_pin?: string | null
+          land_use_rights_confirmed?: boolean
+          land_use_rights_notes?: string | null
+          notes?: string | null
+          nssf_compliant?: boolean
+          nssf_registration_number?: string | null
+          season?: string
+          sha_compliant?: boolean
+          sha_registration_number?: string | null
+          tax_compliant?: boolean
+          third_party_rights_confirmed?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cooperative_legality_declarations_cooperative_id_fkey"
+            columns: ["cooperative_id"]
+            isOneToOne: false
+            referencedRelation: "cooperatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      export_lot_documents: {
+        Row: {
+          cooperative_id: string
+          created_at: string
+          document_label: string | null
+          document_type: string
+          export_lot_id: string
+          file_name: string
+          file_size_bytes: number | null
+          id: string
+          mime_type: string | null
+          notes: string | null
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+          verified_at: string | null
+          verified_by_officer: string | null
+        }
+        Insert: {
+          cooperative_id: string
+          created_at?: string
+          document_label?: string | null
+          document_type: string
+          export_lot_id: string
+          file_name: string
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          verified_at?: string | null
+          verified_by_officer?: string | null
+        }
+        Update: {
+          cooperative_id?: string
+          created_at?: string
+          document_label?: string | null
+          document_type?: string
+          export_lot_id?: string
+          file_name?: string
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          verified_at?: string | null
+          verified_by_officer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "export_lot_documents_cooperative_id_fkey"
+            columns: ["cooperative_id"]
+            isOneToOne: false
+            referencedRelation: "cooperatives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_lot_documents_export_lot_id_fkey"
+            columns: ["export_lot_id"]
+            isOneToOne: false
+            referencedRelation: "export_lots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       factory_intake_lots: {
         Row: {
           clerk_name: string | null
@@ -4297,6 +4449,7 @@ export type Database = {
           drying_days: number | null
           factory_id: string
           fermentation_hours: number | null
+          first_payment_kes_per_kg: number | null
           harvest_year: number | null
           id: string
           intake_date: string
@@ -4306,10 +4459,12 @@ export type Database = {
           notes: string | null
           outturn_ratio: number | null
           parchment_kg: number | null
+          payment_season: string | null
           processing_start_date: string | null
           qr_code_data: string | null
           rejected_kg: number | null
           season: string | null
+          second_payment_kes_per_kg: number | null
           status: string
           total_cherry_kg: number | null
           total_farmers: number | null
@@ -4325,6 +4480,7 @@ export type Database = {
           drying_days?: number | null
           factory_id: string
           fermentation_hours?: number | null
+          first_payment_kes_per_kg?: number | null
           harvest_year?: number | null
           id?: string
           intake_date: string
@@ -4334,10 +4490,12 @@ export type Database = {
           notes?: string | null
           outturn_ratio?: number | null
           parchment_kg?: number | null
+          payment_season?: string | null
           processing_start_date?: string | null
           qr_code_data?: string | null
           rejected_kg?: number | null
           season?: string | null
+          second_payment_kes_per_kg?: number | null
           status?: string
           total_cherry_kg?: number | null
           total_farmers?: number | null
@@ -4353,6 +4511,7 @@ export type Database = {
           drying_days?: number | null
           factory_id?: string
           fermentation_hours?: number | null
+          first_payment_kes_per_kg?: number | null
           harvest_year?: number | null
           id?: string
           intake_date?: string
@@ -4362,10 +4521,12 @@ export type Database = {
           notes?: string | null
           outturn_ratio?: number | null
           parchment_kg?: number | null
+          payment_season?: string | null
           processing_start_date?: string | null
           qr_code_data?: string | null
-          rejected_kg?: number | null
+          rejected_kg?: string | null
           season?: string | null
+          second_payment_kes_per_kg?: number | null
           status?: string
           total_cherry_kg?: number | null
           total_farmers?: number | null
@@ -5401,10 +5562,15 @@ export type Database = {
           }
         ]
       }
-       v_passport_chain: {
+      v_passport_chain: {
         Row: {
+          afa_milling_license_held: boolean | null
+          avg_first_payment_kes_per_kg: number | null
+          avg_second_payment_kes_per_kg: number | null
+          avg_total_payout_kes_per_kg: number | null
           buyer_country: string | null
           buyer_name: string | null
+          child_labour_policy_in_place: boolean | null
           commissioner_ref: string | null
           cooperative_id: string | null
           cooperative_name: string | null
@@ -5414,9 +5580,18 @@ export type Database = {
           eudr_compliant: boolean | null
           eudr_dds_reference: string | null
           export_lot_number: string | null
+          farmer_count: number | null
           geo_summary: Json | null
           grade: string | null
+          land_use_rights_confirmed: boolean | null
+          legality_declared_at: string | null
+          legality_fully_declared: boolean | null
+          legality_items_complete: number | null
+          legality_items_total: number | null
+          legality_season: string | null
           net_weight_kg: number | null
+          nssf_compliant: boolean | null
+          outturn_ratio: number | null
           passport_code: string | null
           passport_id: string | null
           passport_status: string | null
@@ -5426,10 +5601,60 @@ export type Database = {
           registered_office: string | null
           registration_number: string | null
           sca_cupping_score: number | null
+          sha_compliant: boolean | null
           sub_county: string | null
           sustainability_metrics: Json | null
+          tax_compliant: boolean | null
+          third_party_rights_confirmed: boolean | null
           view_count: number | null
           ward: string | null
+        }
+        Relationships: []
+      }
+      v_export_lot_financial_summary: {
+        Row: {
+          avg_first_payment_kes_per_kg: number | null
+          avg_second_payment_kes_per_kg: number | null
+          avg_total_payout_kes_per_kg: number | null
+          cooperative_id: string | null
+          export_lot_id: string | null
+          export_lot_number: string | null
+          farmer_count: number | null
+          fob_price_usd_per_kg: number | null
+          net_weight_kg: number | null
+          outturn_ratio: number | null
+          total_cherry_kg_in: number | null
+          total_value_usd: number | null
+        }
+        Relationships: []
+      }
+      v_legality_declaration_summary: {
+        Row: {
+          afa_milling_license_expiry: string | null
+          afa_milling_license_held: boolean
+          afa_milling_license_number: string | null
+          child_labour_policy_in_place: boolean
+          child_labour_policy_notes: string | null
+          cooperative_id: string
+          created_at: string
+          declared_at: string | null
+          declared_by: string | null
+          fully_declared: boolean | null
+          id: string
+          items_complete: number | null
+          items_total: number | null
+          kra_pin: string | null
+          land_use_rights_confirmed: boolean
+          land_use_rights_notes: string | null
+          notes: string | null
+          nssf_compliant: boolean
+          nssf_registration_number: string | null
+          season: string
+          sha_compliant: boolean
+          sha_registration_number: string | null
+          tax_compliant: boolean
+          third_party_rights_confirmed: boolean
+          updated_at: string
         }
         Relationships: []
       }
@@ -5488,6 +5713,10 @@ export type Database = {
           p_phone: string
         }
         Returns: string
+      }
+      increment_passport_view_count: {
+        Args: { p_passport_code: string }
+        Returns: undefined
       }
     }
     Enums: {

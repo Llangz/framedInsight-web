@@ -14,7 +14,7 @@ import dynamic from 'next/dynamic'
 import {
   MapPin, Leaf, Award, Users, Sprout, Package,
   Ship, Coffee, CheckCircle, XCircle, Globe,
-  ChevronRight, Info, BarChart2, Layers, ShieldCheck, Building2
+  ChevronRight, Info, BarChart2, Layers, ShieldCheck, Building2, FileText
 } from 'lucide-react'
 import { verifyChain, type LedgerVerificationResult } from './verify-ledger'
 
@@ -588,6 +588,73 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
                 value={`${sustain.total_plot_area_acres} ac`}
                 sub={`${(sustain.total_plot_area_acres * 0.4047).toFixed(1)} hectares`}
               />
+            )}
+
+            {/* ── Legal Compliance Panel ── */}
+            {passport.legality_items_complete != null && (
+              <div className="bg-[#0D0F14] border border-[#2A2D35] rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                    <FileText size={12} className="text-[#C9A96E]" />
+                    Legal Compliance
+                  </h3>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                    passport.legality_fully_declared
+                      ? 'bg-[#4A7C59]/20 border border-[#4A7C59]/40 text-[#7EC49A]'
+                      : 'bg-amber-900/20 border border-amber-700/40 text-amber-400'
+                  }`}>
+                    {passport.legality_fully_declared
+                      ? <><CheckCircle size={10} /> Fully declared</>  
+                      : <><Info size={10} /> {passport.legality_items_complete}/{passport.legality_items_total} declared</>}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div>
+                  <div className="flex justify-between text-[10px] text-zinc-500 mb-1.5">
+                    <span>Self-declaration completeness</span>
+                    <span className="font-semibold text-zinc-300">
+                      {passport.legality_items_complete}/{passport.legality_items_total}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-[#1A1D24] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.round((passport.legality_items_complete / passport.legality_items_total) * 100)}%`,
+                        background: passport.legality_fully_declared ? '#4A7C59' : '#C9A96E',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Compliance markers */}
+                <div className="flex flex-wrap gap-2">
+                  <Badge label="AFA Milling License"        ok={!!passport.afa_milling_license_held} />
+                  <Badge label="NSSF Compliant"             ok={!!passport.nssf_compliant} />
+                  <Badge label="SHA / NHIF Compliant"       ok={!!passport.sha_compliant} />
+                  <Badge label="Child Labour Policy"        ok={!!passport.child_labour_policy_in_place} />
+                  <Badge label="Land Use Rights Confirmed"  ok={!!passport.land_use_rights_confirmed} />
+                  <Badge label="Third-Party Rights"         ok={!!passport.third_party_rights_confirmed} />
+                  <Badge label="KRA Tax Compliant"          ok={!!passport.tax_compliant} />
+                </div>
+
+                {passport.legality_season && (
+                  <p className="text-[10px] text-zinc-600">
+                    Season attested: <span className="text-zinc-500 font-mono">{passport.legality_season}</span>
+                    {passport.legality_declared_at && (
+                      <> · {new Date(passport.legality_declared_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</>
+                    )}
+                  </p>
+                )}
+
+                <p className="text-[10px] text-zinc-600 leading-relaxed border-t border-[#1E2028] pt-3">
+                  <Info size={9} className="inline mr-1 mb-0.5" />
+                  This is a <strong className="text-zinc-500">self-declaration</strong> by the cooperative officer — it is not independently
+                  third-party verified. It supports EUDR Article 3(b) ("legally produced") due diligence and is recorded
+                  on the framedInsight immutable ledger.
+                </p>
+              </div>
             )}
           </>
         )}

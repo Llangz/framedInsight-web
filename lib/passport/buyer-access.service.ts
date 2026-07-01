@@ -48,6 +48,34 @@ export async function getBuyerDataRoom(token: string) {
     return null
   }
 
+  // Fetch the cooperative's most-recent legality self-declaration.
+  // Uses the service-role client (bypasses RLS) — consistent with the rest
+  // of this function. The view already orders by declared_at DESC.
+  const { data: legalityRows } = await admin
+    .from('v_legality_declaration_summary' as any)
+    .select(`
+      season,
+      afa_milling_license_held,
+      nssf_compliant,
+      sha_compliant,
+      child_labour_policy_in_place,
+      land_use_rights_confirmed,
+      third_party_rights_confirmed,
+      tax_compliant,
+      items_complete,
+      items_total,
+      fully_declared,
+      declared_at,
+      notes
+    `)
+    .eq('cooperative_id', lot.cooperative_id)
+    .order('declared_at' as any, { ascending: false })
+    .limit(1)
+
+  const legality_declaration = (legalityRows && legalityRows.length > 0)
+    ? (legalityRows[0] as any)
+    : null
+
   await writeTraceabilityEventWithClient(admin, {
     entityType: 'export_lot',
     entityId: lot.id,
@@ -57,7 +85,7 @@ export async function getBuyerDataRoom(token: string) {
     eventData: { accessed_at: new Date().toISOString() },
   })
 
-  return lot
+  return { ...lot, legality_declaration }
 }
 
 export async function getBuyerLotGeoJson(token: string) {

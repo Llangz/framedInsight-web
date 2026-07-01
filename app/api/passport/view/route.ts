@@ -1,12 +1,17 @@
-// app/api/passport/[passportCode]/view/route.ts
+// app/api/passport/view/route.ts
 //
 // Lightweight, always-dynamic endpoint for incrementing a passport's
 // view_count. Called client-side (fire-and-forget) from PassportClient.tsx
 // so that counting isn't defeated by the edge cache on the public passport
 // page (revalidate = 3600 there). This route has no cache headers and is
 // never statically rendered.
+//
+// NOTE: This route is intentionally NOT under [passportCode] — it receives
+// the passport_code in the request body from the client component, so no
+// dynamic segment is needed here. The endpoint is:
+//   POST /api/passport/view  { passportCode: string }
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import type { Database } from '@/lib/database.types'
 
 async function createAdminClient() {
@@ -22,12 +27,18 @@ async function createAdminClient() {
   })
 }
 
-interface Props {
-  params: Promise<{ passportCode: string }>
-}
+export async function POST(req: NextRequest) {
+  let passportCode: string | undefined
+  try {
+    const body = await req.json()
+    passportCode = body?.passportCode
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 })
+  }
 
-export async function POST(_req: Request, { params }: Props) {
-  const { passportCode } = await params
+  if (!passportCode) {
+    return NextResponse.json({ ok: false, error: 'Missing passportCode' }, { status: 400 })
+  }
 
   const admin = await createAdminClient()
   if (!admin) {
