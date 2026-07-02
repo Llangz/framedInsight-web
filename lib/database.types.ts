@@ -4377,7 +4377,7 @@ export type Database = {
           created_at: string
           document_label: string | null
           document_type: string
-          export_lot_id: string
+          export_lot_id: string | null
           file_name: string
           file_size_bytes: number | null
           id: string
@@ -4394,7 +4394,7 @@ export type Database = {
           created_at?: string
           document_label?: string | null
           document_type: string
-          export_lot_id: string
+          export_lot_id?: string | null
           file_name: string
           file_size_bytes?: number | null
           id?: string
@@ -4411,7 +4411,7 @@ export type Database = {
           created_at?: string
           document_label?: string | null
           document_type?: string
-          export_lot_id?: string
+          export_lot_id?: string | null
           file_name?: string
           file_size_bytes?: number | null
           id?: string

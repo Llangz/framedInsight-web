@@ -122,7 +122,11 @@ export async function getBuyerLotGeoJson(token: string) {
     .select('id, batch_number, intake_lot_id')
     .in('id', batchIds)
 
-  const intakeLotIds = Array.from(new Set((batches ?? []).map(batch => batch.intake_lot_id).filter(Boolean)))
+  const intakeLotIds = Array.from(new Set(
+    (batches ?? [])
+      .map(batch => batch.intake_lot_id)
+      .filter((id): id is string => id != null)
+  ))
   if (intakeLotIds.length === 0) return { lot, geoJson: emptyFeatureCollection(lot) }
 
   const { data: deliveries } = await admin

@@ -159,17 +159,19 @@ export async function verifyDocument(documentId: string) {
     return { success: false as const, error: error?.message ?? 'Document not found' }
   }
 
-  await writeTraceabilityEvent({
-    entityType: 'export_lot',
-    entityId: doc.export_lot_id,
-    cooperativeId: access.coopId,
-    actorUserId: access.userId,
-    eventType: 'export_lot_document_verified',
-    eventData: {
-      document_type: doc.document_type,
-      file_name: doc.file_name,
-    },
-  })
+  if (doc.export_lot_id) {
+    await writeTraceabilityEvent({
+      entityType: 'export_lot',
+      entityId: doc.export_lot_id,
+      cooperativeId: access.coopId,
+      actorUserId: access.userId,
+      eventType: 'export_lot_document_verified',
+      eventData: {
+        document_type: doc.document_type,
+        file_name: doc.file_name,
+      },
+    })
+  }
 
   revalidatePath(`/dashboard/cooperative/intake/export-lots`)
   return { success: true as const, document: doc }
@@ -211,17 +213,19 @@ export async function deleteExportLotDocument(documentId: string) {
     return { success: false as const, error: error.message }
   }
 
-  await writeTraceabilityEvent({
-    entityType: 'export_lot',
-    entityId: doc.export_lot_id,
-    cooperativeId: access.coopId,
-    actorUserId: access.userId,
-    eventType: 'export_lot_document_deleted',
-    eventData: {
-      document_type: doc.document_type,
-      file_name: doc.file_name,
-    },
-  })
+  if (doc.export_lot_id) {
+    await writeTraceabilityEvent({
+      entityType: 'export_lot',
+      entityId: doc.export_lot_id,
+      cooperativeId: access.coopId,
+      actorUserId: access.userId,
+      eventType: 'export_lot_document_deleted',
+      eventData: {
+        document_type: doc.document_type,
+        file_name: doc.file_name,
+      },
+    })
+  }
 
   revalidatePath(`/dashboard/cooperative/intake/export-lots`)
   return { success: true as const }

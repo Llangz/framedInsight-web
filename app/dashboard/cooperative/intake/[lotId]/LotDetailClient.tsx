@@ -60,6 +60,9 @@ interface Lot {
   status: string
   clerk_name: string | null
   notes: string | null
+  first_payment_kes_per_kg: number | null
+  second_payment_kes_per_kg: number | null
+  payment_season: string | null
   coop_factories?: { factory_name: string; factory_code: string | null } | null
 }
 
