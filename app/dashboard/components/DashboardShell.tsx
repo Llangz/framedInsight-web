@@ -42,7 +42,14 @@ export default function DashboardShell({ children, farmName, farmId, subInfo }: 
   const supabase = createClient()
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/auth/login')
+    // Hard navigation, not router.push(). router.push() is a soft
+    // client-side transition that leaves the Next.js Router Cache (and
+    // potentially the browser's bfcache) holding the previous, now-stale
+    // authenticated render — pressing Back after logout could briefly
+    // flash cached dashboard content before a fresh unauthenticated
+    // request lands. window.location.href forces a full reload, which
+    // discards all client-side cache along with the session.
+    window.location.href = '/auth/login'
   }
 
   const isActive   = (href: string) => pathname === href || (href !== '/dashboard' && pathname.startsWith(href))

@@ -10,6 +10,7 @@ import { PhoneInput } from '@/components/auth/PhoneInput'
 import { validateKenyanPhone } from '@/lib/validation'
 import { supabase } from '@/lib/supabase'
 import { sendPhoneOTP } from '@/lib/auth'
+import { getFarmStatus } from '@/lib/get-farm-status'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -44,6 +45,27 @@ export default function LoginPage() {
         return
       }
 
+      // ── Pre-flight rate limit check ─────────────────────────────────
+      // Previously absent: this path had no throttling at all, unlike
+      // send-otp/verify-otp. See app/api/auth/login-rate-limit/route.ts.
+      try {
+        const rlResponse = await fetch('/api/auth/login-rate-limit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: validation.formatted }),
+        })
+        if (!rlResponse.ok) {
+          const rlData = await rlResponse.json().catch(() => ({}))
+          setError(rlData.error || 'Too many attempts. Please try again shortly.')
+          setLoading(false)
+          return
+        }
+      } catch {
+        // If the rate-limit check itself fails to reach the server, don't
+        // block login on it — fail open here specifically because this is
+        // defense-in-depth, not the primary auth check.
+      }
+
       // 1. Password Login
       // We map the phone number to the ghost email format used during signup
       const digitsOnly = validation.formatted.replace(/\D/g, '')
@@ -60,16 +82,21 @@ export default function LoginPage() {
         return
       }
 
-      // Check if user has a farm to redirect appropriately
-      const { data: managers } = await supabase
-        .from('farm_managers')
-        .select('farm_id')
-        .eq('user_id', data.user.id)
+      // ── Canonical farm-status check ───────────────────────────────────
+      // Previously: `const { data: managers } = await supabase.from(...)`.
+      // with no error handling — a failed query silently sent an existing
+      // farmer to /onboarding instead of /dashboard. Now: only redirect to
+      // onboarding on a DEFINITIVE "no farm" result. On 'unknown' (query
+      // failed), still go to /dashboard — its layout runs the same check
+      // server-side and shows a proper retry screen instead of offering to
+      // re-onboard. This is deliberate: re-onboarding an existing farm is a
+      // much more destructive failure mode than a momentary "please retry."
+      const farmStatus = await getFarmStatus(supabase, data.user.id)
 
-      if (managers && managers.length > 0) {
-        router.push('/dashboard')
-      } else {
+      if (farmStatus.state === 'no_farm') {
         router.push('/onboarding')
+      } else {
+        router.push('/dashboard')
       }
 
     } else {
@@ -87,7 +114,6 @@ export default function LoginPage() {
       // Ensure any stale signup data is aggressively cleared before navigating to verify
       // to prevent the duplicate farm creation bug (farms_phone_key constraint).
       sessionStorage.removeItem('signupData')
-      console.log('📱 Stored login phone:', validation.formatted)
 
       router.push(`/auth/verify`)
     }

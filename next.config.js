@@ -62,6 +62,30 @@ const nextConfig = {
 },
         ],
       },
+      {
+        // Authenticated, farm-scoped routes — never let a shared cache or
+        // the browser's back/forward cache serve a rendered response after
+        // the session that produced it is gone (e.g. immediately after
+        // logout). These routes are already dynamically rendered per user;
+        // this header just makes sure nothing in between (CDN, browser)
+        // decides to reuse a previous response.
+        source: '/dashboard/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/onboarding/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, must-revalidate',
+          },
+        ],
+      },
     ]
   },
 }

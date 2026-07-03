@@ -35,7 +35,10 @@ export default function CoopDashboardShell({ children, coopName }: Props) {
   const supabase = createClient()
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/auth/login')
+    // See DashboardShell.tsx for why this is a hard navigation, not
+    // router.push() — avoids serving stale cached dashboard content on
+    // browser Back after logout.
+    window.location.href = '/auth/login'
   }
 
   const isActive = (href: string) => {

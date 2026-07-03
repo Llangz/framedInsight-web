@@ -5,6 +5,7 @@ import { createFarmAction } from './actions'
 import type { Enterprise } from '@/lib/create-farm'
 import { useRouter } from 'next/navigation'
 import { getCounties, getConstituencies, getWards } from '@/lib/kenya-locations'
+import { getFarmStatus } from '@/lib/get-farm-status'
 
 type OnboardingStep = 'farm_info' | 'location' | 'enterprises' | 'creating'
 
@@ -17,7 +18,14 @@ export default function OnboardingPage() {
   // resolving to a different user id than the one originally linked to the
   // farm) leads straight into "Finish Setup" trying to create a duplicate
   // farm and crashing on the unique phone constraint.
+  //
+  // checkingExisting: true while we're resolving farm status.
+  // checkError: set when the check itself fails (network/transient) — in
+  // that case we do NOT fall through to showing the onboarding form, since
+  // that was exactly how an existing farmer could end up re-submitting
+  // onboarding. We show a retry screen instead.
   const [checkingExisting, setCheckingExisting] = useState(true)
+  const [checkError, setCheckError] = useState<string | null>(null)
 
   const [step, setStep] = useState<OnboardingStep>('farm_info')
   const [formData, setFormData] = useState({
@@ -48,26 +56,36 @@ export default function OnboardingPage() {
         return
       }
 
-      // .maybeSingle(), not .single() — zero rows is the expected, common
-      // case here (a genuinely new user) and should not be treated as an error.
-      const { data: fm } = await supabase
-        .from('farm_managers')
-        .select('farm_id')
-        .eq('user_id', user.id)
-        .maybeSingle()
+      const farmStatus = await getFarmStatus(supabase, user.id)
 
       if (!active) return
 
-      if (fm?.farm_id) {
+      if (farmStatus.state === 'has_farm') {
         router.replace('/dashboard')
         return
       }
 
+      if (farmStatus.state === 'unknown') {
+        console.error('[Onboarding] Could not verify farm status:', farmStatus.reason, '| user:', user.id)
+        setCheckError(farmStatus.reason)
+        setCheckingExisting(false)
+        return
+      }
+
+      // state === 'no_farm' — genuinely a new user, show the form
       setCheckingExisting(false)
     })()
 
     return () => { active = false }
   }, [])
+
+  const retryCheck = () => {
+    setCheckError(null)
+    setCheckingExisting(true)
+    // Re-run the effect by forcing a reload of just this check — simplest
+    // reliable way without restructuring the effect into a named callback.
+    window.location.reload()
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -132,6 +150,27 @@ export default function OnboardingPage() {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4">
         <div className="w-10 h-10 border-2 border-neutral-800 border-t-green-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (checkError) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center space-y-4">
+          <h1 className="text-xl font-bold">Couldn't verify your account</h1>
+          <p className="text-neutral-400 text-sm">
+            We couldn't confirm whether you already have a farm set up. This is
+            usually temporary — please retry rather than filling out the form
+            again, so we don't risk creating a duplicate.
+          </p>
+          <button
+            onClick={retryCheck}
+            className="w-full py-3 px-6 bg-white hover:bg-neutral-200 text-neutral-950 font-bold rounded-xl transition-all"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     )
   }

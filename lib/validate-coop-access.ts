@@ -19,13 +19,19 @@ export async function validateCoopAccess(): Promise<CoopAccessResult> {
   }
 
   // Get user's cooperative membership
+  // Changed .single() to .maybeSingle() to gracefully handle users who are not cooperative officers
   const { data: officer, error } = await supabase
     .from('cooperative_officers')
     .select('cooperative_id, role')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle() // <<-- Changed here
 
-  if (error || !officer) {
+  if (error) { // Log database errors, but don't treat 'no record found' as an error here
+    console.error("Error fetching cooperative officer:", error)
+    return { success: false, error: error.message }
+  }
+
+  if (!officer) { // User is authenticated but not a cooperative officer
     return { success: false, error: 'No cooperative membership found' }
   }
 
