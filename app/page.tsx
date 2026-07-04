@@ -3,6 +3,7 @@ import { Hero } from '@/components/features/Hero'
 import { HowItWorks } from '@/components/features/HowItWorks'
 import { Features } from '@/components/features/Features'
 import { EUDRSection } from '@/components/features/EUDRSection'
+import { TraceabilitySection } from '@/components/features/TraceabilitySection'
 import { Testimonials } from '@/components/features/Testimonials'
 import { Pricing } from '@/components/features/Pricing'
 import { CTA } from '@/components/features/CTA'
@@ -25,6 +26,9 @@ export default function HomePage() {
       
       {/* EUDR Compliance */}
       <EUDRSection />
+
+      {/* Coffee Digital Passport — buyer/importer-facing traceability */}
+      <TraceabilitySection />
       
       {/* Testimonials */}
       <Testimonials />

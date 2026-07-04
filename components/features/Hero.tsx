@@ -1,12 +1,12 @@
 import Link from 'next/link'
-import { Lock, Smartphone, CreditCard, ShieldCheck, ArrowRight, MessageSquare, Satellite, Bot, Bird } from 'lucide-react'
+import { Lock, Smartphone, CreditCard, ShieldCheck, ArrowRight, MessageSquare, Satellite, Bot, Bird, Fingerprint } from 'lucide-react'
 
 const trustBadges = [
   { icon: Lock,        label: 'Data Protected'  },
   { icon: Smartphone,  label: 'Any Phone'       },
   { icon: CreditCard,  label: 'M-PESA Ready'    },
   { icon: ShieldCheck, label: 'EUDR Compliant'  },
-  { icon: Bird,        label: 'Poultry Ready'   },
+  { icon: Fingerprint, label: 'Buyer-Verifiable Origin' },
 ]
 
 const chatMessages = [
@@ -39,6 +39,14 @@ export function Hero() {
             Record milk, log egg production, report diseases, and get expert AI advice — all
             through WhatsApp. Dairy, coffee, small ruminants, poultry, and cooperative management
             in one platform. No app download. Just your phone.
+          </p>
+
+          <p className="mt-3 text-sm text-zinc-500 leading-relaxed max-w-xl">
+            Coffee cooperatives get more: every export lot can carry a{' '}
+            <Link href="#trace" className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-800">
+              Coffee Digital Passport
+            </Link>{' '}
+            — a verifiable, EUDR-ready origin record your buyers can check for themselves.
           </p>
 
           {/* Stats row */}

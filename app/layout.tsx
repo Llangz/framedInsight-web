@@ -6,10 +6,10 @@ import { WhatsAppButton } from '@/components/ui/WhatsAppButton'
 
 export const metadata: Metadata = {
   title: {
-    default: 'framedInsight | Farm Management for Kenyan Farmers',
+    default: 'framedInsight | Farm Management & Coffee Traceability for Kenya',
     template: '%s | framedInsight',
   },
-  description: 'Manage your dairy, coffee, and livestock farm through WhatsApp. GPS mapping, satellite monitoring, and AI expert advice — built for Kenya.',
+  description: 'Manage your dairy, coffee, and livestock farm through WhatsApp — and give coffee buyers a verifiable Digital Passport of every export lot\u2019s origin. GPS mapping, EUDR compliance, and AI expert advice, built for Kenya.',
   keywords: [
     'farm management',
     'agriculture',
@@ -18,6 +18,8 @@ export const metadata: Metadata = {
     'AI',
     'EUDR',
     'coffee',
+    'coffee traceability',
+    'coffee digital passport',
     'dairy',
     'livestock',
     'crop monitoring',
@@ -38,8 +40,8 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: 'framedInsight — Farm Management',
-    description: 'WhatsApp-powered farm management with satellite monitoring for Kenyan farmers.',
+    title: 'framedInsight — Farm Management & Coffee Traceability',
+    description: 'WhatsApp-powered farm management for Kenyan farmers, and a verifiable Coffee Digital Passport for the buyers who source from them.',
     type: 'website',
     locale: 'en_US',
     url: 'https://framed-insight-web.vercel.app',
@@ -49,14 +51,14 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'framedInsight Farm Management',
+        alt: 'framedInsight — Farm Management & Coffee Traceability',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'framedInsight — Farm Management',
-    description: 'WhatsApp-powered farm management with satellite monitoring for Kenyan farmers.',
+    title: 'framedInsight — Farm Management & Coffee Traceability',
+    description: 'WhatsApp-powered farm management for Kenyan farmers, and a verifiable Coffee Digital Passport for the buyers who source from them.',
     images: ['/og-image.png'],
   },
   icons: {
