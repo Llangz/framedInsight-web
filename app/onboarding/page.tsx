@@ -6,6 +6,7 @@ import type { Enterprise } from '@/lib/create-farm'
 import { useRouter } from 'next/navigation'
 import { getCounties, getConstituencies, getWards } from '@/lib/kenya-locations'
 import { getFarmStatus } from '@/lib/get-farm-status'
+import { AccountIssueScreen } from '@/components/ui/AccountIssueScreen'
 
 type OnboardingStep = 'farm_info' | 'location' | 'enterprises' | 'creating'
 
@@ -26,6 +27,11 @@ export default function OnboardingPage() {
   // onboarding. We show a retry screen instead.
   const [checkingExisting, setCheckingExisting] = useState(true)
   const [checkError, setCheckError] = useState<string | null>(null)
+  // Set only for the 'ambiguous' farm-status case (2+ real farms already
+  // linked to this account) — this is the one case where showing the
+  // onboarding form at all would make things worse (a 3rd farm), so it
+  // gets its own blocking screen rather than falling through below.
+  const [blockedReason, setBlockedReason] = useState<string | null>(null)
 
   const [step, setStep] = useState<OnboardingStep>('farm_info')
   const [formData, setFormData] = useState({
@@ -68,6 +74,16 @@ export default function OnboardingPage() {
       if (farmStatus.state === 'unknown') {
         console.error('[Onboarding] Could not verify farm status:', farmStatus.reason, '| user:', user.id)
         setCheckError(farmStatus.reason)
+        setCheckingExisting(false)
+        return
+      }
+
+      if (farmStatus.state === 'ambiguous') {
+        // Already linked to 2+ real farms — showing the form here would
+        // create a 3rd. This needs a person to sort out which farm(s) are
+        // correct, not another onboarding pass.
+        console.error('[Onboarding] Ambiguous farm status, blocking form:', farmStatus.reason, '| user:', user.id)
+        setBlockedReason(farmStatus.reason)
         setCheckingExisting(false)
         return
       }
@@ -156,22 +172,29 @@ export default function OnboardingPage() {
 
   if (checkError) {
     return (
-      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center space-y-4">
-          <h1 className="text-xl font-bold">Couldn't verify your account</h1>
-          <p className="text-neutral-400 text-sm">
-            We couldn't confirm whether you already have a farm set up. This is
-            usually temporary — please retry rather than filling out the form
-            again, so we don't risk creating a duplicate.
-          </p>
-          <button
-            onClick={retryCheck}
-            className="w-full py-3 px-6 bg-white hover:bg-neutral-200 text-neutral-950 font-bold rounded-xl transition-all"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <AccountIssueScreen
+        title="Couldn't verify your account"
+        message="We couldn't confirm whether you already have a farm set up. This is usually temporary — please retry rather than filling out the form again, so we don't risk creating a duplicate. If it keeps happening, contact support instead."
+        actions={[
+          { label: 'Retry', onClick: retryCheck, variant: 'primary' },
+          { label: 'Contact support', href: '/contact', variant: 'secondary' },
+        ]}
+        diagnostic={checkError}
+      />
+    )
+  }
+
+  if (blockedReason) {
+    return (
+      <AccountIssueScreen
+        title="Your account is linked to multiple farms"
+        message="We found more than one farm already linked to your account, so we can't safely start a new setup here — that would add a third. Contact support and we'll get this sorted out."
+        actions={[
+          { label: 'Contact support', href: '/contact', variant: 'primary' },
+        ]}
+        diagnostic={blockedReason}
+        tone="notice"
+      />
     )
   }
 

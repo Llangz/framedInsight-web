@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getSubscriptionInfo } from '@/lib/subscription'
 import { getFarmStatus } from '@/lib/get-farm-status'
+import { AccountIssueScreen } from '@/components/ui/AccountIssueScreen'
 import DashboardShell from './components/DashboardShell'
 import CoopDashboardShell from './components/CoopDashboardShell'
 
@@ -52,26 +53,60 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (farmStatus.state === 'unknown') {
     console.error('[DashboardLayout] Could not verify farm status:', farmStatus.reason, '| user:', user.id)
     return (
-      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center space-y-4">
-          <div className="w-10 h-10 mx-auto border-2 border-neutral-800 border-t-red-500 rounded-full" />
-          <h1 className="text-xl font-bold">Couldn't verify your account</h1>
-          <p className="text-neutral-400 text-sm">
-            Something went wrong loading your farm. This is usually temporary —
-            please try again in a moment.
-          </p>
-          <a
-            href="/dashboard"
-            className="inline-block px-6 py-3 bg-white text-neutral-950 font-bold rounded-xl hover:bg-neutral-200 transition-all"
-          >
-            Retry
-          </a>
-        </div>
-      </div>
+      <AccountIssueScreen
+        title="Couldn't verify your account"
+        message="Something went wrong loading your farm. This is usually temporary — retrying resolves it in most cases. If it keeps happening, reach out and we'll sort it out from our side."
+        actions={[
+          { label: 'Retry', href: '/dashboard', variant: 'primary' },
+          { label: 'Contact support', href: '/contact', variant: 'secondary' },
+        ]}
+        diagnostic={farmStatus.reason}
+      />
     )
   }
 
   if (farmStatus.state === 'no_farm') redirect('/onboarding')
+
+  // Every farm_managers row for this user points at a farm that no longer
+  // exists. Not a "retry" problem, and not safe to just link to /onboarding
+  // directly either — see lib/create-farm.ts / the create_farm_with_manager
+  // RPC (supabase/migrations/20260704b_...) for why onboarding now cleans
+  // these rows up itself before creating a new farm, which is what makes
+  // this button safe rather than compounding the problem.
+  if (farmStatus.state === 'orphaned') {
+    console.error('[DashboardLayout] Orphaned farm_managers row(s):', farmStatus.reason, '| user:', user.id)
+    return (
+      <AccountIssueScreen
+        title="We couldn't find your farm"
+        message="Your account is linked to a farm record that no longer exists. This can happen after account recovery or a data cleanup. You can set up a new farm now — it only takes a minute — or contact support if you expected your existing data to still be here."
+        actions={[
+          { label: 'Set Up My Farm', href: '/onboarding', variant: 'primary' },
+          { label: 'Contact support', href: '/contact', variant: 'secondary' },
+        ]}
+        diagnostic={farmStatus.reason}
+        tone="notice"
+      />
+    )
+  }
+
+  // 2+ rows, all pointing at real, distinct farms. Either intentional
+  // (genuinely managing multiple farms) or a leftover duplicate — this
+  // resolver deliberately doesn't guess which farm to show. There's no
+  // farm-switcher UI yet, so this needs a person to sort out.
+  if (farmStatus.state === 'ambiguous') {
+    console.error('[DashboardLayout] Ambiguous farm status:', farmStatus.reason, '| user:', user.id)
+    return (
+      <AccountIssueScreen
+        title="Your account is linked to multiple farms"
+        message="We found more than one farm linked to your account and can't tell which one to show yet. Contact support and we'll get this sorted and pick the right one — or split them apart if that's what you need."
+        actions={[
+          { label: 'Contact support', href: '/contact', variant: 'primary' },
+        ]}
+        diagnostic={farmStatus.reason}
+        tone="notice"
+      />
+    )
+  }
 
   const { data: farm } = await supabase
     .from('farms')
@@ -79,22 +114,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .eq('id', farmStatus.farmId)
     .single()
 
-  // A farm_managers row pointing at a farm that no longer exists is a data
-  // integrity problem, not a "go fill out onboarding again" problem — surface
-  // it the same way as the unknown-status case rather than silently offering
-  // to create a duplicate farm.
+  // Should be unreachable now that getFarmStatus() confirms the farm exists
+  // before returning 'has_farm' — kept as a last-resort guard rather than
+  // trusting that invariant blindly (e.g. the farm could be deleted in the
+  // instant between the two queries).
   if (!farm) {
-    console.error('[DashboardLayout] farm_managers row has no matching farm:', farmStatus.farmId, '| user:', user.id)
+    console.error('[DashboardLayout] farm disappeared between status check and fetch:', farmStatus.farmId, '| user:', user.id)
     return (
-      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center space-y-4">
-          <h1 className="text-xl font-bold">We couldn't load your farm</h1>
-          <p className="text-neutral-400 text-sm">
-            Please contact support — your account is linked to a farm record
-            that could not be found.
-          </p>
-        </div>
-      </div>
+      <AccountIssueScreen
+        title="We couldn't load your farm"
+        message="Your farm record couldn't be loaded just now. Retrying usually resolves this — if it doesn't, contact support and mention the reference below."
+        actions={[
+          { label: 'Retry', href: '/dashboard', variant: 'primary' },
+          { label: 'Contact support', href: '/contact', variant: 'secondary' },
+        ]}
+        diagnostic={`farm_id=${farmStatus.farmId}`}
+      />
     )
   }
 

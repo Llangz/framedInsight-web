@@ -24,6 +24,71 @@ export async function createFarmOnSignup(params: CreateFarmParams): Promise<Farm
   const supabase = await createClient()
 
   try {
+    // 0. Defensive pre-check — see lib/get-farm-status.ts for the full
+    // context. `farm_managers` has no unique constraint on `user_id` alone
+    // and no FK from `farm_id` to `farms.id`, so inserting here without
+    // checking first is how a user ends up with 2+ farm_managers rows,
+    // which breaks every `.single()`/`.maybeSingle()` query keyed on
+    // user_id across the app (including this user's own dashboard).
+    //
+    // - If the user already has a farm_managers row pointing at a farm
+    //   that STILL EXISTS, refuse — this is not a legitimate "create my
+    //   first farm" call, and proceeding would create a second farm the
+    //   UI has no way to disambiguate later. The caller (onboarding page)
+    //   should not have reached this point in that case, but we don't
+    //   trust that invariant blindly.
+    // - If the user has row(s) pointing at farms that no longer exist
+    //   (orphaned — e.g. left over from an earlier bug, or a farm that
+    //   was deleted), delete those stale rows first, then proceed. This
+    //   is what makes it safe to send a user with only orphaned rows
+    //   straight to onboarding instead of to a dead-end support screen.
+    const { data: managerRows, error: managerError } = await supabase
+      .from('farm_managers')
+      .select('farm_id')
+      .eq('user_id', params.userId)
+
+    if (managerError) {
+      return { success: false, error: `Could not verify existing farm links: ${managerError.message}` }
+    }
+
+    const farmIds = Array.from(new Set((managerRows ?? []).map((r: any) => r.farm_id)))
+
+    let existingIds = new Set<string>()
+    if (farmIds.length > 0) {
+      const { data: existingFarms, error: farmsError } = await supabase
+        .from('farms')
+        .select('id')
+        .in('id', farmIds)
+
+      if (farmsError) {
+        return { success: false, error: `Could not verify existing farm links: ${farmsError.message}` }
+      }
+      existingIds = new Set((existingFarms ?? []).map((f: any) => f.id))
+    }
+
+    const liveRows = (managerRows ?? []).filter((r: any) => existingIds.has(r.farm_id))
+    const staleRows = (managerRows ?? []).filter((r: any) => !existingIds.has(r.farm_id))
+
+    if (liveRows.length > 0) {
+      return {
+        success: false,
+        error: 'Your account is already linked to an existing farm. Contact support if you believe this is incorrect.',
+      }
+    }
+
+    if (staleRows.length > 0) {
+      const { error: cleanupError } = await supabase
+        .from('farm_managers')
+        .delete()
+        .eq('user_id', params.userId)
+        .in('farm_id', staleRows.map((r: any) => r.farm_id))
+
+      if (cleanupError) {
+        console.error('Error cleaning up stale farm_managers rows:', cleanupError)
+        return { success: false, error: 'Could not clean up a stale farm link before creating your new farm. Please contact support.' }
+      }
+    }
+
     // 1. Create farm record
     const { data: farm, error: farmError } = await supabase
       .from('farms')
