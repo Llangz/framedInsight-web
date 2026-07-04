@@ -170,6 +170,10 @@ function VerifyContent() {
           </button>
         </form>
         <div className="mt-6 text-center space-y-3">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-sm text-amber-800">
+            <p className="font-semibold">Not receiving the code?</p>
+            <p className="mt-1">Check that your phone allows SMS and is not blocking unknown, promotional, or spam-like messages. Some phones have a setting called “Block unknown senders” or “Promotional messages”.</p>
+          </div>
           <button
             onClick={() => router.back()}
             className="text-sm text-primary-600 hover:text-primary-700 font-medium"

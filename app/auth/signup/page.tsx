@@ -359,7 +359,12 @@ export default function SignupPage() {
               </div>
 
               <div className="mt-6 pt-6 border-t border-gray-100">
-                <p className="text-sm font-medium text-gray-700 mb-2">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  <p className="font-semibold">SMS delivery note</p>
+                  <p className="mt-1">If you do not receive the verification code, make sure your phone allows SMS and is not blocking unknown, promotional, or spam-like messages. On some phones this is under “Spam protection”, “Block unknown senders”, or “Promotional messages”.</p>
+                </div>
+
+                <p className="text-sm font-medium text-gray-700 mb-2 mt-4">
                   {t({ en: 'Already mapped by your cooperative?', sw: 'Tayari umewekwa ramani na chama chako?' })}
                 </p>
                 <div className="flex gap-2">

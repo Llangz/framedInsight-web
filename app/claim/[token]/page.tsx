@@ -168,6 +168,11 @@ export default function ClaimPage() {
 
                   {error && <p className="text-red-600 text-sm text-center">{error}</p>}
 
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    <p className="font-semibold">If you don’t receive the code</p>
+                    <p className="mt-1">Check that your phone allows SMS and is not blocking unknown, promotional, or spam-like messages. Some phones have a setting called “Block unknown senders” or “Promotional messages”.</p>
+                  </div>
+
                   <button
                     onClick={handleSendOtp}
                     disabled={loading}
@@ -193,6 +198,11 @@ export default function ClaimPage() {
                     required
                   />
                   {error && <p className="text-red-600 text-sm text-center">{error}</p>}
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    <p className="font-semibold">Not receiving the code?</p>
+                    <p className="mt-1">Check your SMS settings and make sure your phone is not blocking unknown, promotional, or spam-like messages.</p>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={loading || otp.length < 6}

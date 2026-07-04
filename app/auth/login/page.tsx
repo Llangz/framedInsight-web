@@ -179,6 +179,17 @@ function LoginContent() {
             >
               {loading ? 'Processing...' : loginMethod === 'password' ? 'Login' : 'Send SMS OTP'}
             </button>
+
+            {loginMethod === 'otp' && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                <p className="font-semibold">If you are not receiving the code</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>Check that your phone allows SMS and is not blocking unknown or promotional messages.</li>
+                  <li>On many phones, turn off “Block unknown senders”, “Spam protection”, or “Promotional/marketing message blocking” for SMS.</li>
+                  <li>If you use a carrier app or handset security app, allow messages from short codes or unknown numbers temporarily.</li>
+                </ul>
+              </div>
+            )}
           </form>
 
           <div className="mt-6 flex flex-col items-center gap-4">

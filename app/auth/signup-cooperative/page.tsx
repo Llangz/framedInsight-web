@@ -8,8 +8,9 @@ import { Footer } from '@/components/ui/Footer'
 import { PhoneInput } from '@/components/auth/PhoneInput'
 import { ConsentCheckboxes } from '@/components/auth/ConsentCheckboxes'
 import { LanguageToggle, useTranslation, type Language } from '@/components/auth/LanguageToggle'
-import { validateKenyanPhone, validateEmail, validateName, validateCounty, KENYAN_COUNTIES } from '@/lib/validation'
+import { validateKenyanPhone, validateEmail, validateName, validateCounty } from '@/lib/validation'
 import { sendPhoneOTP } from '@/lib/auth'
+import { getCounties, getConstituencies, getWards } from '@/lib/kenya-locations'
 import { Milk, Coffee, Rabbit, Bird, Check, Building2 } from 'lucide-react'
 
 const enterpriseOptions = [
@@ -29,9 +30,12 @@ export default function CooperativeSignupPage() {
     email: '',
     ownerName: '',
     cooperativeName: '',
-    county: '',
-    subCounty: '',
-    ward: '',
+    countyId: '',
+    countyName: '',
+    subCountyId: '',
+    subCountyName: '',
+    wardId: '',
+    wardName: '',
     primaryEnterprise: '',
     registrationNumber: '',   // CS/022/0142/2019
     registeredOffice: '',
@@ -61,7 +65,7 @@ export default function CooperativeSignupPage() {
     if (!formData.cooperativeName.trim() || formData.cooperativeName.trim().length < 3) {
       newErrors.cooperativeName = 'Cooperative name is required (at least 3 characters)'
     }
-    const countyValidation = validateCounty(formData.county)
+    const countyValidation = validateCounty(formData.countyName)
     if (!countyValidation.isValid) newErrors.county = countyValidation.error
     // Validate registration number format if provided
     if (formData.registrationNumber.trim()) {
@@ -103,7 +107,7 @@ export default function CooperativeSignupPage() {
       const otpResult = await sendPhoneOTP(phoneValidation.formatted, {
         owner_name: formData.ownerName,
         cooperative_name: formData.cooperativeName,
-        county: formData.county,
+        county: formData.countyName,
         primary_enterprise: formData.primaryEnterprise,
         email: formData.email || null,
         account_type: 'cooperative',
@@ -120,9 +124,9 @@ export default function CooperativeSignupPage() {
         email: formData.email,
         ownerName: formData.ownerName,
         cooperativeName: formData.cooperativeName,
-        county: formData.county,
-        subCounty: formData.subCounty,
-        ward: formData.ward,
+        county: formData.countyName,
+        subCounty: formData.subCountyName,
+        ward: formData.wardName,
         primaryEnterprise: formData.primaryEnterprise,
         registrationNumber: formData.registrationNumber.trim().toUpperCase() || null,
         registeredOffice: formData.registeredOffice.trim() || null,
@@ -157,6 +161,9 @@ export default function CooperativeSignupPage() {
   const inputBase = 'mt-1 block w-full px-3 py-2 border rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm'
   const inputNormal = `${inputBase} border-gray-300`
   const inputError  = `${inputBase} border-red-300`
+  const counties = getCounties()
+  const constituencies = formData.countyId ? getConstituencies(formData.countyId) : []
+  const wards = formData.subCountyId ? getWards(formData.subCountyId) : []
 
   return (
     <div className="min-h-screen bg-gray-50 font-['Outfit']">
@@ -242,40 +249,75 @@ export default function CooperativeSignupPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">County *</label>
                     <select
-                      value={formData.county}
-                      onChange={(e) => setFormData({ ...formData, county: e.target.value })}
+                      value={formData.countyId}
+                      onChange={(e) => {
+                        const selectedCounty = counties.find((c) => c.id === e.target.value)
+                        setFormData({
+                          ...formData,
+                          countyId: e.target.value,
+                          countyName: selectedCounty?.name || '',
+                          subCountyId: '',
+                          subCountyName: '',
+                          wardId: '',
+                          wardName: '',
+                        })
+                      }}
                       className={errors.county ? inputError : inputNormal}
                       required
                     >
                       <option value="">Select county</option>
-                      {KENYAN_COUNTIES.map(c => (
-                        <option key={c} value={c}>{c}</option>
+                      {counties.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
                     {errors.county && <p className="text-red-600 text-sm mt-1">{errors.county}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Sub-County</label>
-                    <input
-                      type="text"
-                      value={formData.subCounty}
-                      onChange={(e) => setFormData({ ...formData, subCounty: e.target.value })}
-                      placeholder="e.g. Mathira East"
+                    <select
+                      value={formData.subCountyId}
+                      onChange={(e) => {
+                        const selectedConstituency = constituencies.find((c) => c.id === e.target.value)
+                        setFormData({
+                          ...formData,
+                          subCountyId: e.target.value,
+                          subCountyName: selectedConstituency?.name || '',
+                          wardId: '',
+                          wardName: '',
+                        })
+                      }}
                       className={inputNormal}
-                    />
+                      disabled={!formData.countyId}
+                    >
+                      <option value="">{formData.countyId ? 'Select sub-county' : 'Select county first'}</option>
+                      {constituencies.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Ward</label>
-                    <input
-                      type="text"
-                      value={formData.ward}
-                      onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
-                      placeholder="e.g. Karatina"
+                    <select
+                      value={formData.wardId}
+                      onChange={(e) => {
+                        const selectedWard = wards.find((w) => w.id === e.target.value)
+                        setFormData({
+                          ...formData,
+                          wardId: e.target.value,
+                          wardName: selectedWard?.name || '',
+                        })
+                      }}
                       className={inputNormal}
-                    />
+                      disabled={!formData.subCountyId}
+                    >
+                      <option value="">{formData.subCountyId ? 'Select ward' : 'Select sub-county first'}</option>
+                      {wards.map(w => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Primary Contact Person *</label>
