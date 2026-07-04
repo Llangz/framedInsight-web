@@ -2,8 +2,8 @@
  * lib/safe-redirect.ts
  *
  * Validates a candidate post-login redirect path (typically the `next`
- * query param middleware attaches when it bounces an unauthenticated user
- * away from a protected route — see lib/middleware.ts).
+ * query param the proxy layer attaches when it bounces an unauthenticated
+ * user away from a protected route — see proxy.ts).
  *
  * Only ever returns an internal, single-segment-rooted path, never the
  * caller-supplied value verbatim — this is the one thing that has to be

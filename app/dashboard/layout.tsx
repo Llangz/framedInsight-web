@@ -55,7 +55,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     return (
       <AccountIssueScreen
         title="Couldn't verify your account"
-        message="Something went wrong loading your farm. This is usually temporary — retrying resolves it in most cases. If it keeps happening, reach out and we'll sort it out from our side."
+        message="Something went wrong loading your farm. This is usually temporary — retrying resolves it in most cases. If it keeps happening, contact support and we’ll help you recover your access quickly."
         actions={[
           { label: 'Retry', href: '/dashboard', variant: 'primary' },
           { label: 'Contact support', href: '/contact', variant: 'secondary' },

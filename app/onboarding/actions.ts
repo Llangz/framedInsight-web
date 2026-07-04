@@ -56,6 +56,14 @@ async function cleanupOrphanedFarmLinks(
 export async function createFarmAction(params: CreateFarmParams): Promise<FarmCreationResult> {
   const supabaseAuth = await createClient()
 
+  const { data: { user }, error: userError } = await supabaseAuth.auth.getUser()
+  if (userError || !user || user.id !== params.userId) {
+    return {
+      success: false,
+      error: 'You must be signed in to continue.'
+    }
+  }
+
   // Use service role to bypass RLS for initial provisioning
   const supabaseAdmin = createAdminClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

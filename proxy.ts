@@ -43,9 +43,9 @@ export default async function proxy(request: NextRequest) {
   ]
 
   const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'))
-  const isDashboard = pathname.startsWith('/dashboard')
+  const isProtectedPath = pathname.startsWith('/dashboard') || pathname.startsWith('/onboarding')
 
-  if (isDashboard && !isPublicPath) {
+  if (isProtectedPath && !isPublicPath) {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

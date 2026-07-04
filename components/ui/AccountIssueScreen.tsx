@@ -76,7 +76,7 @@ export function AccountIssueScreen({
         </div>
 
         {diagnostic && (
-          <p className="text-neutral-600 text-xs pt-2 border-t border-neutral-800 mt-4">
+          <p className="text-neutral-600 text-xs pt-2 border-t border-neutral-800 mt-4 break-all">
             Reference for support: {diagnostic}
           </p>
         )}

@@ -16,9 +16,9 @@ import { getSafeRedirectPath } from '@/lib/safe-redirect'
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  // Where middleware sent the user from before bouncing them here — see
-  // lib/middleware.ts. Validated before ever being used as a redirect
-  // target; see lib/safe-redirect.ts for why that matters.
+  // Where the proxy layer sent the user from before bouncing them here — see
+  // proxy.ts. Validated before ever being used as a redirect target; see
+  // lib/safe-redirect.ts for why that matters.
   const next = searchParams.get('next')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
