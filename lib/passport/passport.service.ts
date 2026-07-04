@@ -409,10 +409,46 @@ export async function createPassport({
 }): Promise<{ passportCode: string; passportId: string }> {
   const supabase = await createClient()
 
-  // Generate the code via the DB function
-  const { data: codeData } = await supabase
-    .rpc('generate_passport_code', { p_cooperative_id: cooperativeId })
-  const passportCode = codeData as string
+  let passportCode = ''
+  let passport: { id: string; passport_code: string } | null = null
+  let passportError: Error | null = null
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { data: codeData, error: codeError } = await supabase
+      .rpc('generate_passport_code', { p_cooperative_id: cooperativeId })
+
+    if (codeError) throw codeError
+
+    passportCode = codeData as string
+
+    const { data: insertedPassport, error: insertError } = await supabase
+      .from('coffee_passports')
+      .insert({
+        cooperative_id: cooperativeId,
+        export_lot_id: exportLotId ?? null,
+        passport_code: passportCode,
+        qr_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://framed-insight-web.vercel.app'}/trace/${passportCode}`,
+        status: 'draft',
+      })
+      .select('id, passport_code')
+      .single()
+
+    if (!insertError && insertedPassport) {
+      passport = insertedPassport
+      break
+    }
+
+    if (insertError?.code === '23505') {
+      continue
+    }
+
+    passportError = new Error(insertError?.message ?? 'Failed to create passport')
+    break
+  }
+
+  if (!passport || passportError) {
+    throw passportError ?? new Error('Unable to create passport after multiple attempts')
+  }
 
   // Assemble the payload from the chain
   const { publicStory, sustainabilityMetrics, qualityMetrics, geoSummary } =
@@ -424,12 +460,9 @@ export async function createPassport({
 
   const traceUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://framed-insight-web.vercel.app'}/trace/${passportCode}`
 
-  const { data: passport, error } = await supabase
+  const { data: updatedPassport, error } = await supabase
     .from('coffee_passports')
-    .insert({
-      cooperative_id: cooperativeId,
-      export_lot_id: exportLotId ?? null,
-      passport_code: passportCode,
+    .update({
       qr_url: traceUrl,
       status: 'draft',
       public_story: mergedStory as unknown as Json,
@@ -437,10 +470,13 @@ export async function createPassport({
       quality_metrics: mergedQuality as unknown as Json,
       geo_summary: geoSummary as unknown as Json,
     })
+    .eq('id', passport.id)
     .select('id, passport_code')
     .single()
 
-  if (error || !passport) throw new Error(error?.message ?? 'Failed to create passport')
+  if (error || !updatedPassport) throw new Error(error?.message ?? 'Failed to create passport')
+
+  passport = updatedPassport
 
   // Write genesis event to ledger
   await writeTraceabilityEvent({

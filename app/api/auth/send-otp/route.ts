@@ -140,11 +140,11 @@ export async function POST(req: NextRequest) {
         .delete()
         .eq('phone_number', normalisedPhone)
 
-      let errorMessage = 'Failed to send verification code'
+      let errorMessage = 'We couldn’t deliver the verification code. Please try again in a minute or contact support if it keeps failing.'
       if (response.status === 429) {
         errorMessage = 'SMS service rate limit reached. Please try again in a few moments.'
       } else if (response.status >= 500) {
-        errorMessage = 'SMS service temporarily unavailable. Please try again shortly.'
+        errorMessage = 'SMS service is temporarily unavailable. Please try again shortly.'
       } else if (data.error?.includes('Invalid phone')) {
         errorMessage = 'Invalid phone number format. Please check and try again.'
       } else if (data.error) {

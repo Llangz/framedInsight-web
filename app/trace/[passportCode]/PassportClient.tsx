@@ -214,6 +214,13 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
           )}
 
           {/* ── Provenance chain ────────────────────────────────────────────── */}
+          <div className="mt-4 rounded-xl border border-[#1E2028] bg-[#12151A]/80 p-3 text-xs text-zinc-400">
+            <div className="flex items-center justify-between gap-3">
+              <span>Ledger verification</span>
+              <span className="font-mono text-[11px] text-[#7EC49A]">hash version: v2_canonical</span>
+            </div>
+          </div>
+
           <div className="mt-8 flex items-center gap-0">
             {CHAIN_STEPS.map((step, i) => {
               const Icon = step.icon

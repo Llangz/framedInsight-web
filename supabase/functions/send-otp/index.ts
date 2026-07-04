@@ -1,8 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
-// Tiara Connect (Meliora Technologies) credentials
-const TIARA_API_KEY = Deno.env.get('TIARA_API_KEY')!
+// SMS provider credentials. The app now attempts a configured fallback provider
+// if the primary provider fails, which improves OTP delivery resilience.
+const TIARA_API_KEY = Deno.env.get('TIARA_API_KEY')
 const TIARA_SENDER_ID = Deno.env.get('TIARA_SENDER_ID') || 'CONNECT'
+const AFRICAS_TALKING_USERNAME = Deno.env.get('AFRICAS_TALKING_USERNAME')
+const AFRICAS_TALKING_API_KEY = Deno.env.get('AFRICAS_TALKING_API_KEY')
+const AFRICAS_TALKING_SENDER_ID = Deno.env.get('AFRICAS_TALKING_SENDER_ID') || 'framedInsight'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -25,14 +29,18 @@ function normalisePhone(phone: string): string {
 }
 
 /**
- * Send SMS via Tiara Connect with retry logic and comprehensive error handling
+ * Send SMS via Tiara Connect with retry logic and comprehensive error handling.
  */
-async function sendSmsWithRetry(
+async function sendSmsViaTiara(
   normalisedPhone: string,
   message: string,
   refId: string,
   maxRetries: number = 3
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  if (!TIARA_API_KEY) {
+    return { success: false, error: 'Tiara provider not configured' }
+  }
+
   let lastError: any
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -52,10 +60,8 @@ async function sendSmsWithRetry(
       })
 
       const smsData = await smsResponse.json()
-
-      // Log attempt (privacy-aware: only log partial phone number)
       const phonePartial = normalisedPhone.substring(0, 6) + '***'
-      console.log(`[SMS Attempt ${attempt}/${maxRetries}]`, {
+      console.log(`[Tiara SMS Attempt ${attempt}/${maxRetries}]`, {
         phone: phonePartial,
         statusCode: smsResponse.status,
         tiaraStatus: smsData.status || smsData.statusCode,
@@ -63,40 +69,30 @@ async function sendSmsWithRetry(
         timestamp: new Date().toISOString(),
       })
 
-      // Check for API-level errors
       if (!smsResponse.ok) {
         lastError = new Error(
           `Tiara API Error ${smsResponse.status}: ${smsData.desc || smsData.error || 'Unknown error'}`
         )
-        
-        // Don't retry on 4xx client errors (except rate limit)
         if (smsResponse.status >= 400 && smsResponse.status < 500 && smsResponse.status !== 429) {
           throw lastError
         }
-
-        // Wait before retry (exponential backoff: 1s, 2s, 4s)
         if (attempt < maxRetries) {
           const delayMs = 1000 * Math.pow(2, attempt - 1)
-          console.log(`Retrying in ${delayMs}ms...`)
+          console.log(`Retrying Tiara SMS in ${delayMs}ms...`)
           await new Promise(resolve => setTimeout(resolve, delayMs))
           continue
         }
         throw lastError
       }
 
-      // Check Tiara response status (statusCode: 0 = SUCCESS, otherwise check status field)
       const isSuccess = smsData.statusCode === '0' || smsData.statusCode === 0 || smsData.status === 'SUCCESS'
       if (!isSuccess) {
         lastError = new Error(
           `Tiara indicates failure: ${smsData.desc || smsData.status} (statusCode: ${smsData.statusCode})`
         )
-        
-        // Don't retry on validation errors
         if (smsData.statusCode === '1001' || smsData.statusCode === 1001) {
           throw lastError
         }
-
-        // Retry on other failures
         if (attempt < maxRetries) {
           const delayMs = 1000 * Math.pow(2, attempt - 1)
           await new Promise(resolve => setTimeout(resolve, delayMs))
@@ -105,9 +101,8 @@ async function sendSmsWithRetry(
         throw lastError
       }
 
-      // Success! Extract messageId from Tiara response
       const messageId = smsData.msgId || smsData.id || refId
-      console.log(`SMS sent successfully (attempt ${attempt}):`, {
+      console.log(`Tiara SMS sent successfully (attempt ${attempt}):`, {
         phone: phonePartial,
         msgId: messageId,
         balance: smsData.balance,
@@ -115,25 +110,113 @@ async function sendSmsWithRetry(
       })
 
       return { success: true, messageId }
-
     } catch (error: any) {
       lastError = error
-      console.error(`SMS attempt ${attempt} failed:`, {
+      console.error(`Tiara SMS attempt ${attempt} failed:`, {
         phone: normalisedPhone.substring(0, 6) + '***',
         attempt,
         maxRetries,
         error: error.message,
       })
-
       if (attempt === maxRetries) {
-        break // Stop retrying after max attempts
+        break
       }
     }
   }
 
   return {
     success: false,
-    error: lastError?.message || 'Failed to send SMS after multiple attempts',
+    error: lastError?.message || 'Tiara SMS delivery failed after multiple attempts',
+  }
+}
+
+/**
+ * Send SMS via Africa's Talking as a fallback provider when the primary route fails.
+ */
+async function sendSmsViaAfricaTalking(
+  normalisedPhone: string,
+  message: string,
+  refId: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  if (!AFRICAS_TALKING_USERNAME || !AFRICAS_TALKING_API_KEY) {
+    return { success: false, error: 'Africa\'s Talking provider not configured' }
+  }
+
+  try {
+    const authHeader = `Basic ${btoa(`${AFRICAS_TALKING_USERNAME}:${AFRICAS_TALKING_API_KEY}`)}`
+    const response = await fetch('https://api.africastalking.com/version1/messaging', {
+      method: 'POST',
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: AFRICAS_TALKING_USERNAME,
+        to: [normalisedPhone],
+        message,
+        from: AFRICAS_TALKING_SENDER_ID,
+        bulkSMSMode: false,
+      }),
+    })
+
+    const smsData = await response.json().catch(() => ({}))
+    const phonePartial = normalisedPhone.substring(0, 6) + '***'
+    console.log('[Africa\'s Talking SMS]', {
+      phone: phonePartial,
+      statusCode: response.status,
+      payload: smsData,
+    })
+
+    const recipient = smsData.SMSMessageData?.Recipients?.[0]
+    const isSuccess = response.ok && recipient?.status === 'Success'
+
+    if (!isSuccess) {
+      return {
+        success: false,
+        error: recipient?.status || smsData?.errorMessage || 'Africa\'s Talking rejected the request',
+      }
+    }
+
+    return { success: true, messageId: recipient?.messageId || refId }
+  } catch (error: any) {
+    console.error('Africa\'s Talking SMS failed:', error)
+    return { success: false, error: error?.message || 'Africa\'s Talking SMS delivery failed' }
+  }
+}
+
+async function sendSmsWithFallback(
+  normalisedPhone: string,
+  message: string,
+  refId: string,
+  maxRetries: number = 3
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const providers = [] as Array<{ name: string; runner: () => Promise<{ success: boolean; messageId?: string; error?: string }> }>
+
+  if (TIARA_API_KEY) {
+    providers.push({ name: 'tiara', runner: () => sendSmsViaTiara(normalisedPhone, message, refId, maxRetries) })
+  }
+
+  if (AFRICAS_TALKING_USERNAME && AFRICAS_TALKING_API_KEY) {
+    providers.push({ name: 'africastalking', runner: () => sendSmsViaAfricaTalking(normalisedPhone, message, refId) })
+  }
+
+  if (providers.length === 0) {
+    return { success: false, error: 'No SMS provider is configured. Please contact support.' }
+  }
+
+  let lastError: string | undefined
+  for (const provider of providers) {
+    const result = await provider.runner()
+    if (result.success) {
+      return result
+    }
+    lastError = result.error
+    console.warn(`[OTP] ${provider.name} failed:`, result.error)
+  }
+
+  return {
+    success: false,
+    error: lastError || 'All configured SMS providers failed to deliver the verification code',
   }
 }
 
@@ -170,8 +253,9 @@ serve(async (req) => {
     const refId = crypto.randomUUID()
     const message = `Your framedInsight verification code is: ${otp}. Valid for 15 minutes. Do not share this code.`
 
-    // Send SMS via Tiara Connect with retry logic
-    const result = await sendSmsWithRetry(normalisedPhone, message, refId)
+    // Send SMS via the configured providers, with fallback to a second provider
+    // if the first route fails or appears to be blocked for that number/network.
+    const result = await sendSmsWithFallback(normalisedPhone, message, refId)
 
     if (!result.success) {
       return new Response(
