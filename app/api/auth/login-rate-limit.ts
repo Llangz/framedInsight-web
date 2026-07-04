@@ -1,5 +1,14 @@
 // app/api/auth/login-rate-limit/route.ts
 //
+// NOTE: this file previously lived at app/auth/login-rate-limit/route.ts,
+// which in the App Router actually serves /auth/login-rate-limit — not
+// /api/auth/login-rate-limit, which is what app/auth/login/page.tsx has
+// always called. Every password-login attempt was hitting a 404 here,
+// and the client's catch-all error handling silently reported that as
+// "Too many attempts" regardless of actual attempt count. Moved to match
+// the URL the client actually calls, and to sit alongside its siblings
+// (app/api/auth/send-otp, app/api/auth/verify-otp).
+//
 // Password login (app/auth/login/page.tsx) previously called
 // supabase.auth.signInWithPassword() directly from the client with no
 // application-level throttling — unlike send-otp/verify-otp, which are

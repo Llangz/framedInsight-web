@@ -1,12 +1,18 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createFarmOnVerifyAction } from './actions'
 import { createCooperativeOnVerifyAction } from './coop-actions'
 import { verifyPhoneOTP } from '@/lib/auth'
 
 function VerifyContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Carried through from the login page if middleware originally bounced
+  // the user here from a specific protected URL. Not sensitive (unlike
+  // phone, which deliberately never lives in the URL — see below), so
+  // it's fine to keep it in the query string across this hop.
+  const next = searchParams.get('next')
   const [phone, setPhone] = useState('')
   const [displayPhone, setDisplayPhone] = useState('')
   const [otp, setOtp] = useState('')
@@ -132,7 +138,7 @@ function VerifyContent() {
     sessionStorage.removeItem('loginPhone')
 
     // Step 3: Redirect to account setup
-    router.push('/auth/setup-credentials')
+    router.push(next ? `/auth/setup-credentials?next=${encodeURIComponent(next)}` : '/auth/setup-credentials')
   }
 
   return (

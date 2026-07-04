@@ -1,8 +1,8 @@
 'use client'
 
 export const dynamic = 'force-dynamic'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Header } from '@/components/ui/Header'
 import { Footer } from '@/components/ui/Footer'
@@ -11,9 +11,15 @@ import { validateKenyanPhone } from '@/lib/validation'
 import { supabase } from '@/lib/supabase'
 import { sendPhoneOTP } from '@/lib/auth'
 import { getFarmStatus } from '@/lib/get-farm-status'
+import { getSafeRedirectPath } from '@/lib/safe-redirect'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Where middleware sent the user from before bouncing them here — see
+  // lib/middleware.ts. Validated before ever being used as a redirect
+  // target; see lib/safe-redirect.ts for why that matters.
+  const next = searchParams.get('next')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password')
@@ -48,22 +54,32 @@ export default function LoginPage() {
       // ── Pre-flight rate limit check ─────────────────────────────────
       // Previously absent: this path had no throttling at all, unlike
       // send-otp/verify-otp. See app/api/auth/login-rate-limit/route.ts.
+      //
+      // Only a genuine 429 blocks login here. Any other outcome (404, 500,
+      // network failure, an unexpected response shape) fails OPEN rather
+      // than showing an invented "too many attempts" message — this is a
+      // defense-in-depth pre-check, not the primary auth check, and a bug
+      // or outage in this one endpoint should never be able to lock every
+      // user out of password login (which is exactly what happened when
+      // this route previously lived at the wrong path and 404'd on every
+      // single request).
       try {
         const rlResponse = await fetch('/api/auth/login-rate-limit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: validation.formatted }),
         })
-        if (!rlResponse.ok) {
+        if (rlResponse.status === 429) {
           const rlData = await rlResponse.json().catch(() => ({}))
-          setError(rlData.error || 'Too many attempts. Please try again shortly.')
+          setError(rlData.error || 'Too many login attempts. Please wait a few minutes and try again, or use SMS OTP instead.')
           setLoading(false)
           return
         }
+        if (!rlResponse.ok) {
+          console.warn(`[login-rate-limit] unexpected status ${rlResponse.status} — failing open`)
+        }
       } catch {
-        // If the rate-limit check itself fails to reach the server, don't
-        // block login on it — fail open here specifically because this is
-        // defense-in-depth, not the primary auth check.
+        // Network-level failure — same fail-open reasoning as above.
       }
 
       // 1. Password Login
@@ -96,7 +112,7 @@ export default function LoginPage() {
       if (farmStatus.state === 'no_farm') {
         router.push('/onboarding')
       } else {
-        router.push('/dashboard')
+        router.push(getSafeRedirectPath(next))
       }
 
     } else {
@@ -115,7 +131,7 @@ export default function LoginPage() {
       // to prevent the duplicate farm creation bug (farms_phone_key constraint).
       sessionStorage.removeItem('signupData')
 
-      router.push(`/auth/verify`)
+      router.push(next ? `/auth/verify?next=${encodeURIComponent(next)}` : '/auth/verify')
     }
   }
 
@@ -190,5 +206,17 @@ export default function LoginPage() {
       </div>
       <Footer />
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-900">Loading...</p>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }

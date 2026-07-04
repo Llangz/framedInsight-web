@@ -157,7 +157,42 @@ export interface AuditLogEntry {
   timestamp?: string
 }
 
-export function auditLog(entry: Omit<AuditLogEntry, 'timestamp'>): void {
+// Lazily-created service-role client. Audit writes must never be blocked by
+// (or block on) a user's own RLS-scoped session — many audited events
+// (OTP_RATE_LIMITED, failed logins) happen before there's an authenticated
+// user at all — so this always goes through the service-role key, same
+// pattern as lib/passport/buyer-access.service.ts's createAdminClient().
+let _auditClient: ReturnType<typeof import('@supabase/supabase-js').createClient> | null = null
+
+async function getAuditClient() {
+  if (_auditClient) return _auditClient
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceKey) return null
+
+  const { createClient } = await import('@supabase/supabase-js')
+  _auditClient = createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  return _auditClient
+}
+
+/**
+ * Writes a structured audit entry to the persistent `audit_log` table
+ * (supabase/migrations/20260704a_audit_log.sql) and mirrors it to
+ * console.log for real-time log tailing during an incident.
+ *
+ * Fire-and-forget by design: callers do not (and should not have to)
+ * `await` this — auditing a request must never be the reason a request
+ * fails or is delayed. Internally, though, we never let a DB write
+ * failure disappear silently: if the DB write fails, the console log
+ * line is what's left, and it's still emitted either way.
+ *
+ * Returns a Promise so callers who *do* want to await it (e.g. before
+ * responding, on a path where the audit trail is the whole point) can.
+ */
+export async function auditLog(entry: Omit<AuditLogEntry, 'timestamp'>): Promise<void> {
   const log = {
     ...entry,
     timestamp: new Date().toISOString(),
@@ -167,7 +202,39 @@ export function auditLog(entry: Omit<AuditLogEntry, 'timestamp'>): void {
   if (log.details?.otp) log.details.otp = '[REDACTED]'
   if (log.details?.token) log.details.token = '[REDACTED]'
 
+  // Always emit to console — cheap, immediate, and the only record we have
+  // if the DB write below fails or Supabase env vars aren't configured.
   console.log('[AUDIT]', JSON.stringify(log))
+
+  try {
+    const client = await getAuditClient()
+    if (!client) {
+      console.warn('[AUDIT] SUPABASE_SERVICE_ROLE_KEY not set — audit entry only written to console.log')
+      return
+    }
+
+    // Cast: `audit_log` isn't in lib/database.types.ts yet (generated types
+    // haven't been regenerated since this migration was added). Regenerate
+    // with `supabase gen types` after applying the migration and this cast
+    // can be dropped.
+    const { error } = await (client.from('audit_log') as any).insert({
+      action: log.action,
+      actor_id: log.actorId,
+      farm_id: log.farmId,
+      resource: log.resource,
+      resource_id: log.resourceId,
+      details: log.details ?? {},
+      ip: log.ip,
+      created_at: log.timestamp,
+    })
+
+    if (error) {
+      console.error('[AUDIT] Failed to persist audit entry to database:', error.message)
+    }
+  } catch (err: any) {
+    // Never let an audit-logging failure surface as a request failure.
+    console.error('[AUDIT] Unexpected error writing audit entry:', err?.message ?? err)
+  }
 }
 
 // ============================================================================

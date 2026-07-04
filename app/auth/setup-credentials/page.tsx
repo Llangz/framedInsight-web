@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getSafeRedirectPath } from '@/lib/safe-redirect'
 
-export default function SetupCredentialsPage() {
+function SetupCredentialsContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next')
   const supabase = createClient()
   
   const [loading, setLoading] = useState(false)
@@ -90,8 +93,12 @@ export default function SetupCredentialsPage() {
         return
       }
 
-      // Redirect to dashboard or onboarding depending on whether user has farm
-      router.push('/dashboard')
+      // Redirect to wherever the user was originally headed (validated —
+      // see lib/safe-redirect.ts), or /dashboard by default. If the user
+      // doesn't actually have a farm yet, the dashboard layout itself
+      // still runs its own farm-status check and redirects to onboarding,
+      // so this is safe even when `next` pointed at /dashboard directly.
+      router.push(getSafeRedirectPath(next))
     } catch (err: any) {
       setError(err.message || 'An error occurred')
       setLoading(false)
@@ -226,5 +233,17 @@ export default function SetupCredentialsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SetupCredentialsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+        <p className="text-white">Loading...</p>
+      </div>
+    }>
+      <SetupCredentialsContent />
+    </Suspense>
   )
 }
