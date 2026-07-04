@@ -6,6 +6,53 @@ import { revalidatePath } from 'next/cache'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Database } from '@/lib/database.types'
 
+async function cleanupOrphanedFarmLinks(
+  supabaseAdmin: ReturnType<typeof createAdminClient<Database>>,
+  userId: string
+) {
+  const { data: managerRows, error: managerLookupError } = await supabaseAdmin
+    .from('farm_managers')
+    .select('farm_id')
+    .eq('user_id', userId)
+
+  if (managerLookupError) {
+    return { success: false as const, error: managerLookupError.message }
+  }
+
+  if (!managerRows || managerRows.length === 0) {
+    return { success: true as const }
+  }
+
+  const farmIds = managerRows.map((row) => row.farm_id)
+  const { data: existingFarms, error: farmsLookupError } = await supabaseAdmin
+    .from('farms')
+    .select('id')
+    .in('id', farmIds)
+
+  if (farmsLookupError) {
+    return { success: false as const, error: farmsLookupError.message }
+  }
+
+  const existingIds = new Set((existingFarms ?? []).map((farm) => farm.id))
+  const staleFarmIds = farmIds.filter((farmId) => !existingIds.has(farmId))
+
+  if (staleFarmIds.length === 0) {
+    return { success: true as const }
+  }
+
+  const { error: cleanupError } = await supabaseAdmin
+    .from('farm_managers')
+    .delete()
+    .eq('user_id', userId)
+    .in('farm_id', staleFarmIds)
+
+  if (cleanupError) {
+    return { success: false as const, error: cleanupError.message }
+  }
+
+  return { success: true as const }
+}
+
 export async function createFarmAction(params: CreateFarmParams): Promise<FarmCreationResult> {
   const supabaseAuth = await createClient()
 
@@ -16,6 +63,14 @@ export async function createFarmAction(params: CreateFarmParams): Promise<FarmCr
   )
 
   try {
+    const cleanupResult = await cleanupOrphanedFarmLinks(supabaseAdmin, params.userId)
+    if (!cleanupResult.success) {
+      return {
+        success: false,
+        error: cleanupResult.error || 'Could not clean up stale farm links before setup continued.'
+      }
+    }
+
     // 1. Call the secure RPC function to create farm and manager association
     const { data: farmId, error: rpcError } = await supabaseAdmin.rpc('create_farm_with_manager', {
       p_farm_name: params.farmName,

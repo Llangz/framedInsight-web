@@ -1,7 +1,8 @@
 'use client'
 
 import React, { Component, ErrorInfo, ReactNode } from 'react'
-import { AlertTriangle, RefreshCcw } from 'lucide-react'
+import Link from 'next/link'
+import { AlertTriangle, Home, RefreshCcw } from 'lucide-react'
 
 interface Props {
   children: ReactNode
@@ -66,13 +67,22 @@ export class ErrorBoundary extends Component<Props, State> {
                 </details>
               )}
 
-              <button
-                onClick={this.handleRetry}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                <RefreshCcw className="w-4 h-4" />
-                Refresh Page
-              </button>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  onClick={this.handleRetry}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  Refresh Page
+                </button>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 px-6 py-3 border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-semibold rounded-lg transition hover:bg-emerald-500/20"
+                >
+                  <Home className="w-4 h-4" />
+                  Back Home
+                </Link>
+              </div>
             </div>
           </div>
         </div>

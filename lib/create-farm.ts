@@ -42,13 +42,13 @@ export async function createFarmOnSignup(params: CreateFarmParams): Promise<Farm
     //   was deleted), delete those stale rows first, then proceed. This
     //   is what makes it safe to send a user with only orphaned rows
     //   straight to onboarding instead of to a dead-end support screen.
-    const { data: managerRows, error: managerError } = await supabase
+    const { data: managerRows, error: managerLookupError } = await supabase
       .from('farm_managers')
       .select('farm_id')
       .eq('user_id', params.userId)
 
-    if (managerError) {
-      return { success: false, error: `Could not verify existing farm links: ${managerError.message}` }
+    if (managerLookupError) {
+      return { success: false, error: `Could not verify existing farm links: ${managerLookupError.message}` }
     }
 
     const farmIds = Array.from(new Set((managerRows ?? []).map((r: any) => r.farm_id)))

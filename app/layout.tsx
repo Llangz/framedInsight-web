@@ -3,6 +3,7 @@ import './globals.css'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SyncManager } from '@/components/ui/SyncManager'
 import { WhatsAppButton } from '@/components/ui/WhatsAppButton'
+import { NavigationFallback } from '@/components/ui/NavigationFallback'
 
 export const metadata: Metadata = {
   title: {
@@ -87,6 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ErrorBoundary>
           {children}
           <SyncManager />
+          <NavigationFallback />
           <WhatsAppButton />
         </ErrorBoundary>
       </body>
