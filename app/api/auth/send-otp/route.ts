@@ -140,15 +140,18 @@ export async function POST(req: NextRequest) {
         .delete()
         .eq('phone_number', normalisedPhone)
 
+      const providerError = data.error || data.message || ''
       let errorMessage = 'We couldn’t deliver the verification code. Please try again in a minute or contact support if it keeps failing.'
       if (response.status === 429) {
         errorMessage = 'SMS service rate limit reached. Please try again in a few moments.'
       } else if (response.status >= 500) {
         errorMessage = 'SMS service is temporarily unavailable. Please try again shortly.'
-      } else if (data.error?.includes('Invalid phone')) {
+      } else if (providerError.toLowerCase().includes('invalid phone')) {
         errorMessage = 'Invalid phone number format. Please check and try again.'
-      } else if (data.error) {
-        errorMessage = data.error
+      } else if (/sender|dlt|recipient|blacklist|whitelist/i.test(providerError)) {
+        errorMessage = 'We couldn’t deliver the verification code to this number through the current SMS provider. Please try again shortly, or contact support if it keeps failing.'
+      } else if (providerError) {
+        errorMessage = providerError
       }
 
       auditLog({

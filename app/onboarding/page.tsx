@@ -62,7 +62,11 @@ export default function OnboardingPage() {
         return
       }
 
-      const farmStatus = await getFarmStatus(supabase, user.id)
+      const farmStatus = await getFarmStatus(supabase, user.id, {
+        phone: user.phone || user.user_metadata?.phone || null,
+        email: user.email,
+        fullName: user.user_metadata?.full_name || null,
+      })
 
       if (!active) return
 
@@ -188,7 +192,7 @@ export default function OnboardingPage() {
     return (
       <AccountIssueScreen
         title="Your account is linked to multiple farms"
-        message="We found more than one farm already linked to your account, so we can't safely start a new setup here — that would add a third. Contact support and we'll get this sorted out."
+        message="We found more than one farm already linked to your account, so we can't safely start a new setup here — that would add a third. If you already have an existing farm, continue to the dashboard to manage it, or contact support so we can help reconcile the records."
         actions={[
           { label: 'Contact support', href: '/contact', variant: 'primary' },
         ]}

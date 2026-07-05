@@ -48,7 +48,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // genuine "no farm" result, so any transient error here silently sent an
   // existing farmer back through onboarding. getFarmStatus() forces us to
   // handle that case explicitly instead.
-  const farmStatus = await getFarmStatus(supabase, user.id)
+  const farmStatus = await getFarmStatus(supabase, user.id, {
+    phone: user.phone || user.user_metadata?.phone || null,
+    email: user.email,
+    fullName: user.user_metadata?.full_name || null,
+  })
 
   if (farmStatus.state === 'unknown') {
     console.error('[DashboardLayout] Could not verify farm status:', farmStatus.reason, '| user:', user.id)

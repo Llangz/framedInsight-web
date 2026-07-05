@@ -66,6 +66,7 @@ async function sendSmsViaTiara(
         statusCode: smsResponse.status,
         tiaraStatus: smsData.status || smsData.statusCode,
         msgId: smsData.msgId,
+        response: smsData,
         timestamp: new Date().toISOString(),
       })
 
@@ -87,10 +88,11 @@ async function sendSmsViaTiara(
 
       const isSuccess = smsData.statusCode === '0' || smsData.statusCode === 0 || smsData.status === 'SUCCESS'
       if (!isSuccess) {
+        const statusCode = smsData.statusCode ?? smsData.status
         lastError = new Error(
-          `Tiara indicates failure: ${smsData.desc || smsData.status} (statusCode: ${smsData.statusCode})`
+          `Tiara indicates failure: ${smsData.desc || smsData.status} (statusCode: ${statusCode})`
         )
-        if (smsData.statusCode === '1001' || smsData.statusCode === 1001) {
+        if (statusCode === '1001' || statusCode === 1001 || /invalid|blacklist|recipient|sender|dlt|whitelist/i.test(String(smsData.desc || smsData.status || ''))) {
           throw lastError
         }
         if (attempt < maxRetries) {

@@ -31,6 +31,48 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+export interface FarmIdentity {
+  phone?: string | null
+  email?: string | null
+  fullName?: string | null
+}
+
+function normalizePhone(value?: string | null): string | null {
+  if (!value) return null
+  const digits = value.replace(/\D/g, '')
+  if (!digits) return null
+  if (digits.startsWith('0')) return `254${digits.slice(1)}`
+  if (digits.startsWith('254')) return digits
+  return null
+}
+
+function matchesIdentity(
+  farm: { phone?: string | null; email?: string | null; owner_name?: string | null },
+  identity?: FarmIdentity
+): boolean {
+  if (!identity) return false
+
+  const normalizedFarmPhone = normalizePhone(farm.phone)
+  const normalizedUserPhone = normalizePhone(identity.phone)
+  if (normalizedFarmPhone && normalizedUserPhone && normalizedFarmPhone === normalizedUserPhone) {
+    return true
+  }
+
+  const farmEmail = farm.email?.trim().toLowerCase()
+  const userEmail = identity.email?.trim().toLowerCase()
+  if (farmEmail && userEmail && farmEmail === userEmail) {
+    return true
+  }
+
+  const farmOwner = farm.owner_name?.trim().toLowerCase()
+  const userName = identity.fullName?.trim().toLowerCase()
+  if (farmOwner && userName && farmOwner === userName) {
+    return true
+  }
+
+  return false
+}
+
 export type FarmStatus =
   | { state: 'has_farm'; farmId: string; role?: string | null }
   | { state: 'no_farm' }
@@ -56,7 +98,8 @@ export type FarmStatus =
 
 export async function getFarmStatus(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  identity?: FarmIdentity
 ): Promise<FarmStatus> {
   const { data, error } = await supabase
     .from('farm_managers')
@@ -83,7 +126,7 @@ export async function getFarmStatus(
 
   const { data: existingFarms, error: farmsError } = await supabase
     .from('farms')
-    .select('id')
+    .select('id, phone, email, owner_name')
     .in('id', farmIds)
 
   if (farmsError) {
@@ -93,13 +136,15 @@ export async function getFarmStatus(
   const existingIds = new Set((existingFarms ?? []).map((f: any) => f.id))
   const live = rows.filter((r: any) => existingIds.has(r.farm_id))
   const stale = rows.filter((r: any) => !existingIds.has(r.farm_id))
+  const liveFarmIds = Array.from(new Set(live.map((r: any) => r.farm_id)))
 
-  if (live.length === 1) {
-    const row = live[0] as any
-    return { state: 'has_farm', farmId: row.farm_id, role: row.role }
+  if (liveFarmIds.length === 1) {
+    const farmId = liveFarmIds[0]
+    const row = live.find((r: any) => r.farm_id === farmId) as any
+    return { state: 'has_farm', farmId, role: row?.role }
   }
 
-  if (live.length === 0) {
+  if (liveFarmIds.length === 0) {
     // Every row is stale — genuinely orphaned, not just "no farm".
     return {
       state: 'orphaned',

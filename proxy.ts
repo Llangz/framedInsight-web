@@ -1,9 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from './lib/supabase/middleware'
 import { createServerClient } from '@supabase/ssr'
+import { checkRateLimit } from './lib/security'
 
-// In-memory rate limiting map
-const rateLimitMap = new Map<string, { count: number; lastReset: number }>()
 const RATE_LIMIT_WINDOW_MS = 60000 // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 60 // 1 req/sec average
 
@@ -14,21 +13,12 @@ export default async function proxy(request: NextRequest) {
 
   // ─── Rate Limiting Logic ──────────────────────────────────────────────────
   if (pathname.startsWith('/api')) {
-    const rateData = rateLimitMap.get(ip) || { count: 0, lastReset: now }
+    const allowed = await checkRateLimit(`proxy:${ip}`, MAX_REQUESTS_PER_WINDOW, RATE_LIMIT_WINDOW_MS)
 
-    if (now - rateData.lastReset > RATE_LIMIT_WINDOW_MS) {
-      rateData.count = 1
-      rateData.lastReset = now
-    } else {
-      rateData.count++
-    }
-
-    rateLimitMap.set(ip, rateData)
-
-    if (rateData.count > MAX_REQUESTS_PER_WINDOW) {
-      return new NextResponse('Too Many Requests', { 
+    if (!allowed) {
+      return new NextResponse('Too Many Requests', {
         status: 429,
-        headers: { 'Retry-After': '60' }
+        headers: { 'Retry-After': '60' },
       })
     }
   }
