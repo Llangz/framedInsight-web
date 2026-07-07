@@ -21,12 +21,37 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // Check if cooperative officer
-  const { data: coopOfficer } = await supabase
+  // Check if cooperative officer.
+  //
+  // Was: `const { data: coopOfficer } = await supabase.from(...).single()`
+  // — discarded `error` entirely. `.single()` also treats "0 rows" (the
+  // normal case for anyone who ISN'T a coop officer) as an error, which
+  // then got silently swallowed anyway. Two bugs stacked: a genuine query
+  // failure here (e.g. the RLS recursion this table had — see
+  // 20260705_fix_cooperative_officers_rls_recursion.sql) was
+  // indistinguishable from "not a coop officer" and fell through to the
+  // farm-status check below rather than surfacing. `.maybeSingle()` fixes
+  // the 0-rows case; explicitly checking `error` fixes the other.
+  const { data: coopOfficer, error: coopOfficerError } = await supabase
     .from('cooperative_officers')
     .select('cooperative_id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
+
+  if (coopOfficerError) {
+    console.error('[DashboardLayout] Could not check cooperative officer status:', coopOfficerError.message, '| user:', user.id)
+    return (
+      <AccountIssueScreen
+        title="Couldn't verify your account"
+        message="Something went wrong loading your account. This is usually temporary — retrying resolves it in most cases. If it keeps happening, reach out and we'll sort it out from our side."
+        actions={[
+          { label: 'Retry', href: '/dashboard', variant: 'primary' },
+          { label: 'Contact support', href: '/contact', variant: 'secondary' },
+        ]}
+        diagnostic={coopOfficerError.message}
+      />
+    )
+  }
 
   if (coopOfficer) {
     const { data: coop } = await ((supabase as any).from('cooperatives')

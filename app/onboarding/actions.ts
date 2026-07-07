@@ -96,6 +96,17 @@ export async function createFarmAction(params: CreateFarmParams): Promise<FarmCr
     if (rpcError) {
       console.error('Error creating farm via RPC:', rpcError)
 
+      // New — see supabase/migrations/20260706_prevent_cross_entity_account_linking.sql.
+      // This account is already a cooperative officer; one account can't
+      // currently be both. Distinct message from the generic failure below
+      // so the person understands *why*, rather than "something went wrong."
+      if (rpcError.code === 'P0010') {
+        return {
+          success: false,
+          error: 'This account is already registered as a cooperative officer. A single account can\'t currently be both an individual farm owner and a cooperative officer — contact support if you need this changed.'
+        }
+      }
+
       // Postgres unique_violation (e.g. farms_phone_key) — never leak the raw
       // constraint message to the user. This phone is already linked to a farm,
       // most likely the user's own existing farm under a stale session.

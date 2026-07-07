@@ -59,6 +59,16 @@ export async function createCooperativeOnVerifyAction(
     if (rpcError) {
       console.error('Error creating cooperative via RPC:', rpcError)
 
+      // New — see supabase/migrations/20260706_prevent_cross_entity_account_linking.sql.
+      // This account already manages an existing farm; one account can't
+      // currently be both a farm owner and a cooperative officer.
+      if (rpcError.code === 'P0011') {
+        return {
+          success: false,
+          error: 'This account is already linked to an existing farm. A single account can\'t currently be both an individual farm owner and a cooperative officer — contact support if you need this changed.',
+        }
+      }
+
       if (rpcError.code === '23505') {
         // Check if it's the registration number unique constraint
         if (rpcError.message?.includes('registration_number')) {
@@ -67,9 +77,15 @@ export async function createCooperativeOnVerifyAction(
             error: 'A cooperative with this registration number is already registered on framedInsight.',
           }
         }
+        // NOTE: create_cooperative_with_officer has no phone parameter and
+        // neither `cooperatives` nor `cooperative_officers` has a phone
+        // column, so a 23505 here can only be the registration_number
+        // constraint above — this fallback is defensive, not a real
+        // "phone already in use" case (that message was previously here
+        // but described a collision this function cannot actually produce).
         return {
           success: false,
-          error: 'This phone number is already linked to a cooperative account. Try logging in instead, or contact support if you believe this is an error.',
+          error: 'Something went wrong setting up your cooperative. Please try again or contact support.',
         }
       }
 
