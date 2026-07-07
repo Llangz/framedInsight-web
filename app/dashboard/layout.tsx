@@ -94,6 +94,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
     )
   }
 
+  if (farmStatus.state === 'unlinked_match') {
+    return (
+      <AccountIssueScreen
+        title="Is this your farm?"
+        message={`We found an existing farm — ${farmStatus.farmName || 'unnamed farm'} — that matches your phone or email, but it isn't linked to this account yet. If this is yours, link it now instead of setting up a new one.`}
+        tone="notice"
+        actions={[
+          { label: 'Yes, this is my farm', href: `/api/farm/link-existing/${farmStatus.farmId}`, variant: 'primary' },
+          { label: 'No, set up a new farm', href: '/onboarding', variant: 'secondary' },
+        ]}
+      />
+    )
+  }
+
   if (farmStatus.state === 'no_farm') redirect('/onboarding')
 
   // Every farm_managers row for this user points at a farm that no longer

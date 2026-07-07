@@ -46,6 +46,11 @@ function normalizePhone(value?: string | null): string | null {
   return null
 }
 
+// NOTE: kept for reference / potential reuse elsewhere, but the actual
+// unlinked-farm lookup below (findUnlinkedMatchingFarm) intentionally
+// reimplements a NARROWER version of this check (phone/email only, no
+// owner_name fallback) rather than calling this directly — see that
+// function's comment for why the name-match branch is excluded there.
 function matchesIdentity(
   farm: { phone?: string | null; email?: string | null; owner_name?: string | null },
   identity?: FarmIdentity
@@ -73,6 +78,54 @@ function matchesIdentity(
   return false
 }
 
+// Looks for an existing farms row that (a) has no farm_managers row at all
+// yet, and (b) matches the given identity by phone or email. Deliberately
+// does NOT use matchesIdentity()'s owner_name-only fallback here — a name
+// match alone is too weak a signal to auto-suggest linking someone to a
+// farm record (common names collide; this must stay to phone/email, the
+// two identifiers that are actually unique in practice).
+async function findUnlinkedMatchingFarm(
+  supabase: SupabaseClient,
+  identity?: FarmIdentity
+): Promise<{ id: string; farm_name: string | null } | null> {
+  if (!identity) return null
+
+  const normalizedPhone = normalizePhone(identity.phone)
+  const email = identity.email?.trim().toLowerCase() || null
+  if (!normalizedPhone && !email) return null
+
+  const orParts: string[] = []
+  if (normalizedPhone) orParts.push(`phone.eq.${normalizedPhone}`, `phone.eq.+${normalizedPhone}`)
+  if (email) orParts.push(`email.eq.${email}`)
+  if (orParts.length === 0) return null
+
+  const { data: candidates } = await supabase
+    .from('farms')
+    .select('id, farm_name, phone, email, owner_name')
+    .or(orParts.join(','))
+    .limit(5)
+
+  if (!candidates || candidates.length === 0) return null
+
+  const candidateIds = candidates.map((c: any) => c.id)
+  const { data: managerRows } = await supabase
+    .from('farm_managers')
+    .select('farm_id')
+    .in('farm_id', candidateIds)
+
+  const alreadyManagedIds = new Set((managerRows ?? []).map((r: any) => r.farm_id))
+  const unmanaged = candidates.filter((c: any) => !alreadyManagedIds.has(c.id))
+
+  // Prefer a phone match over an email-only match if both exist among the
+  // unmanaged candidates.
+  const phoneMatch = unmanaged.find(
+    (c: any) => normalizedPhone && normalizePhone(c.phone) === normalizedPhone
+  )
+  const best = phoneMatch ?? unmanaged[0]
+
+  return best ? { id: best.id, farm_name: best.farm_name } : null
+}
+
 export type FarmStatus =
   | { state: 'has_farm'; farmId: string; role?: string | null }
   | { state: 'no_farm' }
@@ -95,6 +148,18 @@ export type FarmStatus =
   // dashboard rather than onboarding, since re-onboarding an existing farm
   // is the more destructive failure mode.
   | { state: 'unknown'; reason: string }
+  // No farm_managers row for this user, BUT an existing, unmanaged farms
+  // row matches their phone/email/name (matchesIdentity() below — this
+  // function existed since the original write of this file but was never
+  // actually called anywhere, which is itself a strong signal this case
+  // was recognized but never wired up). Most likely cause: the farm was
+  // created (directly, via an import, or via an earlier signup attempt
+  // that got interrupted after the `farms` insert but before the
+  // `farm_managers` insert) without ever linking this account. Sending
+  // this person through onboarding again risks creating a SECOND farm
+  // for the same person rather than fixing the missing link — surfacing
+  // it explicitly lets the caller offer "is this your farm?" instead.
+  | { state: 'unlinked_match'; farmId: string; farmName?: string | null }
 
 export async function getFarmStatus(
   supabase: SupabaseClient,
@@ -113,6 +178,10 @@ export async function getFarmStatus(
   const rows = data ?? []
 
   if (rows.length === 0) {
+    const match = await findUnlinkedMatchingFarm(supabase, identity)
+    if (match) {
+      return { state: 'unlinked_match', farmId: match.id, farmName: match.farm_name }
+    }
     return { state: 'no_farm' }
   }
 

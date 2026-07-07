@@ -107,8 +107,17 @@ function LoginContent() {
       // server-side and shows a proper retry screen instead of offering to
       // re-onboard. This is deliberate: re-onboarding an existing farm is a
       // much more destructive failure mode than a momentary "please retry."
-      const farmStatus = await getFarmStatus(supabase, data.user.id)
+      const farmStatus = await getFarmStatus(supabase, data.user.id, {
+        phone: data.user.phone || data.user.user_metadata?.phone || null,
+        email: data.user.email,
+        fullName: data.user.user_metadata?.full_name || null,
+      })
 
+      // 'unlinked_match' is deliberately NOT redirected to /onboarding here
+      // (falls into the `else` branch below, same as 'has_farm') — the
+      // dashboard layout re-runs this same check server-side and shows the
+      // "is this your farm?" prompt. Only a definitive 'no_farm' sends
+      // someone to onboarding from the login page.
       if (farmStatus.state === 'no_farm') {
         router.push('/onboarding')
       } else {

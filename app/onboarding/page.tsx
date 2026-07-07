@@ -75,6 +75,15 @@ export default function OnboardingPage() {
         return
       }
 
+      if (farmStatus.state === 'unlinked_match') {
+        // An existing, unmanaged farm already matches this account —
+        // don't let them fill this form and create a second one. The
+        // dashboard layout re-runs this check and shows an explicit
+        // "is this your farm?" prompt instead.
+        router.replace('/dashboard')
+        return
+      }
+
       if (farmStatus.state === 'unknown') {
         console.error('[Onboarding] Could not verify farm status:', farmStatus.reason, '| user:', user.id)
         setCheckError(farmStatus.reason)
