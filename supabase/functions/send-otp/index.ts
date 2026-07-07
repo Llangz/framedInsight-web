@@ -7,6 +7,7 @@ const TIARA_SENDER_ID = Deno.env.get('TIARA_SENDER_ID') || 'CONNECT'
 const AFRICAS_TALKING_USERNAME = Deno.env.get('AFRICAS_TALKING_USERNAME')
 const AFRICAS_TALKING_API_KEY = Deno.env.get('AFRICAS_TALKING_API_KEY')
 const AFRICAS_TALKING_SENDER_ID = Deno.env.get('AFRICAS_TALKING_SENDER_ID') || 'framedInsight'
+const INTERNAL_API_SECRET = Deno.env.get('INTERNAL_API_SECRET')
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -18,6 +19,23 @@ const CORS_HEADERS = {
  * Normalise a phone number to Tiara Connect's expected format:
  * international digits only, no leading '+' (e.g. 254712345678)
  */
+
+if (
+  !INTERNAL_API_SECRET ||
+  req.headers.get('x-internal-secret') !== INTERNAL_API_SECRET
+) {
+  return new Response(
+    JSON.stringify({ error: 'Unauthorized' }),
+    {
+      status: 401,
+      headers: {
+        'Content-Type': 'application/json',
+        ...CORS_HEADERS,
+      },
+    }
+  )
+}
+
 function normalisePhone(phone: string): string {
   // Strip everything except digits
   let digits = phone.replace(/\D/g, '')

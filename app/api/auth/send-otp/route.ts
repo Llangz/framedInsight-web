@@ -120,15 +120,16 @@ export async function POST(req: NextRequest) {
     }
 
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-otp`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': internalSecret,
-        },
-        body: JSON.stringify({ phone: normalisedPhone, otp }),
-      }
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-otp`,
+    {
+     method: 'POST',
+     headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'x-internal-secret': internalSecret,
+    },
+    body: JSON.stringify({ phone: normalisedPhone, otp }),
+    }
     )
 
     const data = await response.json().catch(() => ({}))
