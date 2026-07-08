@@ -64,16 +64,26 @@ export async function GET(req: NextRequest) {
  * Update farm profile (farm_name, owner_name, primary_enterprise, farm_types, location)
  */
 
+// NOTE: keys here must match exactly what app/dashboard/settings/page.tsx
+// sends in patchFarm() — which uses the raw DB column names (snake_case),
+// not camelCase. The previous version of this schema used camelCase keys
+// (farmName, ownerName, subCounty) while the settings page sends snake_case
+// (farm_name, owner_name, sub_county) plus land_size_acres, which wasn't in
+// the schema at all. Zod silently strips unrecognized keys by default, so
+// every one of those fields was quietly dropped before ever reaching the
+// database — farm name, owner name, sub-county and farm size edits never
+// persisted, even on requests that returned 200.
 const PatchFarmSchema = z.object({
   farmId: z.string().uuid("Invalid Farm ID"),
-  farmName: z.string().min(2, "Farm name must be at least 2 characters").max(100).optional(),
-  ownerName: z.string().min(2, "Owner name must be at least 2 characters").max(100).optional(),
-  primaryEnterprise: z.enum(['dairy', 'coffee', 'small_ruminants', 'mixed']).optional(),
-  farmTypes: z.array(z.enum(['dairy', 'coffee', 'small_ruminants', 'mixed'])).optional(),
+  farm_name: z.string().min(2, "Farm name must be at least 2 characters").max(100).optional(),
+  owner_name: z.string().min(2, "Owner name must be at least 2 characters").max(100).optional(),
+  primary_enterprise: z.enum(['dairy', 'coffee', 'small_ruminants', 'mixed']).optional(),
+  farm_types: z.array(z.enum(['dairy', 'coffee', 'small_ruminants', 'mixed'])).optional(),
   county: z.string().optional(),
-  subCounty: z.string().optional(),
+  sub_county: z.string().optional(),
   ward: z.string().optional(),
   email: z.string().email("Invalid email").optional().or(z.literal('')),
+  land_size_acres: z.number().positive("Farm size must be greater than 0").nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -107,7 +117,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = sanitizeObject(validationResult.data);
-    const { farmId, farmName, ownerName, primaryEnterprise, farmTypes, county, subCounty, ward, email } = body;
+    const { farmId, farm_name, owner_name, primary_enterprise, farm_types, county, sub_county, ward, email, land_size_acres } = body;
 
     // Verify user has access to this farm
     const { data: farmManager } = await supabase
@@ -125,14 +135,15 @@ export async function PATCH(req: NextRequest) {
     const { data: updatedFarm, error: updateError } = await supabase
       .from('farms')
       .update({
-        farm_name: farmName,
-        owner_name: ownerName,
-        primary_enterprise: primaryEnterprise,
-        farm_types: farmTypes,
+        farm_name,
+        owner_name,
+        primary_enterprise,
+        farm_types,
         county,
-        sub_county: subCounty,
+        sub_county,
         ward,
         email,
+        land_size_acres,
         updated_at: new Date().toISOString(),
       })
       .eq('id', farmId)
