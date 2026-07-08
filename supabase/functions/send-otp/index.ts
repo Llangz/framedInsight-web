@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 // SMS provider credentials. The app now attempts a configured fallback provider
 // if the primary provider fails, which improves OTP delivery resilience.
 const TIARA_API_KEY = Deno.env.get('TIARA_API_KEY')
-const TIARA_SENDER_ID = Deno.env.get('TIARA_SENDER_ID') || 'CONNECT'
+const TIARA_SENDER_ID = Deno.env.get('TIARA_SENDER_ID') || 'TIARACONECT'
 const AFRICAS_TALKING_USERNAME = Deno.env.get('AFRICAS_TALKING_USERNAME')
 const AFRICAS_TALKING_API_KEY = Deno.env.get('AFRICAS_TALKING_API_KEY')
 const AFRICAS_TALKING_SENDER_ID = Deno.env.get('AFRICAS_TALKING_SENDER_ID') || 'framedInsight'
