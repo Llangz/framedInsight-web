@@ -10,56 +10,85 @@ import { z } from 'zod'
 // INPUT VALIDATION SCHEMAS
 // ============================================================================
 
+// ============================================================================
+// 20260708 hardening pass — corrections vs. lib/database.types.ts and the
+// actual insert payloads sent by each *Client.tsx form. Two classes of bug
+// fixed here:
+//   1. Fields that don't exist as DB columns (silently dropped every write,
+//      no error ever surfaced) — removed.
+//   2. Fields with the wrong name (buyer_phone vs. the real buyer_contact
+//      column) — renamed to match.
+// All five schemas now also call .strict() so a payload with an unexpected
+// key is rejected with a visible 400 instead of Zod quietly stripping it —
+// the same silent-drop pattern that caused the original "Failed to update
+// farm" bug (see app/api/farms/route.ts's PatchFarmSchema comment).
+// ============================================================================
+
 export const PoultryBatchSchema = z.object({
   batch_name: z.string().min(1).max(100).trim(),
   bird_type: z.enum(['layer', 'broiler', 'kienyeji', 'dual_purpose']),
+  // ⚠️ breed / house_number: present in this schema and in both
+  // AddBatchClient.tsx's and EditBatchClient.tsx's forms, but
+  // AddBatchClient.tsx's actual .insert() call drops both before writing —
+  // so even the "working" add flow doesn't persist them today. Confirm
+  // these are real columns (`SELECT column_name FROM information_schema
+  // .columns WHERE table_name = 'poultry_batches'` in the Supabase SQL
+  // editor) before trusting data written through them.
   breed: z.string().max(100).nullable().optional(),
   current_count: z.number().int().positive(),
   date_of_placement: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   house_number: z.string().max(50).nullable().optional(),
   status: z.enum(['active', 'sold', 'culled']).optional().default('active'),
   notes: z.string().max(2000).nullable().optional(),
-})
+}).strict()
 
 export const PoultryMortalitySchema = z.object({
   batch_id: z.string().uuid(),
   record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   count_dead: z.number().int().positive(),
-  cause: z.string().max(500).nullable().optional(),
+  // `cause` removed — not a column on poultry_mortality, and
+  // MortalityClient.tsx's form collects it but never sends it either.
   notes: z.string().max(1000).nullable().optional(),
-})
+}).strict()
 
 export const PoultryHealthSchema = z.object({
   batch_id: z.string().uuid(),
+  record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   event_type: z.string().max(100),
-  vaccine_name: z.string().max(200).nullable().optional(),
-  drug_name: z.string().max(200).nullable().optional(),
-  cost: z.number().nonnegative().nullable().optional(),
+  // `vaccine_name` / `drug_name` / `cost` removed — none are columns on
+  // poultry_health_records, and HealthClient.tsx's form collects them but
+  // never sends them either (worth deciding whether to add the columns and
+  // wire up the form, or drop those inputs from the UI).
   notes: z.string().max(2000).nullable().optional(),
   next_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-})
+}).strict()
 
 export const PoultryFeedSchema = z.object({
   batch_id: z.string().uuid(),
   record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   feed_type: z.string().max(200),
   quantity_kg: z.number().nonnegative(),
-  cost: z.number().nonnegative().nullable().optional(),
+  // `cost` removed — not a column on poultry_feed_records; FeedClient.tsx
+  // computes cost_per_kg/total_cost for on-screen display only.
   days_remaining: z.number().int().nonnegative().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
-})
+}).strict()
 
 export const PoultrySaleSchema = z.object({
   batch_id: z.string().uuid(),
   quantity: z.number().int().positive(),
+  unit: z.string().max(20).nullable().optional(),
   price_per_unit: z.number().nonnegative(),
-  sale_type: z.enum(['eggs', 'birds']),
+  total_price: z.number().nonnegative().nullable().optional(),
+  sale_type: z.enum(['eggs', 'eggs_loose', 'live_birds', 'dressed', 'day_old_chicks', 'manure']),
   buyer_name: z.string().max(200).nullable().optional(),
-  buyer_phone: z.string().max(20).nullable().optional(),
+  // Renamed from buyer_phone — the real column is buyer_contact.
+  buyer_contact: z.string().max(50).nullable().optional(),
+  market: z.string().max(200).nullable().optional(),
   payment_method: z.string().max(50).nullable().optional(),
   sale_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   notes: z.string().max(2000).nullable().optional(),
-})
+}).strict()
 
 // ============================================================================
 // RATE LIMITING (Vercel KV / Upstash Redis with In-Memory Fallback)

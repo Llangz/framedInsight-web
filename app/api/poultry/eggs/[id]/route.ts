@@ -1,18 +1,22 @@
 // 📁 FILE PATH: app/api/poultry/eggs/[id]/route.ts
-// 📁 FILE PATH: app/api/poultry/eggs/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { sanitizeObject } from '@/lib/validation'
 
-// Egg record schema
+// ⚠️ CORRECTED: the previous version of this schema had `cracked_eggs` and
+// `dirty_eggs` fields that don't exist on poultry_egg_records at all (see
+// lib/database.types.ts) and were never sent by
+// app/dashboard/poultry/eggs/EggsClient.tsx either — they were phantom
+// fields. The real columns are batch_id, record_date, eggs_collected,
+// total_eggs, notes.
 const PoultryEggSchema = z.object({
   batch_id: z.string().uuid(),
-  record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  eggs_collected: z.number().int().nonnegative(),
   total_eggs: z.number().int().nonnegative().nullable().optional(),
-  cracked_eggs: z.number().int().nonnegative().nullable().optional(),
-  dirty_eggs: z.number().int().nonnegative().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
-})
+}).strict()
 
 async function guardRecord(id: string) {
   const supabase = await createClient()
@@ -43,23 +47,25 @@ async function guardRecord(id: string) {
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params
-    const body = await req.json()
+    const rawBody = await req.json()
 
     const guard = await guardRecord(id)
     if (guard.error) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
-    // 🔒 SECURITY: Validate input against Zod schema, strip unknown keys
-    const validated = PoultryEggSchema.partial().strip().safeParse(body)
+    // 🔒 SECURITY: Validate input against Zod schema; unknown keys rejected
+    const validated = PoultryEggSchema.partial().strict().safeParse(rawBody)
     if (!validated.success) {
-      return NextResponse.json({ 
-        error: 'Invalid input', 
-        details: validated.error.errors 
+      return NextResponse.json({
+        error: 'Invalid input',
+        details: validated.error.errors
       }, { status: 400 })
     }
 
+    const body = sanitizeObject(validated.data)
+
     const { data, error } = await (guard.supabase as any)
       .from('poultry_egg_records')
-      .update(validated.data)
+      .update(body)
       .eq('id', id)
       .select()
       .single()
@@ -87,6 +93,6 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
   } catch (err: any) {
-      return NextResponse.json({ error: err.message || 'Failed' }, { status: 500 })
-    }
+    return NextResponse.json({ error: err.message || 'Failed' }, { status: 500 })
   }
+}

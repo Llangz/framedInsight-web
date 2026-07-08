@@ -1,8 +1,16 @@
 // 📁 FILE PATH: app/api/poultry/batches-secure/route.ts
-// 📁 FILE PATH: app/api/poultry/batches-secure/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { PoultryBatchSchema, auditLog, stripDangerousKeys } from '@/lib/security'
+import { sanitizeObject } from '@/lib/validation'
+
+// NOTE: PoultryBatchSchema (lib/security.ts) now calls .strict() so unknown
+// keys are rejected with a 400 instead of being silently stripped —
+// previously safeParse() on a non-strict object would quietly drop
+// anything not in the schema, the same "field vanishes with no error"
+// pattern that caused the original farms settings bug. See lib/security.ts
+// for the breed/house_number verification note before relying on those two
+// fields — they're accepted here but not confirmed to exist in the DB.
 
 // GET /api/poultry/batches — fetch all active batches for current user's farm
 export async function GET(req: NextRequest) {
@@ -75,14 +83,14 @@ export async function POST(req: NextRequest) {
         details: { errors: validation.error.format(), input: rawBody },
         ip,
       })
-      return NextResponse.json({ 
-        error: 'Invalid input', 
-        details: validation.error.format() 
+      return NextResponse.json({
+        error: 'Invalid input',
+        details: validation.error.format()
       }, { status: 400 })
     }
 
-    const safeBody = stripDangerousKeys(validation.data)
-    
+    const safeBody = sanitizeObject(stripDangerousKeys(validation.data))
+
     const insertData: any = {
       batch_name: safeBody.batch_name,
       bird_type: safeBody.bird_type,

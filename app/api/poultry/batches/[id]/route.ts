@@ -1,7 +1,8 @@
 // 📁 FILE PATH: app/api/poultry/batches/[id]/route.ts
-// 📁 FILE PATH: app/api/poultry/batches/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+import { sanitizeObject } from '@/lib/validation'
 
 // ── Auth + ownership guard ─────────────────────────────────────────────────
 
@@ -30,16 +31,51 @@ async function guardBatch(id: string) {
   return { error: null, status: 200, supabase }
 }
 
-import { z } from 'zod'
-
+// ⚠️ SCHEMA VERIFICATION NEEDED before relying on this route for `breed`,
+// `house_number`, `purchase_price_per_bird`, `housing_system`,
+// `expected_laying_date`, or `target_weight_kg`.
+//
+// lib/database.types.ts (generated from the live schema) only lists these
+// columns on poultry_batches: batch_name, bird_type, current_count,
+// date_of_placement, farm_id, id, notes, purpose, source, status,
+// created_at, updated_at. That's confirmed accurate for every other
+// poultry table (feed/health/mortality/sales all cross-checked clean
+// against their *Client.tsx insert payloads).
+//
+// For poultry_batches, NONE of the six extra fields below are confirmed:
+// - `breed` and `house_number` are collected in both AddBatchClient.tsx's
+//   and EditBatchClient.tsx's forms, and appear in PoultryBatchSchema in
+//   lib/security.ts, but AddBatchClient.tsx's actual .insert() call drops
+//   both of them before writing — so even the "add" flow doesn't persist
+//   them today. That's either a stale database.types.ts (columns exist,
+//   add-flow just forgot to include them) or the columns were never
+//   created (schema and forms were written ahead of the migration).
+// - `purchase_price_per_bird`, `housing_system`, `expected_laying_date`,
+//   `target_weight_kg` appear ONLY in EditBatchClient.tsx's form, with no
+//   corroboration anywhere else in the codebase.
+//
+// They're included here so this route doesn't reject data if the columns
+// do turn out to exist, but please confirm in the Supabase SQL editor:
+//   SELECT column_name FROM information_schema.columns
+//   WHERE table_name = 'poultry_batches';
+// Any of the six that aren't real columns should be removed from this
+// schema, from EditBatchClient.tsx's update payload, and — if you want
+// farmers to actually be able to record breed/house number — added as a
+// migration plus wired into AddBatchClient.tsx's insert.
 const updateBatchSchema = z.object({
-  batch_name: z.string().min(1).optional(),
-  bird_type: z.string().optional(),
+  batch_name: z.string().min(1).max(100).optional(),
+  bird_type: z.enum(['layer', 'broiler', 'kienyeji', 'dual_purpose']).optional(),
+  breed: z.string().max(100).nullable().optional(),
   current_count: z.number().int().min(0).optional(),
-  date_of_placement: z.string().optional(),
-  notes: z.string().nullable().optional(),
-  purpose: z.string().nullable().optional(),
-  source: z.string().nullable().optional(),
+  date_of_placement: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  house_number: z.string().max(50).nullable().optional(),
+  housing_system: z.string().max(100).nullable().optional(),
+  expected_laying_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  purchase_price_per_bird: z.number().nonnegative().nullable().optional(),
+  target_weight_kg: z.number().positive().nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+  purpose: z.string().max(100).nullable().optional(),
+  source: z.enum(['born on farm', 'purchased', 'donated', 'other']).nullable().optional(),
   status: z.enum(['active', 'sold', 'culled', 'closed']).optional(),
 }).strict()
 
@@ -47,10 +83,9 @@ const updateBatchSchema = z.object({
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params
-    const body = await req.json()
+    const rawBody = await req.json()
 
-    // Validate and whitelist fields using Zod
-    const validation = updateBatchSchema.safeParse(body)
+    const validation = updateBatchSchema.safeParse(rawBody)
     if (!validation.success) {
       return NextResponse.json({ error: 'Invalid update payload', details: validation.error.format() }, { status: 400 })
     }
@@ -58,9 +93,11 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const guard = await guardBatch(id)
     if (guard.error) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
+    const body = sanitizeObject(validation.data)
+
     const { data, error } = await (guard.supabase as any)
       .from('poultry_batches')
-      .update(validation.data)
+      .update({ ...body, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single()

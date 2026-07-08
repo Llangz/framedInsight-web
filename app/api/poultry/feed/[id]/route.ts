@@ -1,7 +1,24 @@
 // 📁 FILE PATH: app/api/poultry/feed/[id]/route.ts
-// 📁 FILE PATH: app/api/poultry/feed/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+import { sanitizeObject } from '@/lib/validation'
+
+// NOTE: PoultryFeedSchema in lib/security.ts has a `cost` field that does
+// NOT exist on poultry_feed_records (confirmed against both
+// lib/database.types.ts and app/dashboard/poultry/feed/FeedClient.tsx,
+// which computes cost_per_kg/total_cost client-side for display but never
+// persists them). Deliberately not reusing that shared schema here —
+// this one matches the real columns: batch_id, record_date, feed_type,
+// quantity_kg, days_remaining, notes.
+const PoultryFeedUpdateSchema = z.object({
+  batch_id: z.string().uuid(),
+  record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  feed_type: z.string().min(1).max(200),
+  quantity_kg: z.number().nonnegative(),
+  days_remaining: z.number().int().nonnegative().nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+}).strict()
 
 async function guardRecord(id: string) {
   const supabase = await createClient()
@@ -32,10 +49,17 @@ async function guardRecord(id: string) {
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params
-    const body = await req.json()
+    const rawBody = await req.json()
 
     const guard = await guardRecord(id)
     if (guard.error) return NextResponse.json({ error: guard.error }, { status: guard.status })
+
+    const validated = PoultryFeedUpdateSchema.partial().strict().safeParse(rawBody)
+    if (!validated.success) {
+      return NextResponse.json({ error: 'Invalid input', details: validated.error.errors }, { status: 400 })
+    }
+
+    const body = sanitizeObject(validated.data)
 
     const { data, error } = await (guard.supabase as any)
       .from('poultry_feed_records')

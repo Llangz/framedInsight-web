@@ -2,11 +2,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { PoultrySaleSchema } from '@/lib/security'
+import { sanitizeObject } from '@/lib/validation'
+
+// NOTE: PoultrySaleSchema now lives in lib/security.ts with corrected
+// field names — it previously had `buyer_phone`, but the real column
+// (confirmed against lib/database.types.ts and
+// app/dashboard/poultry/sales/SalesClient.tsx's actual insert payload) is
+// `buyer_contact`. It also now includes `market`, `unit`, and
+// `total_price`, which are real columns this schema previously dropped
+// silently on every update. See lib/security.ts for the full diff.
 
 // ── Auth + Ownership Guard ─────────────────────────────────────────────────
 async function guardRecord(id: string) {
   const supabase = await createClient()
-  
+
   // 1. Get current user
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -45,26 +54,26 @@ export async function PUT(
 ) {
   try {
     const { id } = await context.params
-    const body = await req.json()
-    
+    const rawBody = await req.json()
+
     // 1. Check auth & ownership
     const guard = await guardRecord(id)
     if (guard.error || !guard.supabase) {
       return NextResponse.json({ error: guard.error || 'Authorization failed' }, { status: guard.status || 500 })
     }
 
-    // 2. Safe parse input (allows partial updates)
-    const validated = PoultrySaleSchema.partial().strip().safeParse(body)
-    
+    // 2. Safe parse input (allows partial updates); unknown keys rejected
+    const validated = PoultrySaleSchema.partial().strict().safeParse(rawBody)
+
     if (!validated.success) {
-      return NextResponse.json({ 
-        error: 'Invalid input', 
-        details: validated.error.errors 
+      return NextResponse.json({
+        error: 'Invalid input',
+        details: validated.error.errors
       }, { status: 400 })
     }
 
     // 3. Prepare update data (Type-safe casting)
-    const update: any = { ...validated.data }
+    const update: any = sanitizeObject({ ...validated.data })
 
     // Remove fields that shouldn't be updated directly
     delete update.batch_id // Usually immutable
@@ -76,7 +85,7 @@ export async function PUT(
     if (update.quantity !== undefined && update.price_per_unit !== undefined) {
       const qty = typeof update.quantity === 'number' ? update.quantity : parseFloat(update.quantity)
       const price = typeof update.price_per_unit === 'number' ? update.price_per_unit : parseFloat(update.price_per_unit)
-      
+
       if (!isNaN(qty) && !isNaN(price)) {
         update.total_price = qty * price
       }
@@ -113,7 +122,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await context.params
-    
+
     // 1. Check auth & ownership
     const guard = await guardRecord(id)
     if (guard.error || !guard.supabase) {

@@ -1,8 +1,23 @@
 // 📁 FILE PATH: app/api/poultry/mortality/[id]/route.ts
-// 📁 FILE PATH: app/api/poultry/mortality/[id]/route.ts
 // Note: DB table is `poultry_mortality` (not poultry_mortality_records — see database.types.ts)
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+import { sanitizeObject } from '@/lib/validation'
+
+// NOTE: PoultryMortalitySchema in lib/security.ts has a `cause` field that
+// does NOT exist on poultry_mortality (confirmed against
+// lib/database.types.ts). app/dashboard/poultry/mortality/
+// MortalityClient.tsx also collects `cause` in its form but never persists
+// it — same discarded-field pattern as the health records form, worth a
+// separate look. This schema matches the real columns: batch_id,
+// record_date, count_dead, notes.
+const PoultryMortalityUpdateSchema = z.object({
+  batch_id: z.string().uuid(),
+  record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  count_dead: z.number().int().positive(),
+  notes: z.string().max(1000).nullable().optional(),
+}).strict()
 
 async function guardRecord(id: string) {
   const supabase = await createClient()
@@ -30,14 +45,21 @@ async function guardRecord(id: string) {
 }
 
 // PUT /api/poultry/mortality/[id]
-// Typical use: correct count_dead, cause, notes, record_date
+// Typical use: correct count_dead, notes, or record_date
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params
-    const body = await req.json()
+    const rawBody = await req.json()
 
     const guard = await guardRecord(id)
     if (guard.error) return NextResponse.json({ error: guard.error }, { status: guard.status })
+
+    const validated = PoultryMortalityUpdateSchema.partial().strict().safeParse(rawBody)
+    if (!validated.success) {
+      return NextResponse.json({ error: 'Invalid input', details: validated.error.errors }, { status: 400 })
+    }
+
+    const body = sanitizeObject(validated.data)
 
     const { data, error } = await (guard.supabase as any)
       .from('poultry_mortality')
