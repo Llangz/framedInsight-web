@@ -1,13 +1,8 @@
+// 📁 FILE PATH: app/api/small-ruminants/animals/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { validateCsrfRequest, getSessionId } from '@/lib/csrf'
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  // ── CSRF Validation ──────────────────────────────────────────────────────
-  const sessionId = getSessionId(req);
-  const csrfError = validateCsrfRequest(req, sessionId);
-  if (csrfError) return csrfError;
-
   try {
     const { id } = await context.params
     const body = await req.json()
@@ -36,11 +31,6 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 }
 
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  // ── CSRF Validation ──────────────────────────────────────────────────────
-  const sessionId = getSessionId(req);
-  const csrfError = validateCsrfRequest(req, sessionId);
-  if (csrfError) return csrfError;
-
   try {
     const { id } = await context.params
     const supabase = await createClient()

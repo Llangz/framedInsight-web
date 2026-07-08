@@ -1,8 +1,8 @@
 // 📁 FILE PATH: app/api/poultry/eggs/[id]/route.ts
+// 📁 FILE PATH: app/api/poultry/eggs/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
-import { validateCsrfRequest, getSessionId } from '@/lib/csrf'
 
 // Egg record schema
 const PoultryEggSchema = z.object({
@@ -41,11 +41,6 @@ async function guardRecord(id: string) {
 
 // PUT /api/poultry/eggs/[id]
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  // ── CSRF Validation ──────────────────────────────────────────────────────
-  const sessionId = getSessionId(req);
-  const csrfError = validateCsrfRequest(req, sessionId);
-  if (csrfError) return csrfError;
-
   try {
     const { id } = await context.params
     const body = await req.json()
@@ -78,11 +73,6 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
 // DELETE /api/poultry/eggs/[id]
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  // ── CSRF Validation ──────────────────────────────────────────────────────
-  const sessionId = getSessionId(req);
-  const csrfError = validateCsrfRequest(req, sessionId);
-  if (csrfError) return csrfError;
-
   try {
     const { id } = await context.params
 

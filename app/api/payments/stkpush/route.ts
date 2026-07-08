@@ -1,8 +1,8 @@
+// 📁 FILE PATH: app/api/payments/stkpush/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { initiateSTKPush } from '@/lib/daraja'
 import { createClient as createAnonClient } from '@supabase/supabase-js'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { validateCsrfRequest, getSessionId } from '@/lib/csrf'
 
 // Monthly prices in KES — matches lib/tiers.ts
 const TIER_MONTHLY_PRICES: Record<string, number> = {
@@ -13,11 +13,6 @@ const TIER_MONTHLY_PRICES: Record<string, number> = {
 }
 
 export async function POST(req: NextRequest) {
-  // ── CSRF Validation ──────────────────────────────────────────────────────
-  const sessionId = getSessionId(req)
-  const csrfError = validateCsrfRequest(req, sessionId)
-  if (csrfError) return csrfError
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY

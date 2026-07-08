@@ -1,7 +1,7 @@
 // 📁 FILE PATH: app/api/poultry/health/[id]/route.ts
+// 📁 FILE PATH: app/api/poultry/health/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { validateCsrfRequest, getSessionId } from '@/lib/csrf'
 
 async function guardRecord(id: string) {
   const supabase = await createClient()
@@ -31,11 +31,6 @@ async function guardRecord(id: string) {
 // PUT /api/poultry/health/[id]
 // Typical use: correct event_type, vaccine_name, drug_name, cost, next_due_date
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  // ── CSRF Validation ──────────────────────────────────────────────────────
-  const sessionId = getSessionId(req);
-  const csrfError = validateCsrfRequest(req, sessionId);
-  if (csrfError) return csrfError;
-
   try {
     const { id } = await context.params
     const body = await req.json()
@@ -59,11 +54,6 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
 // DELETE /api/poultry/health/[id]
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  // ── CSRF Validation ──────────────────────────────────────────────────────
-  const sessionId = getSessionId(req);
-  const csrfError = validateCsrfRequest(req, sessionId);
-  if (csrfError) return csrfError;
-
   try {
     const { id } = await context.params
 

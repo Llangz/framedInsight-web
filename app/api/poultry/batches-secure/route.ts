@@ -1,8 +1,8 @@
 // 📁 FILE PATH: app/api/poultry/batches-secure/route.ts
+// 📁 FILE PATH: app/api/poultry/batches-secure/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { PoultryBatchSchema, auditLog, stripDangerousKeys } from '@/lib/security'
-import { validateCsrfRequest, getSessionId } from '@/lib/csrf'
 
 // GET /api/poultry/batches — fetch all active batches for current user's farm
 export async function GET(req: NextRequest) {
@@ -48,11 +48,6 @@ export async function GET(req: NextRequest) {
 
 // POST /api/poultry/batches — create a new batch
 export async function POST(req: NextRequest) {
-  // ── CSRF Validation ──────────────────────────────────────────────────────
-  const sessionId = getSessionId(req)
-  const csrfError = validateCsrfRequest(req, sessionId)
-  if (csrfError) return csrfError
-
   try {
     const supabase = await createClient()
     const ip = req.headers.get('x-forwarded-for') || 'unknown'
