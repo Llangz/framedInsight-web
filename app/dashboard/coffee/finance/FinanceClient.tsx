@@ -7,7 +7,6 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import { TrendingUp, TrendingDown, Banknote, BarChart3, Plus, X } from 'lucide-react'
-import CoffeeSubNav from '../components/CoffeeSubNav'
 import { addTransaction } from './actions'
 
 interface YearSummary {
@@ -78,7 +77,6 @@ export default function FinanceClient({
 
   return (
     <div className="min-h-screen bg-obsidian">
-      <CoffeeSubNav />
 
       <div className="max-w-6xl mx-auto px-4 lg:px-6 py-8 space-y-6">
 

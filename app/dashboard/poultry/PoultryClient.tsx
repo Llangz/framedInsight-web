@@ -125,33 +125,10 @@ export default function PoultryClient({ stats, batches, alerts, upcoming }: Prop
 
   return (
     <div className="min-h-screen bg-obsidian">
-
-      {/* Sub-nav */}
-      <div className="border-b border-[#2A2D35] bg-[#0A0C10] sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="flex items-center justify-between h-12">
-            <nav className="flex items-center gap-1 overflow-x-auto">
-              {navItems.map(({ label, href }) => {
-                const active = href === '/dashboard/poultry'
-                  ? pathname === href
-                  : pathname.startsWith(href)
-                return (
-                  <Link key={href} href={href}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
-                      active ? 'text-white bg-white/10' : 'text-[#6B7280] hover:text-white'
-                    }`}>
-                    {label}
-                  </Link>
-                )
-              })}
-            </nav>
-            <Link href="/dashboard/poultry/add-batch"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors flex-shrink-0">
-              <PlusCircle size={12} /> Add Batch
-            </Link>
-          </div>
-        </div>
-      </div>
+      {/* Sub-nav (Overview/Flock/Eggs/... + Add Batch) now lives in the
+          persistent EnterpriseNavHeader rendered by DashboardShell for
+          every poultry route, not just this page — see
+          app/dashboard/components/EnterpriseNavHeader.tsx. */}
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
 

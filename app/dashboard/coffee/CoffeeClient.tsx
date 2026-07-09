@@ -80,75 +80,10 @@ export default function CoffeeClient({ stats }: CoffeeClientProps) {
 
   return (
     <div className="min-h-screen bg-[#070809]">
-
-      {/* Sticky sub-nav */}
-      <div className="border-b border-[#2A2D35] bg-[#0A0C10] sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="flex items-center justify-between h-12">
-            <nav className="flex items-center gap-1 overflow-x-auto">
-              {navItems.map(({ label, href }) => {
-                const active =
-                  href === '/dashboard/coffee'
-                    ? pathname === href
-                    : pathname.startsWith(href)
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
-                      active
-                        ? 'text-white bg-white/10'
-                        : 'text-[#6B7280] hover:text-white'
-                    }`}
-                  >
-                    {label}
-                  </Link>
-                )
-              })}
-            </nav>
-
-            {/* Record activity dropdown */}
-            <div className="relative flex-shrink-0" ref={dropdownRef}>
-              <button
-                onClick={() => setDropdownOpen(o => !o)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors"
-              >
-                <PlusCircle size={12} />
-                Record activity
-                <ChevronDown size={11} className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {dropdownOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-52 rounded-lg border border-[#2A2D35] bg-[#0D0F14] shadow-xl z-50">
-                  <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold text-[#4B5563] uppercase tracking-widest">
-                    Select activity
-                  </p>
-                  {ACTIVITY_OPTIONS.map(({ label, Icon, href }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-[#9CA3AF] hover:text-white hover:bg-white/5 transition-colors group"
-                    >
-                      <Icon size={13} className="text-[#4B5563] group-hover:text-emerald-500 transition-colors flex-shrink-0" />
-                      {label}
-                    </Link>
-                  ))}
-                  <div className="border-t border-[#2A2D35] mt-1 mb-1" />
-                  <Link
-                    href="/dashboard/coffee/plots/add"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 text-sm text-[#9CA3AF] hover:text-white hover:bg-white/5 transition-colors group mb-0.5"
-                  >
-                    <PlusCircle size={13} className="text-[#4B5563] group-hover:text-emerald-500 transition-colors flex-shrink-0" />
-                    Add plot
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Sub-nav (Overview/Plots/Activities/... + Record activity) now
+          lives in the persistent EnterpriseNavHeader rendered by
+          DashboardShell for every coffee route, not just this page —
+          see app/dashboard/components/EnterpriseNavHeader.tsx. */}
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
 

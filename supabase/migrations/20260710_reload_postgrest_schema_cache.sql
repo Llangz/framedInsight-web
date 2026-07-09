@@ -1,0 +1,40 @@
+-- 📁 FILE PATH: supabase/migrations/20260710_reload_postgrest_schema_cache.sql
+--
+-- CONTEXT
+-- ────────
+-- /dashboard/poultry/health started throwing into app/dashboard/error.tsx
+-- ("This page didn't load") on 2026-07-09, the same day
+-- 20260709_add_poultry_health_mortality_fields.sql altered
+-- poultry_health_records and poultry_mortality (added columns).
+--
+-- poultry/health/page.tsx is also the ONE page that was migrated to
+-- lib/safe-query.ts's unwrap()/unwrapOr(), which THROWS on a real
+-- Postgrest error instead of silently falling back to an empty list (see
+-- that file's comments — it's the deliberate reference implementation).
+-- Its sibling, poultry/mortality/page.tsx, runs the same query shape
+-- against a table altered by the same migration but still uses the old
+-- `data || []` pattern — so if the same underlying error is happening
+-- there too, it would currently be invisible rather than crashing.
+--
+-- MOST LIKELY ROOT CAUSE
+-- ────────────────────────
+-- PostgREST (the API layer Supabase's JS client talks to) keeps an
+-- in-memory cache of the database schema and does not automatically see
+-- new columns/relationships until that cache reloads. Supabase's own
+-- migration runner sends the reload notification for you, but a
+-- migration applied directly via `psql`/the SQL editor does not — the API
+-- can then 400/500 on `select('*')` or embedded-resource queries
+-- (`poultry_batches(batch_name)`) against the just-altered table for
+-- anywhere from a few seconds up to the next natural cache refresh,
+-- which is exactly the kind of "genuine query failure" unwrap() is
+-- designed to surface rather than mask.
+--
+-- FIX
+-- ────
+-- Explicitly notify PostgREST to reload its schema cache. This is safe to
+-- run any time (including now, after the fact) and costs nothing if the
+-- cache had already refreshed on its own — it's a no-op in that case.
+-- Going forward, any migration that adds/renames/drops a column, table,
+-- or foreign key should end with this same NOTIFY so this class of bug
+-- can't recur.
+NOTIFY pgrst, 'reload schema';

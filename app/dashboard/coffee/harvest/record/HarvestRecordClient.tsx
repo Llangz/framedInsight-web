@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { recordHarvest } from '../actions'
 import { CheckCircle2, AlertCircle, Plus, X } from 'lucide-react'
 import Link from 'next/link'
-import CoffeeSubNav from '../../components/CoffeeSubNav'
 
 interface HarvestRecord {
   id: string; harvest_date: string; plot_name: string; harvest_year: number | null
@@ -48,7 +47,6 @@ export default function HarvestRecordClient({
 
   return (
     <div className="min-h-screen bg-obsidian">
-      <CoffeeSubNav />
 
       <div className="max-w-4xl mx-auto px-4 lg:px-6 py-8 space-y-6">
 

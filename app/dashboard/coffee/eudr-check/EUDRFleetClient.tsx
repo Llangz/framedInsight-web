@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import CoffeeSubNav from '../components/CoffeeSubNav'
 import {
   EUDR_DEADLINE_SMALL_LABEL,
   EUDR_DEADLINE_LARGE_LABEL,
@@ -76,7 +75,6 @@ export default function EUDRFleetClient({
 
   return (
     <div className="min-h-screen bg-obsidian text-white">
-      <CoffeeSubNav />
       <div className="py-6 px-4 hidden">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-4">

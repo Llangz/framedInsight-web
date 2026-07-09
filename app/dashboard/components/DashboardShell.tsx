@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import SubscriptionBanner from './SubscriptionBanner'
 import PaywallGate from './PaywallGate'
+import EnterpriseNavHeader from './EnterpriseNavHeader'
 import type { SubscriptionInfo } from '@/lib/subscription'
 
 interface Props {
@@ -205,6 +206,15 @@ export default function DashboardShell({ children, farmName, farmId, subInfo }: 
 
         {/* Subscription banner (warnings, grace, expiring soon) */}
         <SubscriptionBanner subInfo={subInfo} />
+
+        {/* Persistent enterprise navigation — mounted once here so it
+            survives on every /dashboard route, including the crash screen
+            rendered by app/dashboard/error.tsx (DashboardShell is the
+            parent layout and keeps rendering around that boundary), and
+            the paywall gate below. Previously each enterprise re-rendered
+            its own copy of this nav only on its own root page — see
+            EnterpriseNavHeader.tsx for the full rationale. */}
+        <EnterpriseNavHeader />
 
         {/* Page content — gated if expired and not on a free route */}
         <main className="flex-1 overflow-y-auto">

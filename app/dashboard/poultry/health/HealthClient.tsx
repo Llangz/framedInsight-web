@@ -95,6 +95,18 @@ export default function HealthClient({ farmId, initialBatches, initialEvents }: 
   batch_id:      form.batch_id,
   record_date:   form.event_date,
   event_type:    form.event_type,
+  // vaccine_name/disease/drug_name/dosage/vet_name/cost were added to
+  // poultry_health_records by 20260709_add_poultry_health_mortality_fields.sql
+  // (see that migration's comment) precisely because this form collected
+  // them but never sent them — every save silently dropped whatever a
+  // farmer typed into Vaccine, Disease, Drug, Dosage, Vet or Cost. The sibling
+  // MortalityClient.tsx form got this fix already; this file didn't.
+  vaccine_name:  form.event_type === 'vaccination' ? (form.vaccine_name || null) : null,
+  disease:       (form.event_type === 'treatment' || form.event_type === 'deworming') ? (form.disease || null) : null,
+  drug_name:     (form.event_type === 'treatment' || form.event_type === 'deworming') ? (form.drug_name || null) : null,
+  dosage:        form.dosage || null,
+  vet_name:      form.vet_name || null,
+  cost:          form.cost ? Number(form.cost) : null,
   notes:         form.notes || null,
   next_due_date: form.next_due_date || null,
 }
