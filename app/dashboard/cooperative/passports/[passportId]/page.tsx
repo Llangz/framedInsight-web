@@ -29,6 +29,16 @@ export default async function PassportDetailPage({ params }: Props) {
     .eq('cooperative_id', access.coopId)
     .single()
 
+  // PGRST116 ("no rows") from .single() is a genuine not-found — 404 is
+  // the right response. Any other error code means the fetch itself
+  // failed, which should NOT render the same 404: a cooperative officer
+  // seeing "not found" for a passport that's actually published and
+  // buyer-facing would reasonably read that as "it got deleted," when
+  // it's really just a transient fetch problem. Let it throw instead, so
+  // app/dashboard/error.tsx can offer a retry.
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Could not load passport ${passportId}: ${error.message}`)
+  }
   if (error || !passport) notFound()
 
   return (

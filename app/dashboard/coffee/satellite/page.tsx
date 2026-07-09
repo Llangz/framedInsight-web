@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { unwrapOr } from "@/lib/safe-query";
 import SatelliteClient from "./SatelliteClient";
 
 export default async function CoffeeSatellitePage() {
@@ -36,7 +37,11 @@ export default async function CoffeeSatellitePage() {
       .single()
   ]);
 
-  const plots = (plotRes.data || []).filter(p => p.plot_id !== null) as any[];
+  // Satellite health is the entire point of this page, so a failed fetch
+  // here shouldn't render as "no plots monitored" — that reads as "your
+  // satellite monitoring found nothing wrong," which is the opposite of
+  // an honest failure state.
+  const plots = (unwrapOr(plotRes as any, [], 'v_plot_latest_satellite')).filter((p: any) => p.plot_id !== null) as any[];
   const plotIds = plots.map(p => p.plot_id);
 
   // Fetch trends for valid plots
@@ -52,6 +57,14 @@ export default async function CoffeeSatellitePage() {
       if (!trends[t.plot_id]) trends[t.plot_id] = [];
       trends[t.plot_id].push(t);
     });
+  }
+
+  // v_farm_satellite_health is a per-farm rollup — PGRST116 ("no rows")
+  // is a legitimate "not processed yet" state and stays a soft null;
+  // any other error means the fetch itself broke and shouldn't be
+  // silently treated the same way.
+  if (healthRes.error && healthRes.error.code !== 'PGRST116') {
+    throw new Error(`Could not load satellite health summary: ${healthRes.error.message}`)
   }
 
   let farmHealth = null;

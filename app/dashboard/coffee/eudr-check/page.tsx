@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { unwrapOr } from "@/lib/safe-query";
 import EUDRFleetClient from "./EUDRFleetClient";
 
 type RiskLevel = 'green' | 'yellow' | 'red' | 'unknown'
@@ -56,9 +57,16 @@ export default async function EUDRFleetPage() {
       .limit(10)
   ]);
 
-  const coffeePlots = plotRes.data || [];
-  const eudrData = eudrRes.data || [];
-  const events = eventsRes.data || [];
+  // A failed coffee_eudr_compliance fetch previously fell straight through
+  // to eudrData = [], which computeRisk() then reads as "no land doc" and
+  // renders every plot as amber/incomplete — a plausible-looking but
+  // wrong compliance state for an EUDR (EU Regulation 2023/1115) fleet
+  // view, where the whole point is that a farmer or cooperative officer
+  // can trust what's on screen without re-verifying it against source
+  // records. unwrapOr throws these into app/dashboard/error.tsx instead.
+  const coffeePlots = unwrapOr(plotRes as any, [], 'coffee_plots');
+  const eudrData = unwrapOr(eudrRes as any, [], 'coffee_eudr_compliance');
+  const events = unwrapOr(eventsRes as any, [], 'v_compliance_timeline');
 
   // Fetch latest satellite reading per plot
   const plotIds = coffeePlots.map(p => p.id);

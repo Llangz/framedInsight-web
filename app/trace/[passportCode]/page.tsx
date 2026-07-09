@@ -51,10 +51,21 @@ export default async function TracePage({ params }: Props) {
   // displays them.
   const { buyer_name, buyer_country, ...publicPassport } = passport
 
-  // Fetch the public cryptographic traceability events ledger
-  const ledger = passport.passport_id
-    ? await getPublicPassportLedger(passport.passport_id)
-    : []
+  // Fetch the public cryptographic traceability events ledger.
+  // A genuine failure here (vs. "no events yet") is caught separately so
+  // the rest of the passport still renders — see the comment in
+  // getPublicPassportLedger for why this must not collapse into an
+  // empty-looking ledger.
+  let ledger: any[] = []
+  let ledgerUnavailable = false
+  if (passport.passport_id) {
+    try {
+      ledger = await getPublicPassportLedger(passport.passport_id)
+    } catch (e) {
+      console.error('[TracePage] ledger fetch failed:', e)
+      ledgerUnavailable = true
+    }
+  }
 
-  return <PassportClient passport={publicPassport} passportCode={passportCode} ledger={ledger} />
+  return <PassportClient passport={publicPassport} passportCode={passportCode} ledger={ledger} ledgerUnavailable={ledgerUnavailable} />
 }

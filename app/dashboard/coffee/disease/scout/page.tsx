@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { unwrapOr } from "@/lib/safe-query";
 import ScoutingClient from "./ScoutingClient";
 
 export default async function ScoutingPage() {
@@ -20,15 +21,16 @@ export default async function ScoutingPage() {
     redirect("/onboarding");
   }
 
-  const { data: plotData } = await supabase
+  const plotRes = await supabase
     .from("coffee_plots")
     .select("id, plot_name, area_hectares, region_name")
     .eq("farm_id", fm.farm_id)
     .order("plot_name");
+  const plotData = unwrapOr(plotRes as any, [], 'coffee_plots');
 
   return (
     <ScoutingClient 
-      plots={plotData || []} 
+      plots={plotData} 
       farmId={fm.farm_id} 
     />
   );

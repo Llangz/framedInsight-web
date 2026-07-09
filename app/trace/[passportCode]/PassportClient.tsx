@@ -25,6 +25,7 @@ interface Props {
   passport: any
   passportCode: string
   ledger?: any[]
+  ledgerUnavailable?: boolean
 }
 
 function getEventName(eventType: string): string {
@@ -130,7 +131,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function PassportClient({ passport, passportCode, ledger = [] }: Props) {
+export default function PassportClient({ passport, passportCode, ledger = [], ledgerUnavailable = false }: Props) {
   const [chainStep, setChainStep] = useState(0)
   const [activeTab, setActiveTab] = useState<'story'|'quality'|'sustainability'|'chain'>('story')
   const [verificationResults, setVerificationResults] = useState<LedgerVerificationResult[] | null>(null)
@@ -709,6 +710,16 @@ export default function PassportClient({ passport, passportCode, ledger = [] }: 
             </div>
 
             {/* Cryptographic Hash Ledger Visualizer */}
+            {ledgerUnavailable && (
+              <div className="mt-8 border-t border-[#1E2028] pt-6">
+                <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-950/20 border border-amber-900/30 rounded-lg px-3 py-2.5">
+                  <Info size={13} className="shrink-0" />
+                  <span>
+                    The cryptographic chain-of-custody ledger couldn&apos;t be loaded right now. This doesn&apos;t affect the passport data above — refresh to try loading it again.
+                  </span>
+                </div>
+              </div>
+            )}
             {ledger && ledger.length > 0 && (
               <div className="mt-8 border-t border-[#1E2028] pt-6 space-y-4">
                 <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-[#C9A96E] flex items-center gap-1.5">

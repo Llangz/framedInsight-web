@@ -540,6 +540,18 @@ export async function getPublicPassport(passportCode: string) {
     .eq('passport_status', 'published')
     .single()
 
+  // PGRST116 ("no rows") from .single() is the genuine "this code doesn't
+  // exist / isn't published" case — the caller correctly renders a 404
+  // for that. Any OTHER error code means the fetch itself broke (RLS
+  // hiccup, dropped connection, DB blip), and previously collapsed into
+  // the exact same `return null` → 404. This is the public, QR-scanned
+  // verification page a buyer's compliance team uses to check EUDR
+  // provenance before accepting a shipment — a transient failure here
+  // must not present as "this passport doesn't exist," which reads as a
+  // fraud/data-integrity red flag rather than "try scanning again."
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Could not load passport ${passportCode}: ${error.message}`)
+  }
   if (error || !data) return null
 
   // NOTE: view_count is NOT incremented here.
@@ -618,9 +630,18 @@ export async function getPublicPassportLedger(passportId: string) {
     .eq('entity_id', passportId)
     .order('created_at', { ascending: true })
 
+  // Previously any error here (RLS blip, network drop, admin-client
+  // hiccup) was swallowed into `return []`, and PassportClient only
+  // renders the entire "chain of custody" section when `ledger.length >
+  // 0` — so a failed fetch didn't just show an empty ledger, it made the
+  // whole hash-chain verification section silently vanish, with nothing
+  // telling a buyer whether that coffee genuinely has no recorded
+  // custody events or whether the fetch just failed. Throwing here lets
+  // the caller (app/trace/[passportCode]/page.tsx) distinguish the two
+  // and tell PassportClient which one happened, instead of presenting
+  // "failed to load" as "nothing to show."
   if (error) {
-    console.error('getPublicPassportLedger error:', error)
-    return []
+    throw new Error(`Could not load traceability ledger: ${error.message}`)
   }
 
   return data ?? []

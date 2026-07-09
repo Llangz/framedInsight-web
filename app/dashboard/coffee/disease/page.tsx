@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { unwrapOr } from "@/lib/safe-query";
 import DiseaseClient from "./DiseaseClient";
 
 export default async function CoffeeDiseaseMonitoringPage() {
@@ -55,8 +56,12 @@ export default async function CoffeeDiseaseMonitoringPage() {
       .limit(100)
   ]);
 
-  const alerts = (alertsResponse.data || []) as any[];
-  const history = (historyResponse.data || []).map((r: any) => ({
+  // These are active threshold-breach alerts — a silent fetch failure
+  // here would show "no alerts" indistinguishably from a real all-clear,
+  // which for a disease/pest early-warning feature is the one place a
+  // silent failure could cause real crop-loss harm, not just a UX gap.
+  const alerts = unwrapOr(alertsResponse as any, [], 'coffee_scouting_records (alerts)') as any[];
+  const history = (unwrapOr(historyResponse as any, [], 'coffee_scouting_records (history)')).map((r: any) => ({
     ...r,
     plot_name: r.coffee_plots?.plot_name ?? "Unknown Plot",
   }));

@@ -203,6 +203,7 @@ export default function EUDRPlotDetailPage() {
   const plotId = params?.plotId as string
 
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [validating, setValidating] = useState(false)
   const [plot, setPlot] = useState<PlotData | null>(null)
   const [eudr, setEudr] = useState<EudrData | null>(null)
@@ -278,11 +279,31 @@ export default function EUDRPlotDetailPage() {
         supabase.from('v_compliance_timeline').select('*').eq('plot_id', plotId).order('created_at', { ascending: false }).limit(10),
       ])
 
+      // Previously none of these four responses had their `error` field
+      // checked — a failed coffee_eudr_compliance fetch (RLS blip,
+      // dropped connection) would silently call setEudr(null), and this
+      // page would then render the plot as "COMPLIANCE NOT CHECKED YET"
+      // even if it actually has a full, verified EUDR record. Beyond the
+      // UX confusion, this page also lets a farmer submit a *new*
+      // assessment — re-entering data over a real record it just failed
+      // to show them is the kind of silent-failure bug that's worse than
+      // an error screen. coffee_plots (.single()) and
+      // coffee_satellite_indices/v_compliance_timeline are checked the
+      // same way for consistency; satellite/timeline failures are lower
+      // stakes but still shouldn't be indistinguishable from "no data."
+      if (plotRes.error) throw new Error(`Could not load plot: ${plotRes.error.message}`)
+      if (eudrRes.error) throw new Error(`Could not load EUDR compliance record: ${eudrRes.error.message}`)
+      if (satRes.error) throw new Error(`Could not load satellite reading: ${satRes.error.message}`)
+      if (auditRes.error) throw new Error(`Could not load compliance timeline: ${auditRes.error.message}`)
+
       setPlot(plotRes.data)
       setEudr(eudrRes.data)
       setSat(satRes.data)
       setAuditTrail(auditRes.data || [])
-    } catch (e) { console.error(e) }
+    } catch (e: any) {
+      console.error(e)
+      setLoadError(e?.message || 'Failed to load this plot\u2019s compliance data.')
+    }
     finally { setLoading(false) }
   }
 
@@ -413,6 +434,32 @@ export default function EUDRPlotDetailPage() {
   if (loading) return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center">
       <div className="w-12 h-12 border-4 border-slate-600 border-t-green-400 rounded-full animate-spin" />
+    </div>
+  )
+
+  if (loadError || !plot) return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-xl p-8 text-center">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h1 className="text-lg font-bold text-white mb-2">This plot's compliance data didn't load</h1>
+        <p className="text-sm text-slate-400 mb-6">
+          {loadError || "We couldn't find this plot."} Your records are safe — this is usually temporary. Please don't re-enter EUDR data until this loads correctly, in case a record already exists.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            onClick={() => { setLoading(true); setLoadError(null); loadData() }}
+            className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            Try again
+          </button>
+          <button
+            onClick={() => router.push('/dashboard/coffee/eudr-check')}
+            className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            Back to fleet view
+          </button>
+        </div>
+      </div>
     </div>
   )
 

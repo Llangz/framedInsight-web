@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { unwrapOr } from "@/lib/safe-query";
 import FinanceClient from "./FinanceClient";
 
 export default async function CoffeeFinanceDashboard() {
@@ -23,20 +24,26 @@ export default async function CoffeeFinanceDashboard() {
   const farmId = farmManager.farm_id;
 
   // ── Season P&L (Unified view) ──
-  const { data: pnlData } = await supabase
+  // This is the farm's actual profit & loss. A failed fetch here must not
+  // render as "0 revenue, 0 costs, 0 profit" — that's indistinguishable
+  // from a genuinely break-even season and is the single worst place in
+  // the app for a silent failure to hide behind a plausible-looking zero.
+  const pnlRes = await supabase
     .from('v_season_pnl')
     .select('*')
     .eq('farm_id', farmId)
     .order('harvest_year', { ascending: false });
+  const pnlData = unwrapOr(pnlRes as any, [], 'v_season_pnl');
 
   // ── Cost summary ──
-  const { data: costSummaryData } = await supabase
+  const costSummaryRes = await supabase
     .from('v_season_cost_summary')
     .select('*')
     .eq('farm_id', farmId);
+  const costSummaryData = unwrapOr(costSummaryRes as any, [], 'v_season_cost_summary');
 
   // Build year summaries
-  const yearSummaries = (pnlData || []).map(pnl => {
+  const yearSummaries = pnlData.map(pnl => {
     const total_revenue = pnl.total_revenue_expected || 0;
     const total_costs = pnl.total_costs || 0;
     const net_profit = pnl.net_profit_expected || 0;
@@ -80,7 +87,7 @@ export default async function CoffeeFinanceDashboard() {
       .limit(30)
   ]);
 
-  const plotFinancials = (plotFinancialsRes.data || []).map((p: any) => ({
+  const plotFinancials = (unwrapOr(plotFinancialsRes as any, [], 'v_plot_pnl')).map((p: any) => ({
     plot_name: p.plot_name || 'Unknown',
     revenue: p.total_revenue || 0,
     costs: p.total_costs || 0,
@@ -89,10 +96,10 @@ export default async function CoffeeFinanceDashboard() {
     cherry_kg: p.total_kg || 0,
   }));
 
-  const activitiesData = activitiesDataRes.data || [];
+  const activitiesData = unwrapOr(activitiesDataRes as any, [], 'coffee_activities (finance)');
   
   // Map harvests to "transactions" for the UI
-  const transactions = (harvestsRes.data || []).map((h: any) => ({
+  const transactions = (unwrapOr(harvestsRes as any, [], 'coffee_harvests')).map((h: any) => ({
     id: h.id,
     transaction_date: h.harvest_date,
     category: 'Harvest',

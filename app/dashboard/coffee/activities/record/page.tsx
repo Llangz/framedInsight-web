@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { unwrapOr } from "@/lib/safe-query";
 import ActivityRecordClient from "./ActivityRecordClient";
 
 export default async function RecordActivityPage() {
@@ -20,11 +21,16 @@ export default async function RecordActivityPage() {
     redirect("/onboarding");
   }
 
-  const { data: plots } = await supabase
+  // If this fails, the farmer would otherwise see an empty plot picker
+  // and have no way to tell "you haven't mapped any plots yet" apart
+  // from "we couldn't load your plots" — the latter blocks them from
+  // recording an activity at all with no explanation why.
+  const plotsRes = await supabase
     .from("coffee_plots")
     .select("id, plot_name, area_hectares, total_trees")
     .eq("farm_id", manager.farm_id)
     .order("plot_name");
+  const plots = unwrapOr(plotsRes as any, [], 'coffee_plots');
 
-  return <ActivityRecordClient farmId={manager.farm_id} plots={plots || []} />;
+  return <ActivityRecordClient farmId={manager.farm_id} plots={plots} />;
 }

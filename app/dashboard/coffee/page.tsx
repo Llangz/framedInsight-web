@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { unwrap } from '@/lib/safe-query'
 import CoffeeClient from './CoffeeClient'
 
 export default async function CoffeePage() {
@@ -23,16 +24,20 @@ export default async function CoffeePage() {
     redirect('/onboarding')
   }
 
-  // Get coffee stats from v_farm_summary
-  const { data: summary, error: summaryError } = await supabase
-    .from('v_farm_summary')
-    .select('*')
-    .eq('id', farmManager.farm_id)
-    .single()
-
-  if (summaryError) {
-    console.warn('Coffee Dashboard: summary fetch failed:', summaryError.message)
-  }
+  // Get coffee stats from v_farm_summary. This materialized view has
+  // exactly one row per row in `farms` (see
+  // 20260612_materialize_farm_summary.sql), so .single() failing here
+  // means the fetch actually broke — not that the farm has zero
+  // everything. Previously a summaryError was only console.warn'd and the
+  // page fell straight through to a stats object of all zeros, which for
+  // a brand-new farm and a broken fetch look identical. unwrap() throws
+  // into app/dashboard/error.tsx instead, so a real failure gets a
+  // "this page didn't load" screen rather than a false "0 trees, 0 kg
+  // harvested, 0 revenue" that reads as data loss to the farmer.
+  const summary = unwrap(
+    await supabase.from('v_farm_summary').select('*').eq('id', farmManager.farm_id).single(),
+    'v_farm_summary'
+  )
 
   const stats = {
     total_plots: summary?.total_coffee_plots || 0,

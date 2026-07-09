@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { unwrapOr } from "@/lib/safe-query";
 import HarvestRecordClient from "./HarvestRecordClient";
 
 export default async function CoffeeHarvestPage() {
@@ -35,9 +36,9 @@ export default async function CoffeeHarvestPage() {
 
   return (
     <HarvestRecordClient 
-      initialRecords={recordsResponse.data || []} 
+      initialRecords={unwrapOr(recordsResponse as any, [], 'coffee_harvests')} 
       farmId={manager.farm_id}
-      plots={plotsResponse.data || []}
+      plots={unwrapOr(plotsResponse as any, [], 'coffee_plots')}
     />
   );
 }

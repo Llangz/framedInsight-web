@@ -30,7 +30,7 @@ export async function getBuyerDataRoom(token: string) {
   const admin = await createAdminClient()
   if (!admin) return null
 
-  const { data: lot } = await admin
+  const { data: lot, error: lotError } = await admin
     .from('export_lots')
     .select(`
       *,
@@ -42,6 +42,20 @@ export async function getBuyerDataRoom(token: string) {
     .is('buyer_access_revoked_at', null)
     .maybeSingle()
 
+  // .maybeSingle() only returns an error for a genuine query failure —
+  // "token doesn't match any lot" is a legitimate `data: null, error:
+  // null` result, not an error. Previously that distinction was thrown
+  // away (`error` wasn't even destructured), so a transient DB/network
+  // failure and an invalid/revoked token both fell through to the same
+  // `return null` → notFound(). For an EU buyer using a private,
+  // high-entropy link to check EUDR due-diligence documents before
+  // accepting a shipment, a 404 reads as "this link is broken or the
+  // seller revoked it" — an alarming, wrong signal for what's actually a
+  // retry-able hiccup. Throw instead, so it surfaces via app/error.tsx
+  // with a "try again" path rather than looking like access was denied.
+  if (lotError) {
+    throw new Error(`Could not load buyer data room: ${lotError.message}`)
+  }
   if (!lot) return null
   if (!lot.cooperative_id) {
     console.error('getBuyerDataRoom: Export lot is missing cooperative_id')
@@ -92,35 +106,66 @@ export async function getBuyerLotGeoJson(token: string) {
   const admin = await createAdminClient()
   if (!admin) return null
 
-  const { data: lot } = await admin
+  const { data: lot, error: lotError } = await admin
     .from('export_lots')
     .select('id, export_lot_number, cooperative_id, eudr_dds_reference, cooperatives(cooperative_name, registration_number)')
     .eq('buyer_access_token', token)
     .is('buyer_access_revoked_at', null)
     .maybeSingle()
 
+  // Same distinction as getBuyerDataRoom() above, which this function
+  // sits right next to and feeds the same buyer session: a genuine query
+  // failure was previously indistinguishable from "invalid/revoked
+  // token," so a transient hiccup would read to an EU buyer as their
+  // access link being broken or pulled — worse, silently for the one
+  // function that actually produces the EUDR geolocation evidence (plot
+  // polygons / points, 4-hectare threshold data) they're there to check.
+  if (lotError) {
+    throw new Error(`Could not load export lot for geolocation: ${lotError.message}`)
+  }
   if (!lot || !lot.cooperative_id) return null
 
-  const { data: exportMillLots } = await admin
+  // Each hop below (export_lot → mill_lots → processing_batches →
+  // intake_lot → farmer deliveries → plots) previously discarded its
+  // error and fell through to `?? []`, so a broken link anywhere in this
+  // chain silently produced an EMPTY plot/geometry set — which for an
+  // EUDR due-diligence document reads as "this lot has no georeferenced
+  // plots," a materially different (and wrong) claim from "we couldn't
+  // load them." A genuinely empty result at any hop (a lot legitimately
+  // has zero linked mill lots so far) is still a valid `data: []`, not an
+  // error, so this only changes behavior on an actual fetch failure.
+  const exportMillLotsRes = await admin
     .from('export_lot_mill_lots')
     .select('mill_lot_id')
     .eq('export_lot_id', lot.id)
+  if (exportMillLotsRes.error) {
+    throw new Error(`Could not load mill lots for export lot ${lot.id}: ${exportMillLotsRes.error.message}`)
+  }
+  const exportMillLots = exportMillLotsRes.data
 
   const millLotIds = (exportMillLots ?? []).map(link => link.mill_lot_id).filter(Boolean)
   if (millLotIds.length === 0) return { lot, geoJson: emptyFeatureCollection(lot) }
 
-  const { data: millLotBatches } = await admin
+  const millLotBatchesRes = await admin
     .from('mill_lot_batches')
     .select('processing_batch_id')
     .in('mill_lot_id', millLotIds)
+  if (millLotBatchesRes.error) {
+    throw new Error(`Could not load processing batches for mill lots: ${millLotBatchesRes.error.message}`)
+  }
+  const millLotBatches = millLotBatchesRes.data
 
   const batchIds = (millLotBatches ?? []).map(link => link.processing_batch_id).filter(Boolean)
   if (batchIds.length === 0) return { lot, geoJson: emptyFeatureCollection(lot) }
 
-  const { data: batches } = await admin
+  const batchesRes = await admin
     .from('processing_batches')
     .select('id, batch_number, intake_lot_id')
     .in('id', batchIds)
+  if (batchesRes.error) {
+    throw new Error(`Could not load processing batches: ${batchesRes.error.message}`)
+  }
+  const batches = batchesRes.data
 
   const intakeLotIds = Array.from(new Set(
     (batches ?? [])
@@ -129,7 +174,7 @@ export async function getBuyerLotGeoJson(token: string) {
   ))
   if (intakeLotIds.length === 0) return { lot, geoJson: emptyFeatureCollection(lot) }
 
-  const { data: deliveries } = await admin
+  const deliveriesRes = await admin
     .from('lot_farmer_deliveries')
     .select(`
       id, farm_id, plot_id, farmer_cherry_kg, receipt_number,
@@ -138,6 +183,10 @@ export async function getBuyerLotGeoJson(token: string) {
     `)
     .in('lot_id', intakeLotIds)
     .eq('accepted', true)
+  if (deliveriesRes.error) {
+    throw new Error(`Could not load farmer deliveries: ${deliveriesRes.error.message}`)
+  }
+  const deliveries = deliveriesRes.data
 
   const plotsById = new Map<string, any>()
   for (const delivery of deliveries ?? [] as any[]) {
@@ -240,13 +289,20 @@ export async function getBuyerDocumentDownloadUrl(token: string, documentId: str
   const admin = await createAdminClient()
   if (!admin) return null
 
-  const { data: lot } = await admin
+  const { data: lot, error: lotError } = await admin
     .from('export_lots')
     .select('id, export_lot_number, cooperative_id')
     .eq('buyer_access_token', token)
     .is('buyer_access_revoked_at', null)
     .maybeSingle()
 
+  // Same distinction as getBuyerDataRoom above: a real fetch failure here
+  // must not look identical to "invalid token" — a buyer mid-download of
+  // a due-diligence document shouldn't see "access denied" for what's
+  // actually a transient error.
+  if (lotError) {
+    throw new Error(`Could not verify buyer access: ${lotError.message}`)
+  }
   if (!lot) return null
 
   const { data: doc } = await admin
