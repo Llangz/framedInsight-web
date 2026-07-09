@@ -4,6 +4,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SyncManager } from '@/components/ui/SyncManager'
 import { WhatsAppButton } from '@/components/ui/WhatsAppButton'
 import { NavigationFallback } from '@/components/ui/NavigationFallback'
+import { ConnectivityBanner } from '@/components/ui/ConnectivityBanner'
 
 export const metadata: Metadata = {
   title: {
@@ -86,6 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased bg-obsidian text-foreground selection:bg-emerald-500/20 selection:text-emerald-200">
         <ErrorBoundary>
+          <ConnectivityBanner />
           {children}
           <SyncManager />
           <NavigationFallback />
