@@ -46,19 +46,24 @@ export const PoultryMortalitySchema = z.object({
   batch_id: z.string().uuid(),
   record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   count_dead: z.number().int().positive(),
-  // `cause` removed — not a column on poultry_mortality, and
-  // MortalityClient.tsx's form collects it but never sends it either.
+  // Added 20260709 migration — see supabase/migrations/20260709_add_poultry_health_mortality_fields.sql
+  cause: z.string().max(500).nullable().optional(),
+  symptoms: z.string().max(1000).nullable().optional(),
+  culling_reason: z.string().max(500).nullable().optional(),
   notes: z.string().max(1000).nullable().optional(),
 }).strict()
 
 export const PoultryHealthSchema = z.object({
   batch_id: z.string().uuid(),
   record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  event_type: z.string().max(100),
-  // `vaccine_name` / `drug_name` / `cost` removed — none are columns on
-  // poultry_health_records, and HealthClient.tsx's form collects them but
-  // never sends them either (worth deciding whether to add the columns and
-  // wire up the form, or drop those inputs from the UI).
+  event_type: z.enum(['vaccination', 'treatment', 'deworming', 'vitamin_supplement', 'biosecurity_check', 'other']),
+  // Added 20260709 migration — see supabase/migrations/20260709_add_poultry_health_mortality_fields.sql
+  vaccine_name: z.string().max(200).nullable().optional(),
+  disease: z.string().max(200).nullable().optional(),
+  drug_name: z.string().max(200).nullable().optional(),
+  dosage: z.string().max(200).nullable().optional(),
+  vet_name: z.string().max(200).nullable().optional(),
+  cost: z.number().nonnegative().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
   next_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 }).strict()

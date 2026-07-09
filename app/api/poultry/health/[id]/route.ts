@@ -1,23 +1,24 @@
-// 📁 FILE PATH: app/api/poultry/health/[id]/route.ts
+// 📁 FILE PATH: app/api/poultry/mortality/[id]/route.ts
+// Note: DB table is `poultry_mortality` (not poultry_mortality_records — see database.types.ts)
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { sanitizeObject } from '@/lib/validation'
 
-// NOTE: PoultryHealthSchema in lib/security.ts has vaccine_name, drug_name,
-// and cost fields that do NOT exist on poultry_health_records (confirmed
-// against lib/database.types.ts). app/dashboard/poultry/health/
-// HealthClient.tsx actually collects those in its form but never persists
-// them either — they're currently silently discarded on the frontend side
-// (worth a separate look: either add the columns or drop the inputs).
-// This schema matches what's actually in the DB today: batch_id,
-// record_date, event_type, next_due_date, notes.
-const PoultryHealthUpdateSchema = z.object({
+// NOTE: columns added by supabase/migrations/20260709_add_poultry_health_mortality_fields.sql
+// — cause, symptoms, culling_reason were being collected by
+// app/dashboard/poultry/mortality/MortalityClient.tsx's form and silently
+// discarded before that migration. This schema now matches the full real
+// column set: batch_id, record_date, count_dead, cause, symptoms,
+// culling_reason, notes.
+const PoultryMortalityUpdateSchema = z.object({
   batch_id: z.string().uuid(),
   record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
-  event_type: z.string().min(1).max(100),
-  next_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  notes: z.string().max(2000).nullable().optional(),
+  count_dead: z.number().int().positive(),
+  cause: z.string().max(500).nullable().optional(),
+  symptoms: z.string().max(1000).nullable().optional(),
+  culling_reason: z.string().max(500).nullable().optional(),
+  notes: z.string().max(1000).nullable().optional(),
 }).strict()
 
 async function guardRecord(id: string) {
@@ -34,7 +35,7 @@ async function guardRecord(id: string) {
   if (!fm) return { error: 'No farm found', status: 404, supabase: null }
 
   const { data: record } = await (supabase as any)
-    .from('poultry_health_records')
+    .from('poultry_mortality')
     .select('farm_id')
     .eq('id', id)
     .single()
@@ -45,8 +46,8 @@ async function guardRecord(id: string) {
   return { error: null, status: 200, supabase }
 }
 
-// PUT /api/poultry/health/[id]
-// Typical use: correct event_type, next_due_date, or notes on a record.
+// PUT /api/poultry/mortality/[id]
+// Typical use: correct count_dead, notes, or record_date
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params
@@ -55,7 +56,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const guard = await guardRecord(id)
     if (guard.error) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
-    const validated = PoultryHealthUpdateSchema.partial().strict().safeParse(rawBody)
+    const validated = PoultryMortalityUpdateSchema.partial().strict().safeParse(rawBody)
     if (!validated.success) {
       return NextResponse.json({ error: 'Invalid input', details: validated.error.errors }, { status: 400 })
     }
@@ -63,7 +64,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const body = sanitizeObject(validated.data)
 
     const { data, error } = await (guard.supabase as any)
-      .from('poultry_health_records')
+      .from('poultry_mortality')
       .update(body)
       .eq('id', id)
       .select()
@@ -76,7 +77,9 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   }
 }
 
-// DELETE /api/poultry/health/[id]
+// DELETE /api/poultry/mortality/[id]
+// Deleting a mortality record does NOT auto-restore current_count on the batch.
+// The client must separately PATCH /api/poultry/batches/[id] if needed.
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params
@@ -85,7 +88,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     if (guard.error) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
     const { error } = await (guard.supabase as any)
-      .from('poultry_health_records')
+      .from('poultry_mortality')
       .delete()
       .eq('id', id)
 

@@ -5,17 +5,19 @@ import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { sanitizeObject } from '@/lib/validation'
 
-// NOTE: PoultryMortalitySchema in lib/security.ts has a `cause` field that
-// does NOT exist on poultry_mortality (confirmed against
-// lib/database.types.ts). app/dashboard/poultry/mortality/
-// MortalityClient.tsx also collects `cause` in its form but never persists
-// it — same discarded-field pattern as the health records form, worth a
-// separate look. This schema matches the real columns: batch_id,
-// record_date, count_dead, notes.
+// NOTE: columns added by supabase/migrations/20260709_add_poultry_health_mortality_fields.sql
+// — cause, symptoms, culling_reason were being collected by
+// app/dashboard/poultry/mortality/MortalityClient.tsx's form and silently
+// discarded before that migration. This schema now matches the full real
+// column set: batch_id, record_date, count_dead, cause, symptoms,
+// culling_reason, notes.
 const PoultryMortalityUpdateSchema = z.object({
   batch_id: z.string().uuid(),
   record_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   count_dead: z.number().int().positive(),
+  cause: z.string().max(500).nullable().optional(),
+  symptoms: z.string().max(1000).nullable().optional(),
+  culling_reason: z.string().max(500).nullable().optional(),
   notes: z.string().max(1000).nullable().optional(),
 }).strict()
 

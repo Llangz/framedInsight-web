@@ -93,6 +93,9 @@ export default function MortalityClient({ farmId, initialBatches, initialRecords
   batch_id: form.batch_id,
   record_date: form.record_date,
   count_dead: count,
+  cause: type === 'mortality' ? (form.cause || null) : null,
+  symptoms: type === 'mortality' ? (form.symptoms || null) : null,
+  culling_reason: type === 'culling' ? (form.culling_reason || null) : null,
   notes: form.notes || null,
 }
 

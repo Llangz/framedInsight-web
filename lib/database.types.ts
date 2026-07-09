@@ -3069,33 +3069,51 @@ export type Database = {
       poultry_health_records: {
         Row: {
           batch_id: string
+          cost: number | null
           created_at: string | null
+          disease: string | null
+          dosage: string | null
+          drug_name: string | null
           event_type: string
           farm_id: string
           id: string
           next_due_date: string | null
           notes: string | null
           record_date: string
+          vaccine_name: string | null
+          vet_name: string | null
         }
         Insert: {
           batch_id: string
+          cost?: number | null
           created_at?: string | null
+          disease?: string | null
+          dosage?: string | null
+          drug_name?: string | null
           event_type: string
           farm_id: string
           id?: string
           next_due_date?: string | null
           notes?: string | null
           record_date: string
+          vaccine_name?: string | null
+          vet_name?: string | null
         }
         Update: {
           batch_id?: string
+          cost?: number | null
           created_at?: string | null
+          disease?: string | null
+          dosage?: string | null
+          drug_name?: string | null
           event_type?: string
           farm_id?: string
           id?: string
           next_due_date?: string | null
           notes?: string | null
           record_date?: string
+          vaccine_name?: string | null
+          vet_name?: string | null
         }
         Relationships: [
           {
@@ -3124,30 +3142,39 @@ export type Database = {
       poultry_mortality: {
         Row: {
           batch_id: string
+          cause: string | null
           count_dead: number
           created_at: string | null
+          culling_reason: string | null
           farm_id: string
           id: string
           notes: string | null
           record_date: string
+          symptoms: string | null
         }
         Insert: {
           batch_id: string
+          cause?: string | null
           count_dead: number
           created_at?: string | null
+          culling_reason?: string | null
           farm_id: string
           id?: string
           notes?: string | null
           record_date: string
+          symptoms?: string | null
         }
         Update: {
           batch_id?: string
+          cause?: string | null
           count_dead?: number
           created_at?: string | null
+          culling_reason?: string | null
           farm_id?: string
           id?: string
           notes?: string | null
           record_date?: string
+          symptoms?: string | null
         }
         Relationships: [
           {
