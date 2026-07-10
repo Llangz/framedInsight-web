@@ -8,12 +8,13 @@
  */
 
 const DB_NAME = 'framedInsightSync'
-const DB_VERSION = 3
+const DB_VERSION = 4
 
-const STORE_REQUESTS = 'pendingRequests'
-const STORE_POULTRY  = 'poultryOfflineEvents'
-const STORE_DAIRY    = 'dairyOfflineEvents'
-const STORE_COFFEE   = 'coffeeOfflineEvents'
+const STORE_REQUESTS       = 'pendingRequests'
+const STORE_POULTRY        = 'poultryOfflineEvents'
+const STORE_DAIRY          = 'dairyOfflineEvents'
+const STORE_COFFEE         = 'coffeeOfflineEvents'
+const STORE_SMALL_RUMINANT = 'smallRuminantOfflineEvents'
 
 /* ─────────────────────────────────────────────────────────────
    TYPES
@@ -48,10 +49,17 @@ export type CoffeeEntityType =
   | 'coffee_spray_event'
   | 'coffee_pruning'
 
+export type SmallRuminantEntityType =
+  | 'small_ruminant_health'
+  | 'small_ruminant_weight'
+  | 'small_ruminant_sale'
+  | 'small_ruminant_breeding'
+
 export type OfflineEntityType =
   | PoultryEntityType
   | DairyEntityType
   | CoffeeEntityType
+  | SmallRuminantEntityType
 
 export interface OfflineEvent {
   id?: number
@@ -130,6 +138,25 @@ export async function initDB(): Promise<IDBDatabase> {
           store.createIndex('by_synced', 'synced')
           store.createIndex('by_event_id', 'eventId', { unique: true })
         }
+      }
+
+      // v4: small ruminants event log — the one enterprise that previously
+      // had no offline queue at all. Health, weight, sale and breeding forms
+      // under app/dashboard/smallRuminants/** called server actions directly
+      // with no offline fallback, so losing connectivity mid-form meant a
+      // failed submit and (depending on the form) a lost record, not a
+      // graceful "saved offline" like poultry/dairy/coffee already get.
+      if (oldVersion < 4 && !db.objectStoreNames.contains(STORE_SMALL_RUMINANT)) {
+        const store = db.createObjectStore(STORE_SMALL_RUMINANT, {
+          keyPath: 'id',
+          autoIncrement: true
+        })
+
+        store.createIndex('by_entity_type', 'entityType')
+        store.createIndex('by_animal', 'referenceId')
+        store.createIndex('by_farm', 'farmId')
+        store.createIndex('by_synced', 'synced')
+        store.createIndex('by_event_id', 'eventId', { unique: true })
       }
     }
 
@@ -482,6 +509,96 @@ export async function clearSyncedCoffeeEvents() {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_COFFEE, 'readwrite')
     const index = tx.objectStore(STORE_COFFEE).index('by_synced')
+
+    const request = index.openCursor(IDBKeyRange.only(true))
+
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (!cursor) return resolve(true)
+
+      cursor.delete()
+      cursor.continue()
+    }
+
+    request.onerror = () => reject(request.error)
+  })
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SMALL RUMINANT OFFLINE EVENT SYSTEM
+───────────────────────────────────────────────────────────── */
+
+export async function queueSmallRuminantEvent(
+  event: Omit<OfflineEvent, 'id' | 'timestamp' | 'isoTimestamp' | 'synced'> & {
+    entityType: SmallRuminantEntityType
+  }
+) {
+  const db = await initDB()
+  const now = new Date()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_SMALL_RUMINANT, 'readwrite')
+    const store = tx.objectStore(STORE_SMALL_RUMINANT)
+
+    const request = store.add({
+      ...event,
+      timestamp: now.getTime(),
+      isoTimestamp: now.toISOString(),
+      synced: false,
+      retryCount: 0
+    })
+
+    request.onsuccess = () => resolve(true)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function getPendingSmallRuminantEvents(): Promise<OfflineEvent[]> {
+  const db = await initDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_SMALL_RUMINANT, 'readonly')
+    const index = tx.objectStore(STORE_SMALL_RUMINANT).index('by_synced')
+
+    const request = index.getAll(IDBKeyRange.only(false))
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function markSmallRuminantEventSynced(id: number) {
+  const db = await initDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_SMALL_RUMINANT, 'readwrite')
+    const store = tx.objectStore(STORE_SMALL_RUMINANT)
+
+    const request = store.get(id)
+
+    request.onsuccess = () => {
+      const event = request.result
+      if (!event) return resolve(true)
+
+      const update = store.put({
+        ...event,
+        synced: true
+      })
+
+      update.onsuccess = () => resolve(true)
+      update.onerror = () => reject(update.error)
+    }
+
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function clearSyncedSmallRuminantEvents() {
+  const db = await initDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_SMALL_RUMINANT, 'readwrite')
+    const index = tx.objectStore(STORE_SMALL_RUMINANT).index('by_synced')
 
     const request = index.openCursor(IDBKeyRange.only(true))
 

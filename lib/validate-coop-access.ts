@@ -26,9 +26,17 @@ export async function validateCoopAccess(): Promise<CoopAccessResult> {
     .eq('user_id', user.id)
     .maybeSingle() // <<-- Changed here
 
-  if (error) { // Log database errors, but don't treat 'no record found' as an error here
+  // A genuine query failure (RLS recursion, dropped connection, 5xx from
+  // PostgREST) must not look identical to "authenticated but not a
+  // cooperative officer." Every caller of validateCoopAccess() does
+  // `if (!access.success) redirect('/auth/login')`, which previously sent an
+  // already-logged-in cooperative chairman back to the login screen on a
+  // transient DB hiccup - a confusing dead end with no "try again" path.
+  // Throwing here surfaces it via app/dashboard/error.tsx instead, which
+  // does have a working retry button.
+  if (error) {
     console.error("Error fetching cooperative officer:", error)
-    return { success: false, error: error.message }
+    throw new Error(`[cooperative_officers] ${error.message}`)
   }
 
   if (!officer) { // User is authenticated but not a cooperative officer

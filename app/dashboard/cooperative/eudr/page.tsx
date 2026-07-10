@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { validateCoopAccess } from '@/lib/validate-coop-access'
 import { createClient } from '@/lib/supabase/server'
+import { unwrapOr } from '@/lib/safe-query'
 import EudrClient from './EudrClient'
 
 export default async function CooperativeEudrPage() {
@@ -23,27 +24,36 @@ export default async function CooperativeEudrPage() {
   }
 
   // 2. Fetch farms
-  const { data: farms = [] } = await supabase
+  //
+  // `const { data: farms = [] }` looks like a safe default but never
+  // actually fires: Supabase returns `data: null` (not `undefined`) on a
+  // query error, and a default parameter only applies to `undefined`. A
+  // failed fetch here was falling through as `farms = null`, then every
+  // `(farms || []).x` below masked it as "zero member farms" - see
+  // lib/safe-query.ts for why that's a trust problem for a cooperative-wide
+  // EUDR compliance view specifically.
+  const farmsRes = await supabase
     .from('farms')
     .select('id, farm_name, owner_name')
     .eq('managed_by_coop_id', access.coopId)
+  const farms = unwrapOr(farmsRes as any, [] as any[], 'farms')
 
-  const farmIds = (farms || []).map(f => f.id)
+  const farmIds = farms.map((f: any) => f.id)
 
   // 3. Fetch plots with coordinates or polygons
   let plots: any[] = []
   if (farmIds.length > 0) {
-    const { data: plotsData } = await supabase
+    const plotsRes = await supabase
       .from('coffee_plots')
       .select('id, farm_id, plot_name, variety, total_trees, gps_latitude, gps_longitude, gps_polygon, area_hectares, eudr_risk_level, afa_geo_mapping_id, land_size_acres')
       .in('farm_id', farmIds)
       .order('plot_name')
-    if (plotsData) plots = plotsData
+    plots = unwrapOr(plotsRes as any, [] as any[], 'coffee_plots')
   }
 
   // Format plot rows with owner information
   const formattedPlots = plots.map(p => {
-    const farm = (farms || []).find(f => f.id === p.farm_id)
+    const farm = farms.find((f: any) => f.id === p.farm_id)
     return {
       id: p.id,
       farm_id: p.farm_id,

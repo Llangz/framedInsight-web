@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { RefreshCw, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   getPendingRequests,
@@ -14,6 +15,9 @@ import {
   getPendingCoffeeEvents,
   markCoffeeEventSynced,
   clearSyncedCoffeeEvents,
+  getPendingSmallRuminantEvents,
+  markSmallRuminantEventSynced,
+  clearSyncedSmallRuminantEvents,
 } from '@/lib/offline-db'
 
 export function SyncManager() {
@@ -39,27 +43,35 @@ export function SyncManager() {
   }, [])
 
   async function checkPending() {
-    const [generic, poultry, dairy, coffee] = await Promise.all([
+    const [generic, poultry, dairy, coffee, smallRuminant] = await Promise.all([
       getPendingRequests(),
       getPendingPoultryEvents(),
       getPendingDairyEvents(),
       getPendingCoffeeEvents(),
+      getPendingSmallRuminantEvents(),
     ])
 
-    setPendingCount(generic.length + poultry.length + dairy.length + coffee.length)
+    setPendingCount(generic.length + poultry.length + dairy.length + coffee.length + smallRuminant.length)
   }
 
   async function syncData() {
     if (!navigator.onLine || isSyncing) return
 
-    const [generic, poultryEvents, dairyEvents, coffeeEvents] = await Promise.all([
+    const [generic, poultryEvents, dairyEvents, coffeeEvents, smallRuminantEvents] = await Promise.all([
       getPendingRequests(),
       getPendingPoultryEvents(),
       getPendingDairyEvents(),
       getPendingCoffeeEvents(),
+      getPendingSmallRuminantEvents(),
     ])
 
-    if (generic.length === 0 && poultryEvents.length === 0 && dairyEvents.length === 0 && coffeeEvents.length === 0) return
+    if (
+      generic.length === 0 &&
+      poultryEvents.length === 0 &&
+      dairyEvents.length === 0 &&
+      coffeeEvents.length === 0 &&
+      smallRuminantEvents.length === 0
+    ) return
 
     setIsSyncing(true)
 
@@ -99,6 +111,11 @@ export function SyncManager() {
       if (coffeeEvents.length > 0) {
         await syncDomainEvents('coffee', coffeeEvents, markCoffeeEventSynced, clearSyncedCoffeeEvents)
       }
+
+      /* ─────────────── 5. Sync small ruminant CRDT events ─────────────── */
+      if (smallRuminantEvents.length > 0) {
+        await syncDomainEvents('smallRuminant', smallRuminantEvents, markSmallRuminantEventSynced, clearSyncedSmallRuminantEvents)
+      }
     } catch (err) {
       console.error('Sync failed:', err)
     }
@@ -108,7 +125,7 @@ export function SyncManager() {
   }
 
   async function syncDomainEvents(
-    domain: 'poultry' | 'dairy' | 'coffee',
+    domain: 'poultry' | 'dairy' | 'coffee' | 'smallRuminant',
     events: any[],
     markSynced: (id: number) => Promise<unknown>,
     clearSynced: () => Promise<unknown>
@@ -160,7 +177,11 @@ export function SyncManager() {
             : 'bg-amber-100 text-amber-700 border-amber-200'
         }`}
       >
-        <span className="text-lg">{isSyncing ? '🔄' : '⏳'}</span>
+        {isSyncing ? (
+          <RefreshCw className="w-4 h-4 animate-spin" />
+        ) : (
+          <Clock className="w-4 h-4" />
+        )}
         <span>
           {isSyncing
             ? 'Syncing records…'

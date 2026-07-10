@@ -19,6 +19,8 @@ function SetupCredentialsContent() {
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak')
   const [showPassword, setShowPassword] = useState(false)
 
+  const [accountType, setAccountType] = useState<'cooperative' | 'farmer' | null>(null)
+
   useEffect(() => {
     // Check if user is logged in (from OTP verification)
     const checkUser = async () => {
@@ -31,6 +33,15 @@ function SetupCredentialsContent() {
       // Get phone from user metadata
       const phone = user.user_metadata?.phone_number || ''
       setPhoneNumber(phone)
+
+      // createCooperativeOnVerifyAction sets role: 'cooperative_officer' on
+      // the user right after account creation (see coop-actions.ts); farm
+      // accounts don't set an equivalent role, so its absence means farmer.
+      // Surfacing this here closes the loop the person started on
+      // /auth/signup-cooperative or /auth/signup: this is the last screen
+      // before they land in their dashboard, and it should still be obvious
+      // which kind of account they just created.
+      setAccountType(user.user_metadata?.role === 'cooperative_officer' ? 'cooperative' : 'farmer')
     }
 
     checkUser()
@@ -112,6 +123,11 @@ function SetupCredentialsContent() {
         <div className="bg-white rounded-xl shadow-xl p-8 space-y-6">
           {/* Header */}
           <div className="space-y-2 text-center">
+            {accountType && (
+              <p className="text-xs font-semibold tracking-wide text-emerald-600 uppercase">
+                {accountType === 'cooperative' ? 'Cooperative Account' : 'Farmer Account'}
+              </p>
+            )}
             <h1 className="text-3xl font-bold text-gray-900">Secure Your Account</h1>
             <p className="text-gray-600">Set your own password to complete account setup</p>
           </div>

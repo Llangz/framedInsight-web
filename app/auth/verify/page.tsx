@@ -19,9 +19,13 @@ function VerifyContent() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const [signupContext, setSignupContext] = useState<
+    { type: 'farmer'; farmName: string } | { type: 'cooperative'; cooperativeName: string } | { type: 'login' } | null
+  >(null)
+
   // Resolve phone from sessionStorage only — never from URL params (privacy)
   useEffect(() => {
-    // 1. Signup flow
+    // 1. Farmer signup flow
     const signupDataStr = sessionStorage.getItem('signupData')
     if (signupDataStr) {
       try {
@@ -29,13 +33,37 @@ function VerifyContent() {
         setPhone(signupData.phone)
         const masked = signupData.phone.replace(/(\d{6})(\d{4})$/, '$1***')
         setDisplayPhone(masked)
+        setSignupContext({ type: 'farmer', farmName: signupData.farmName })
         return
       } catch (e) {
         console.error('Failed to parse signupData:', e)
       }
     }
 
-    // 2. Login flow
+    // 2. Cooperative signup flow
+    // BUG: this branch was missing entirely. signup-cooperative/page.tsx
+    // stores its data under a *different* key ('coopSignupData', not
+    // 'signupData') because handleVerify() below already branches on it -
+    // but this effect, which resolves which phone number to show/verify,
+    // never checked for it. Every cooperative registration fell straight
+    // through to branch 4 and got redirected to /auth/login, even though
+    // the OTP had already been sent and the user was staring at a code on
+    // their phone with nowhere to enter it.
+    const coopSignupDataStr = sessionStorage.getItem('coopSignupData')
+    if (coopSignupDataStr) {
+      try {
+        const coopSignupData = JSON.parse(coopSignupDataStr)
+        setPhone(coopSignupData.phone)
+        const masked = coopSignupData.phone.replace(/(\d{6})(\d{4})$/, '$1***')
+        setDisplayPhone(masked)
+        setSignupContext({ type: 'cooperative', cooperativeName: coopSignupData.cooperativeName })
+        return
+      } catch (e) {
+        console.error('Failed to parse coopSignupData:', e)
+      }
+    }
+
+    // 3. Login flow
     const loginDataStr = sessionStorage.getItem('loginPhone')
     if (loginDataStr) {
       try {
@@ -43,13 +71,14 @@ function VerifyContent() {
         setPhone(loginData.phone)
         const masked = loginData.phone.replace(/(\d{6})(\d{4})$/, '$1***')
         setDisplayPhone(masked)
+        setSignupContext({ type: 'login' })
         return
       } catch (e) {
         console.error('Failed to parse loginPhone:', e)
       }
     }
 
-    // 3. Neither found — redirect back so the user restarts cleanly
+    // 4. None found — redirect back so the user restarts cleanly
     router.replace('/auth/login')
   }, [router])
 
@@ -144,9 +173,21 @@ function VerifyContent() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+        {signupContext?.type === 'cooperative' && (
+          <p className="text-center text-xs font-semibold tracking-wide text-emerald-600 uppercase mb-2">
+            Cooperative Registration — {signupContext.cooperativeName}
+          </p>
+        )}
+        {signupContext?.type === 'farmer' && (
+          <p className="text-center text-xs font-semibold tracking-wide text-emerald-600 uppercase mb-2">
+            Farmer Registration{signupContext.farmName ? ` — ${signupContext.farmName}` : ''}
+          </p>
+        )}
         <h1 className="text-2xl font-bold text-center mb-4 text-gray-900">Enter Verification Code</h1>
         <p className="text-sm text-gray-600 text-center mb-6">
           We sent a code to {displayPhone || 'your phone'}
+          {signupContext?.type === 'cooperative' && ' to finish registering your cooperative'}
+          {signupContext?.type === 'farmer' && ' to finish registering your farm'}
         </p>
         <form onSubmit={handleVerify} className="space-y-4">
           <input

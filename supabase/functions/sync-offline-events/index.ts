@@ -20,6 +20,33 @@ interface PoultryOfflineEvent {
   isoTimestamp: string
 }
 
+interface DairyOfflineEvent {
+  eventId: string
+  entityType: "milk_record" | "cow_registration" | "breeding_event" | "health_check"
+  farmId: string
+  referenceId?: string // cow id
+  payload: Record<string, any>
+  isoTimestamp: string
+}
+
+interface CoffeeOfflineEvent {
+  eventId: string
+  entityType: "coffee_activity" | "coffee_harvest" | "coffee_spray_event" | "coffee_pruning"
+  farmId: string
+  referenceId?: string // plot id
+  payload: Record<string, any>
+  isoTimestamp: string
+}
+
+interface SmallRuminantOfflineEvent {
+  eventId: string
+  entityType: "small_ruminant_health" | "small_ruminant_weight" | "small_ruminant_sale" | "small_ruminant_breeding"
+  farmId: string
+  referenceId?: string // animal id
+  payload: Record<string, any>
+  isoTimestamp: string
+}
+
 interface Result {
   eventId: string
   status: "synced" | "skipped" | "failed"
@@ -33,9 +60,37 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { user_id, poultryEvents } = body
+    const {
+      user_id,
+      poultryEvents,
+      dairyEvents,
+      coffeeEvents,
+      smallRuminantEvents,
+    }: {
+      user_id: string
+      poultryEvents?: PoultryOfflineEvent[]
+      dairyEvents?: DairyOfflineEvent[]
+      coffeeEvents?: CoffeeOfflineEvent[]
+      smallRuminantEvents?: SmallRuminantOfflineEvent[]
+    } = body
 
-    if (!user_id || !Array.isArray(poultryEvents)) {
+    // BUG FIX: this handler previously only ever destructured and validated
+    // `poultryEvents`. components/ui/SyncManager.tsx sends a differently-named
+    // array per domain (`dairyEvents`, `coffeeEvents`, ...) via a computed key
+    // (`[`${domain}Events`]: events`). Any dairy or coffee sync call therefore
+    // arrived here with `poultryEvents` undefined, failed
+    // `!Array.isArray(poultryEvents)`, and got a 400 back on every attempt -
+    // silently, forever, since SyncManager only console.errors a failed sync
+    // and leaves the records queued for the next retry. Offline milk and
+    // coffee-activity records were being saved to the device and NEVER
+    // reaching the database, with the farmer's UI still saying "N records
+    // pending sync" as if it were working. Validate against whichever
+    // domain arrays are actually present instead of hardcoding one.
+    const domains = { poultryEvents, dairyEvents, coffeeEvents, smallRuminantEvents }
+    const presentDomains = Object.entries(domains).filter(([, v]) => Array.isArray(v)) as
+      [string, any[]][]
+
+    if (!user_id || presentDomains.length === 0) {
       return json({ error: "Invalid payload" }, 400)
     }
 
@@ -54,43 +109,88 @@ serve(async (req) => {
 
     const farmId = fm.farm_id
 
-    const results: Result[] = []
+    const allResults: Record<string, Result[]> = {}
 
-    // ── Process events in deterministic order ────────
-    const sorted = [...poultryEvents].sort(
-      (a, b) => new Date(a.isoTimestamp).getTime() - new Date(b.isoTimestamp).getTime()
-    )
-
-    for (const event of sorted) {
-      const res = await processPoultryEvent(supabase, farmId, event)
-      results.push({
-        eventId: event.eventId,
-        status: res ? "synced" : "failed",
-      })
+    // ── Poultry ───────────────────────────────────────
+    if (poultryEvents?.length) {
+      const sorted = [...poultryEvents].sort(byTimestamp)
+      const results: Result[] = []
+      for (const event of sorted) {
+        const ok = await processPoultryEvent(supabase, farmId, event)
+        results.push({ eventId: event.eventId, status: ok ? "synced" : "failed" })
+      }
+      allResults.poultry = results
     }
 
-    // ── Log sync audit trail ─────────────────────────
+    // ── Dairy ─────────────────────────────────────────
+    if (dairyEvents?.length) {
+      const sorted = [...dairyEvents].sort(byTimestamp)
+      const results: Result[] = []
+      for (const event of sorted) {
+        const ok = await processDairyEvent(supabase, farmId, event)
+        results.push({ eventId: event.eventId, status: ok ? "synced" : "failed" })
+      }
+      allResults.dairy = results
+    }
+
+    // ── Coffee ────────────────────────────────────────
+    if (coffeeEvents?.length) {
+      const sorted = [...coffeeEvents].sort(byTimestamp)
+      const results: Result[] = []
+      for (const event of sorted) {
+        const ok = await processCoffeeEvent(supabase, farmId, event)
+        results.push({ eventId: event.eventId, status: ok ? "synced" : "failed" })
+      }
+      allResults.coffee = results
+    }
+
+    // ── Small ruminants ───────────────────────────────
+    if (smallRuminantEvents?.length) {
+      const sorted = [...smallRuminantEvents].sort(byTimestamp)
+      const results: Result[] = []
+      for (const event of sorted) {
+        const ok = await processSmallRuminantEvent(supabase, farmId, event)
+        results.push({ eventId: event.eventId, status: ok ? "synced" : "failed" })
+      }
+      allResults.smallRuminant = results
+    }
+
+    // ── Log one combined sync audit trail entry ──────
+    const totalSynced = Object.values(allResults).flat().filter(r => r.status === "synced").length
+    const totalFailed = Object.values(allResults).flat().filter(r => r.status === "failed").length
+
     await supabase.from("farm_events").insert({
       id: crypto.randomUUID(),
       farm_id: farmId,
-      event_type: "offline_sync_poultry_v2",
+      event_type: "offline_sync_v2",
       actor_id: user_id,
       actor_type: "farmer",
       created_at: new Date().toISOString(),
       event_data: {
-        total: poultryEvents.length,
-        synced: results.filter(r => r.status === "synced").length,
-        failed: results.filter(r => r.status === "failed").length,
+        domains: Object.keys(allResults),
+        synced: totalSynced,
+        failed: totalFailed,
       },
     })
 
-    return json({ results })
+    // Response shape kept backward-compatible: synced_<domain>_ids per
+    // domain, plus the original flat `results` for poultry-only callers.
+    const response: Record<string, any> = { results: allResults.poultry ?? [] }
+    for (const [domain, results] of Object.entries(allResults)) {
+      response[`synced_${domain}_ids`] = results.filter(r => r.status === "synced").map(r => r.eventId)
+    }
+
+    return json(response)
   } catch (e) {
     return json({
       error: e instanceof Error ? e.message : "Unknown error",
     }, 500)
   }
 })
+
+function byTimestamp(a: { isoTimestamp: string }, b: { isoTimestamp: string }) {
+  return new Date(a.isoTimestamp).getTime() - new Date(b.isoTimestamp).getTime()
+}
 
 /* ─────────────────────────────────────────────── */
 /* CORE CRDT POULTRY SYNC ENGINE                  */
@@ -244,6 +344,201 @@ async function processPoultryEvent(
     }
   } catch (err) {
     console.error("Sync error:", err)
+    return false
+  }
+}
+
+/* ─────────────────────────────────────────────── */
+/* DAIRY SYNC                                     */
+/* ─────────────────────────────────────────────── */
+
+async function processDairyEvent(
+  supabase: any,
+  farmId: string,
+  event: DairyOfflineEvent
+): Promise<boolean> {
+  const { entityType, referenceId, payload, eventId, isoTimestamp } = event
+  const ts = new Date(isoTimestamp).getTime()
+
+  try {
+    switch (entityType) {
+      /* ───────────── MILK (LWW per cow per day) ───────────── */
+      case "milk_record": {
+        const { data: existing } = await supabase
+          .from("milk_records")
+          .select("id, created_at")
+          .eq("cow_id", referenceId)
+          .eq("record_date", payload.record_date)
+          .maybeSingle()
+
+        if (!existing) {
+          await supabase.from("milk_records").insert({
+            id: eventId, farm_id: farmId, cow_id: referenceId, ...payload,
+          })
+        } else if (ts > new Date(existing.created_at).getTime()) {
+          await supabase.from("milk_records").update(payload).eq("id", existing.id)
+        }
+        return true
+      }
+
+      /* ───────────── COW REGISTRATION (append-only) ───────────── */
+      case "cow_registration": {
+        const { data: exists } = await supabase
+          .from("cows").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("cows").insert({ id: eventId, farm_id: farmId, ...payload })
+        }
+        return true
+      }
+
+      /* ───────────── BREEDING (append-only) ───────────── */
+      case "breeding_event": {
+        const { data: exists } = await supabase
+          .from("breeding_events").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("breeding_events").insert({
+            id: eventId, farm_id: farmId, cow_id: referenceId, ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── HEALTH CHECK (append-only) ───────────── */
+      case "health_check": {
+        const { data: exists } = await supabase
+          .from("health_records").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("health_records").insert({
+            id: eventId, farm_id: farmId, cow_id: referenceId, ...payload,
+          })
+        }
+        return true
+      }
+
+      default:
+        console.warn("Unknown dairy event type:", entityType)
+        return true
+    }
+  } catch (err) {
+    console.error("Dairy sync error:", err)
+    return false
+  }
+}
+
+/* ─────────────────────────────────────────────── */
+/* COFFEE SYNC                                    */
+/* ─────────────────────────────────────────────── */
+
+async function processCoffeeEvent(
+  supabase: any,
+  farmId: string,
+  event: CoffeeOfflineEvent
+): Promise<boolean> {
+  const { entityType, referenceId, payload, eventId } = event
+
+  try {
+    switch (entityType) {
+      /* ───────────── ACTIVITY / SPRAY / PRUNING (append-only) ───────────── */
+      case "coffee_activity":
+      case "coffee_spray_event":
+      case "coffee_pruning": {
+        const { data: exists } = await supabase
+          .from("coffee_activities").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("coffee_activities").insert({
+            id: eventId, farm_id: farmId, plot_id: referenceId,
+            activity_type: payload.activity_type ?? entityType.replace("coffee_", ""),
+            ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── HARVEST (append-only) ───────────── */
+      case "coffee_harvest": {
+        const { data: exists } = await supabase
+          .from("coffee_harvests").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("coffee_harvests").insert({
+            id: eventId, farm_id: farmId, plot_id: referenceId, ...payload,
+          })
+        }
+        return true
+      }
+
+      default:
+        console.warn("Unknown coffee event type:", entityType)
+        return true
+    }
+  } catch (err) {
+    console.error("Coffee sync error:", err)
+    return false
+  }
+}
+
+/* ─────────────────────────────────────────────── */
+/* SMALL RUMINANT SYNC                            */
+/* ─────────────────────────────────────────────── */
+
+async function processSmallRuminantEvent(
+  supabase: any,
+  farmId: string,
+  event: SmallRuminantOfflineEvent
+): Promise<boolean> {
+  const { entityType, referenceId, payload, eventId } = event
+
+  try {
+    switch (entityType) {
+      case "small_ruminant_health": {
+        const { data: exists } = await supabase
+          .from("small_ruminant_health").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("small_ruminant_health").insert({
+            id: eventId, animal_id: referenceId, ...payload,
+          })
+        }
+        return true
+      }
+
+      case "small_ruminant_weight": {
+        const { data: exists } = await supabase
+          .from("weight_records").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("weight_records").insert({
+            id: eventId, animal_id: referenceId, ...payload,
+          })
+        }
+        return true
+      }
+
+      case "small_ruminant_sale": {
+        const { data: exists } = await supabase
+          .from("small_ruminant_sales").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("small_ruminant_sales").insert({
+            id: eventId, farm_id: farmId, animal_id: referenceId, ...payload,
+          })
+        }
+        return true
+      }
+
+      case "small_ruminant_breeding": {
+        const { data: exists } = await supabase
+          .from("small_ruminant_breeding").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("small_ruminant_breeding").insert({
+            id: eventId, animal_id: referenceId, ...payload,
+          })
+        }
+        return true
+      }
+
+      default:
+        console.warn("Unknown small ruminant event type:", entityType)
+        return true
+    }
+  } catch (err) {
+    console.error("Small ruminant sync error:", err)
     return false
   }
 }

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { validateCoopAccess } from '@/lib/validate-coop-access'
 import { createClient } from '@/lib/supabase/server'
+import { unwrapOr } from '@/lib/safe-query'
 import { Users, Trees, Landmark, Map, FileCheck2, Milestone } from 'lucide-react'
 import CoopFleetMapWrapper from './CoopFleetMapWrapper'
 
@@ -24,22 +25,28 @@ export default async function CooperativeDashboardOverview() {
   }
 
   // 2. Fetch all farms managed by this cooperative
-  const { data: farmsData } = await supabase
+  //
+  // unwrapOr() throws a real query failure into app/dashboard/error.tsx
+  // instead of silently falling through to `|| []`. For a cooperative
+  // dashboard, a failed fetch and a genuinely empty cooperative look
+  // identical once rendered as "0 members, 0 acres, 0 trees" - a chairman
+  // seeing that after a DB hiccup would read it as the cooperative's data
+  // having vanished, not as a retry-able error. See lib/safe-query.ts.
+  const farmsRes = await supabase
     .from('farms')
     .select('id, farm_name, owner_name, county, sub_county, ward, land_size_acres, is_coop_managed, claim_token')
     .eq('managed_by_coop_id', access.coopId)
-
-  const farms = farmsData || []
-  const farmIds = farms.map(f => f.id)
+  const farms = unwrapOr(farmsRes as any, [] as any[], 'farms')
+  const farmIds = farms.map((f: any) => f.id)
 
   // 3. Fetch all plots for these farms
   let plots: any[] = []
   if (farmIds.length > 0) {
-    const { data: plotsData } = await supabase
+    const plotsRes = await supabase
       .from('coffee_plots')
       .select('id, farm_id, plot_name, variety, total_trees, gps_latitude, gps_longitude, gps_polygon, area_hectares, eudr_risk_level, land_size_acres')
       .in('farm_id', farmIds)
-    if (plotsData) plots = plotsData
+    plots = unwrapOr(plotsRes as any, [] as any[], 'coffee_plots')
   }
 
   // Calculate Cumulative Metrics

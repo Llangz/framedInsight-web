@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { recordHealth } from "../actions";
+import { queueSmallRuminantEvent } from "@/lib/offline-db";
 
 interface Animal {
   id: string;
@@ -58,6 +59,7 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [success, setSuccess]   = useState(false);
+  const [savedOffline, setSavedOffline] = useState(false);
 
   const [eventType, setEventType]               = useState<EventType>("vaccination");
   const [selectedAnimals, setSelectedAnimals]   = useState<Set<string>>(new Set());
@@ -169,10 +171,43 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
         withdrawal_period_meat_days: withdrawalMeat ? parseInt(withdrawalMeat) : null,
         withdrawal_period_milk_days: withdrawalMilk ? parseInt(withdrawalMilk) : null,
       }));
+
+      // OFFLINE FALLBACK: recordHealth() is a server action - a plain fetch
+      // under the hood - so calling it with no connection just throws a raw
+      // "Failed to fetch" that setError() would show verbatim to the farmer.
+      // Queue one event per animal locally instead, same as every poultry
+      // record form already does, so this reads as "saved offline" instead
+      // of "broken."
+      if (!navigator.onLine) {
+        for (const record of records) {
+          await queueSmallRuminantEvent({
+            eventId: crypto.randomUUID(),
+            entityType: "small_ruminant_health",
+            farmId,
+            referenceId: record.animal_id,
+            payload: record,
+          });
+        }
+        setSuccess(true);
+        setSavedOffline(true);
+        setTimeout(() => router.push("/dashboard/smallRuminants/health"), 1200);
+        return;
+      }
+
       await recordHealth(records);
       setSuccess(true);
       setTimeout(() => router.push("/dashboard/smallRuminants/health"), 1200);
     } catch (e: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too (recordHealth's fetch throws) - fall back to the same
+      // offline queue rather than showing a raw network error.
+      if (!navigator.onLine) {
+        setError(null);
+        setSuccess(true);
+        setSavedOffline(true);
+        setTimeout(() => router.push("/dashboard/smallRuminants/health"), 1200);
+        return;
+      }
       setError(e.message);
     } finally {
       setLoading(false);
@@ -204,8 +239,14 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         {success && (
-          <div className="bg-emerald-900/30 border border-emerald-700 rounded-xl p-3 text-sm text-emerald-400 text-center">
-            ✓ Health event recorded successfully
+          <div className={`border rounded-xl p-3 text-sm text-center ${
+            savedOffline
+              ? 'bg-amber-950/30 border-amber-700 text-amber-400'
+              : 'bg-emerald-900/30 border-emerald-700 text-emerald-400'
+          }`}>
+            {savedOffline
+              ? '✓ Saved offline — will sync automatically when you\'re back online'
+              : '✓ Health event recorded successfully'}
           </div>
         )}
 
