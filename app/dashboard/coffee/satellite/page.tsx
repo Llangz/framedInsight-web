@@ -41,7 +41,7 @@ export default async function CoffeeSatellitePage() {
   // here shouldn't render as "no plots monitored" — that reads as "your
   // satellite monitoring found nothing wrong," which is the opposite of
   // an honest failure state.
-  const plots = (unwrapOr(plotRes as any, [], 'v_plot_latest_satellite')).filter((p: any) => p.plot_id !== null) as any[];
+  const plots = (unwrapOr(plotRes as any, [] as any[], 'v_plot_latest_satellite')).filter((p: any) => p.plot_id !== null) as any[];
   const plotIds = plots.map(p => p.plot_id);
 
   // Fetch trends for valid plots

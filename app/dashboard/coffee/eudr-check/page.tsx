@@ -64,9 +64,9 @@ export default async function EUDRFleetPage() {
   // view, where the whole point is that a farmer or cooperative officer
   // can trust what's on screen without re-verifying it against source
   // records. unwrapOr throws these into app/dashboard/error.tsx instead.
-  const coffeePlots = unwrapOr(plotRes as any, [], 'coffee_plots');
-  const eudrData = unwrapOr(eudrRes as any, [], 'coffee_eudr_compliance');
-  const events = unwrapOr(eventsRes as any, [], 'v_compliance_timeline');
+  const coffeePlots = unwrapOr(plotRes as any, [] as any[], 'coffee_plots');
+  const eudrData = unwrapOr(eudrRes as any, [] as any[], 'coffee_eudr_compliance');
+  const events = unwrapOr(eventsRes as any, [] as any[], 'v_compliance_timeline');
 
   // Fetch latest satellite reading per plot
   const plotIds = coffeePlots.map(p => p.id);

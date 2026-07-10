@@ -60,8 +60,8 @@ export default async function CoffeeDiseaseMonitoringPage() {
   // here would show "no alerts" indistinguishably from a real all-clear,
   // which for a disease/pest early-warning feature is the one place a
   // silent failure could cause real crop-loss harm, not just a UX gap.
-  const alerts = unwrapOr(alertsResponse as any, [], 'coffee_scouting_records (alerts)') as any[];
-  const history = (unwrapOr(historyResponse as any, [], 'coffee_scouting_records (history)')).map((r: any) => ({
+  const alerts = unwrapOr(alertsResponse as any, [] as any[], 'coffee_scouting_records (alerts)') as any[];
+  const history = (unwrapOr(historyResponse as any, [] as any[], 'coffee_scouting_records (history)')).map((r: any) => ({
     ...r,
     plot_name: r.coffee_plots?.plot_name ?? "Unknown Plot",
   }));

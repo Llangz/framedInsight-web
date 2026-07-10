@@ -36,9 +36,9 @@ export default async function CoffeeHarvestPage() {
 
   return (
     <HarvestRecordClient 
-      initialRecords={unwrapOr(recordsResponse as any, [], 'coffee_harvests')} 
+      initialRecords={unwrapOr(recordsResponse as any, [] as any[], 'coffee_harvests')} 
       farmId={manager.farm_id}
-      plots={unwrapOr(plotsResponse as any, [], 'coffee_plots')}
+      plots={unwrapOr(plotsResponse as any, [] as any[], 'coffee_plots')}
     />
   );
 }

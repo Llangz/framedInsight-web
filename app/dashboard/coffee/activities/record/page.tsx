@@ -30,7 +30,7 @@ export default async function RecordActivityPage() {
     .select("id, plot_name, area_hectares, total_trees")
     .eq("farm_id", manager.farm_id)
     .order("plot_name");
-  const plots = unwrapOr(plotsRes as any, [], 'coffee_plots');
+  const plots = unwrapOr(plotsRes as any, [] as any[], 'coffee_plots');
 
   return <ActivityRecordClient farmId={manager.farm_id} plots={plots} />;
 }

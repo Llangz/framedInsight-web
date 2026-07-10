@@ -35,8 +35,8 @@ export default async function PoultryHealthPage() {
   // unwrapOr throws into app/dashboard/error.tsx on a real query failure,
   // instead of silently treating it the same as "this farm genuinely has
   // no batches / no health records yet" (see lib/safe-query.ts).
-  const batches = unwrapOr(batchesRes as any, [], 'poultry_batches')
-  const health = unwrapOr(healthRes as any, [], 'poultry_health_records')
+  const batches = unwrapOr(batchesRes as any, [] as any[], 'poultry_batches')
+  const health = unwrapOr(healthRes as any, [] as any[], 'poultry_health_records')
 
   // Map record_date to event_date for component
   const healthEvents = (health as any[]).map((e: any) => ({

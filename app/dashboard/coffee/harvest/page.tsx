@@ -61,8 +61,8 @@ export default async function CoffeeHarvestPage() {
   // an error screen (via app/dashboard/error.tsx), not render as "no
   // harvests yet", which would look identical to genuine emptiness and
   // could read as "your delivery history is gone."
-  const harvests = unwrapOr(harvestsRes as any, [], 'coffee_harvests')
-  const plots = unwrapOr(plotsRes as any, [], 'coffee_plots')
+  const harvests = unwrapOr(harvestsRes as any, [] as any[], 'coffee_harvests')
+  const plots = unwrapOr(plotsRes as any, [] as any[], 'coffee_plots')
 
   return <HarvestClient farmId={farmId} initialHarvests={harvests as any} plots={plots as any} />
 }

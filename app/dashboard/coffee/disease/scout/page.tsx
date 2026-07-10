@@ -26,7 +26,7 @@ export default async function ScoutingPage() {
     .select("id, plot_name, area_hectares, region_name")
     .eq("farm_id", fm.farm_id)
     .order("plot_name");
-  const plotData = unwrapOr(plotRes as any, [], 'coffee_plots');
+  const plotData = unwrapOr(plotRes as any, [] as any[], 'coffee_plots');
 
   return (
     <ScoutingClient 

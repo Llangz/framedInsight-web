@@ -34,10 +34,12 @@ export default async function CoffeePage() {
   // into app/dashboard/error.tsx instead, so a real failure gets a
   // "this page didn't load" screen rather than a false "0 trees, 0 kg
   // harvested, 0 revenue" that reads as data loss to the farmer.
-  const summary = unwrap(
-    await supabase.from('v_farm_summary').select('*').eq('id', farmManager.farm_id).single(),
-    'v_farm_summary'
-  )
+  const summaryRes = await supabase
+    .from('v_farm_summary')
+    .select('*')
+    .eq('id', farmManager.farm_id)
+    .single()
+  const summary = unwrap(summaryRes, 'v_farm_summary')
 
   const stats = {
     total_plots: summary?.total_coffee_plots || 0,

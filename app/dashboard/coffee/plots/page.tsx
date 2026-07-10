@@ -31,7 +31,7 @@ export default async function CoffeePlotsPage() {
     .select('*')
     .eq('farm_id', farmManager.farm_id)
     .order('created_at', { ascending: false })
-  const plots = unwrapOr(plotsRes as any, [], 'coffee_plots')
+  const plots = unwrapOr(plotsRes as any, [] as any[], 'coffee_plots')
 
   return (
     <div className="min-h-screen bg-gray-50">

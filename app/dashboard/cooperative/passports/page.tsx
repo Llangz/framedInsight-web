@@ -44,7 +44,7 @@ export default async function PassportsPage() {
       .order('created_at', { ascending: false }),
   ])
 
-  const exportLots = unwrapOr(exportLotsRes as any, [], 'export_lots')
+  const exportLots = unwrapOr(exportLotsRes as any, [] as any[], 'export_lots')
 
   return (
     <PassportsClient

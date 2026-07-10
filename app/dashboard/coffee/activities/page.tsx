@@ -52,7 +52,7 @@ export default async function CoffeeActivitiesPage() {
       .limit(1)
   ]);
 
-  const activities = (unwrapOr(activitiesResponse as any, [], 'coffee_activities')).map((a: any) => ({
+  const activities = (unwrapOr(activitiesResponse as any, [] as any[], 'coffee_activities')).map((a: any) => ({
     ...a,
     plot_name: a.coffee_plots?.plot_name || null,
   }));
@@ -61,7 +61,7 @@ export default async function CoffeeActivitiesPage() {
   // failed fetch should not be indistinguishable from "no costs recorded
   // yet" — that's the exact number a farmer would use to judge their
   // season's spend.
-  const seasonCosts = unwrapOr(costsResponse as any, [], 'v_season_cost_summary');
+  const seasonCosts = unwrapOr(costsResponse as any, [] as any[], 'v_season_cost_summary');
 
   // Calendar personalization below is supplementary (not a farmer
   // record), so plotsResponse.data intentionally stays a soft ?. fallback

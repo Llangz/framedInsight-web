@@ -33,14 +33,14 @@ export default async function CoffeeFinanceDashboard() {
     .select('*')
     .eq('farm_id', farmId)
     .order('harvest_year', { ascending: false });
-  const pnlData = unwrapOr(pnlRes as any, [], 'v_season_pnl');
+  const pnlData = unwrapOr(pnlRes as any, [] as any[], 'v_season_pnl');
 
   // ── Cost summary ──
   const costSummaryRes = await supabase
     .from('v_season_cost_summary')
     .select('*')
     .eq('farm_id', farmId);
-  const costSummaryData = unwrapOr(costSummaryRes as any, [], 'v_season_cost_summary');
+  const costSummaryData = unwrapOr(costSummaryRes as any, [] as any[], 'v_season_cost_summary');
 
   // Build year summaries
   const yearSummaries = pnlData.map(pnl => {
@@ -87,7 +87,7 @@ export default async function CoffeeFinanceDashboard() {
       .limit(30)
   ]);
 
-  const plotFinancials = (unwrapOr(plotFinancialsRes as any, [], 'v_plot_pnl')).map((p: any) => ({
+  const plotFinancials = (unwrapOr(plotFinancialsRes as any, [] as any[], 'v_plot_pnl')).map((p: any) => ({
     plot_name: p.plot_name || 'Unknown',
     revenue: p.total_revenue || 0,
     costs: p.total_costs || 0,
@@ -96,10 +96,10 @@ export default async function CoffeeFinanceDashboard() {
     cherry_kg: p.total_kg || 0,
   }));
 
-  const activitiesData = unwrapOr(activitiesDataRes as any, [], 'coffee_activities (finance)');
+  const activitiesData = unwrapOr(activitiesDataRes as any, [] as any[], 'coffee_activities (finance)');
   
   // Map harvests to "transactions" for the UI
-  const transactions = (unwrapOr(harvestsRes as any, [], 'coffee_harvests')).map((h: any) => ({
+  const transactions = (unwrapOr(harvestsRes as any, [] as any[], 'coffee_harvests')).map((h: any) => ({
     id: h.id,
     transaction_date: h.harvest_date,
     category: 'Harvest',
