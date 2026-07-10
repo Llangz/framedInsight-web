@@ -16,6 +16,8 @@ import {
 } from 'lucide-react'
 import { createIntakeLot } from '../actions'
 import { getCurrentSeason, getCurrentHarvestYear } from '@/lib/intake.types'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { OfflineActionNotice } from '@/components/ui/OfflineActionNotice'
 
 interface Factory {
   id: string
@@ -34,6 +36,7 @@ const LABEL = 'block text-[10px] font-bold uppercase tracking-wider text-zinc-40
 
 export default function NewIntakeClient({ factories, coopId }: Props) {
   const router = useRouter()
+  const isOnline = useOnlineStatus()
   const today = new Date().toISOString().slice(0, 10)
 
   const [factoryId, setFactoryId]   = useState(factories[0]?.id ?? '')
@@ -50,6 +53,15 @@ export default function NewIntakeClient({ factories, coopId }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!factoryId) { setError('Please select a washing station'); return }
+    if (!isOnline) {
+      // Deliberately not queued offline — see OfflineActionNotice.tsx for
+      // why: this action assigns a sequential lot number server-side and
+      // queuing it here risks two officers colliding on the same number
+      // once they both reconnect. Fail fast with a clear message instead
+      // of letting the server action throw a raw network error.
+      setError("You're offline — opening an intake lot needs a live connection so lot numbers stay in sequence. Reconnect and try again.")
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -214,6 +226,9 @@ export default function NewIntakeClient({ factories, coopId }: Props) {
             </p>
           </div>
 
+          {/* Offline notice */}
+          <OfflineActionNotice reason="opening an intake lot needs a live connection so lot numbers stay in sequence" />
+
           {/* Error */}
           {error && (
             <div className="bg-red-950/40 border border-red-900/30 p-3 rounded-xl flex items-start gap-2 text-xs text-red-300">
@@ -226,7 +241,7 @@ export default function NewIntakeClient({ factories, coopId }: Props) {
           <div className="flex gap-3 pt-1">
             <button
               type="submit"
-              disabled={loading || !factoryId}
+              disabled={loading || !factoryId || !isOnline}
               className="flex-1 py-3 bg-[#C9A96E] hover:bg-[#B8935C] disabled:opacity-40 text-black font-bold rounded-xl text-sm transition"
             >
               {loading ? 'Opening lot…' : 'Open intake lot'}

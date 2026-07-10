@@ -1,10 +1,29 @@
-const CACHE_NAME = 'framedinsight-cache-v2';
+const CACHE_NAME = 'framedinsight-cache-v3';
 const OFFLINE_URL = '/offline';
 
 const DB_NAME = 'framedInsightSync';
 const STORE_REQUESTS = 'pendingRequests';
 const STORE_POULTRY = 'poultryOfflineEvents';
-const DB_VERSION = 2;
+const STORE_DAIRY = 'dairyOfflineEvents';
+const STORE_COFFEE = 'coffeeOfflineEvents';
+const STORE_SMALL_RUMINANT = 'smallRuminantOfflineEvents';
+// Must match lib/offline-db.ts's DB_VERSION exactly. This file opens the
+// *same* IndexedDB database from a separate execution context (the SW
+// thread, vs. the page's main thread), and IndexedDB throws a hard
+// VersionError if you ask to open at a version lower than the one the
+// database is already at. lib/offline-db.ts is at version 4 (added
+// dairy/coffee/small-ruminant stores); this was left at 2. In practice
+// that meant: on any device that had already loaded the app once (so the
+// main thread had already upgraded the DB to v4), openDB() below started
+// throwing VersionError on every call, which saveRequestToDB() below
+// swallows silently (try/catch → console.error only) and then STILL
+// returns the "Saved locally. Will sync when online." response to the
+// page. The farmer saw a success message; the record was never written
+// to IndexedDB at all. Bumping this to 4 and mirroring the same store
+// creation as lib/offline-db.ts fixes the VersionError. See also the
+// fetch handler below, which no longer routes Supabase calls through this
+// generic queue at all — see the comment there for why.
+const DB_VERSION = 4;
 
 const URLS_TO_CACHE = [
   '/',
@@ -63,6 +82,41 @@ function openDB() {
         store.createIndex('by_synced', 'synced');
         store.createIndex('by_event_id', 'eventId', { unique: true });
       }
+
+      // v3 (dairy, coffee) and v4 (small ruminant) — mirrors
+      // lib/offline-db.ts exactly. The SW never writes to these stores
+      // itself today, but it MUST declare the same schema at the same
+      // version, or any upgrade transaction that runs from this thread
+      // first (e.g. a fresh install where the SW activates before the
+      // page's own initDB() call) will leave the database missing stores
+      // the main thread expects, and one of the two contexts will throw
+      // VersionError on every subsequent open.
+      if (oldVersion < 3) {
+        if (!db.objectStoreNames.contains(STORE_DAIRY)) {
+          const store = db.createObjectStore(STORE_DAIRY, { keyPath: 'id', autoIncrement: true });
+          store.createIndex('by_entity_type', 'entityType');
+          store.createIndex('by_cow', 'referenceId');
+          store.createIndex('by_farm', 'farmId');
+          store.createIndex('by_synced', 'synced');
+          store.createIndex('by_event_id', 'eventId', { unique: true });
+        }
+        if (!db.objectStoreNames.contains(STORE_COFFEE)) {
+          const store = db.createObjectStore(STORE_COFFEE, { keyPath: 'id', autoIncrement: true });
+          store.createIndex('by_entity_type', 'entityType');
+          store.createIndex('by_plot', 'referenceId');
+          store.createIndex('by_farm', 'farmId');
+          store.createIndex('by_synced', 'synced');
+          store.createIndex('by_event_id', 'eventId', { unique: true });
+        }
+      }
+      if (oldVersion < 4 && !db.objectStoreNames.contains(STORE_SMALL_RUMINANT)) {
+        const store = db.createObjectStore(STORE_SMALL_RUMINANT, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('by_entity_type', 'entityType');
+        store.createIndex('by_animal', 'referenceId');
+        store.createIndex('by_farm', 'farmId');
+        store.createIndex('by_synced', 'synced');
+        store.createIndex('by_event_id', 'eventId', { unique: true });
+      }
     };
 
     request.onsuccess = () => resolve(request.result);
@@ -105,32 +159,74 @@ async function saveRequestToDB(req) {
 
     return new Promise((resolve, reject) => {
       const addReq = store.add(payload);
-      addReq.onsuccess = () => resolve();
+      addReq.onsuccess = () => resolve(true);
       addReq.onerror = () => reject(addReq.error);
     });
   } catch (err) {
     console.error('[SW] Failed to save request to IndexedDB:', err);
+    // Previously this function returned `undefined` here and the caller
+    // treated that identically to a successful save, telling the page
+    // "Saved locally. Will sync when online." even though nothing was
+    // actually written. Returning false lets the fetch handler tell the
+    // truth instead.
+    return false;
   }
 }
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
-  // 1. Intercept offline mutations
+  // 1. Intercept offline mutations — same-origin /api/ routes ONLY.
+  //
+  // This used to also match any request whose URL contained
+  // "supabase.co", which is every call the Supabase JS client makes:
+  // auth token refreshes, storage uploads, and — critically — every
+  // direct table insert/update the farmer-facing forms make (poultry,
+  // dairy, coffee, small ruminant health/mortality/feed/sales all call
+  // supabase.from(...).insert(...) directly, not through fetchWithSync).
+  //
+  // Those domain writes already have a purpose-built, entity-aware
+  // offline path: lib/offline-db.ts's queuePoultryEvent/queueDairyEvent/
+  // queueCoffeeEvent/queueSmallRuminantEvent, replayed later by
+  // components/ui/SyncManager.tsx through the sync-offline-events edge
+  // function (idempotent via eventId, reconciled server-side per entity).
+  // Because the SW's fetch handler runs *underneath* the page — it
+  // intercepts the network call before the promise ever resolves back to
+  // supabase-js — this generic handler was winning the race: on a failed
+  // request it synthesized its own 202 "Saved locally" Response and
+  // handed that back to supabase-js as if it were the real API response.
+  // supabase-js has no reason to expect a 202 with `{ offline, message }`
+  // as a body; it just sees "the request didn't error," so the calling
+  // code's own catch block — the one that would have called
+  // queuePoultryEvent() etc. — never runs. The record went nowhere: not
+  // to the server (no connectivity), not to the domain-specific offline
+  // store (that code path was skipped), and only *maybe* to the generic
+  // STORE_REQUESTS queue below (see the DB_VERSION note above for why
+  // even that wasn't reliable). The farmer still saw a success/"saved
+  // offline" message either way.
+  //
+  // Scoping this to same-origin /api/ makes it a safety net for this
+  // app's own Next.js route handlers that don't yet have a
+  // fetchWithSync()/domain-queue integration of their own (e.g. cases
+  // like the cooperative intake forms — see NewIntakeClient.tsx), while
+  // Supabase calls now fail through to the page exactly as supabase-js
+  // expects, letting the app's real offline logic handle them.
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-    if (req.url.includes('/api/') || req.url.includes('supabase.co')) {
+    const sameOriginApi = req.url.startsWith(self.location.origin) && new URL(req.url).pathname.startsWith('/api/');
+    if (sameOriginApi) {
       event.respondWith(
         fetch(req.clone()).catch(async (error) => {
           console.warn('[SW] Mutation failed, queuing in IndexedDB for background sync:', req.url);
-          await saveRequestToDB(req);
-          
+          const saved = await saveRequestToDB(req);
+
           return new Response(
-            JSON.stringify({
-              offline: true,
-              message: 'Saved locally. Will sync when online.'
-            }),
+            JSON.stringify(
+              saved
+                ? { offline: true, message: 'Saved locally. Will sync when online.' }
+                : { offline: true, error: true, message: 'You appear to be offline and this could not be saved on this device either. Please try again.' }
+            ),
             {
-              status: 202,
+              status: saved ? 202 : 507,
               headers: { 'Content-Type': 'application/json' }
             }
           );
@@ -138,6 +234,9 @@ self.addEventListener('fetch', (event) => {
       );
       return;
     }
+    // Supabase (and any other) mutation requests: let them fail/succeed
+    // on their own. Do not intercept.
+    return;
   }
 
   // 2. Normal GET handling

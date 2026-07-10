@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { unwrap } from '@/lib/safe-query'
 import CoffeeClient from './CoffeeClient'
 
 export default async function CoffeePage() {
@@ -24,22 +23,34 @@ export default async function CoffeePage() {
     redirect('/onboarding')
   }
 
-  // Get coffee stats from v_farm_summary. This materialized view has
-  // exactly one row per row in `farms` (see
-  // 20260612_materialize_farm_summary.sql), so .single() failing here
-  // means the fetch actually broke — not that the farm has zero
-  // everything. Previously a summaryError was only console.warn'd and the
-  // page fell straight through to a stats object of all zeros, which for
-  // a brand-new farm and a broken fetch look identical. unwrap() throws
-  // into app/dashboard/error.tsx instead, so a real failure gets a
-  // "this page didn't load" screen rather than a false "0 trees, 0 kg
-  // harvested, 0 revenue" that reads as data loss to the farmer.
-  const summaryRes = await supabase
+  // Get coffee stats from v_farm_summary. This is a MATERIALIZED view
+  // refreshed on a 1-minute pg_cron tick (see
+  // 20260708_fix_farm_summary_refresh_trigger.sql) — not a live view — so
+  // there is a legitimate window, up to ~60s right after a farm is
+  // created, where this farm genuinely has no row yet. That is not a
+  // fetch failure, and treating it as one (the previous `.single()` +
+  // unwrap() combination did exactly that) turned every brand-new farm's
+  // first minute on the platform into a hard "This page didn't load"
+  // crash — which is what the coffee dashboard screenshot was actually
+  // showing.
+  //
+  // `.single()` throws PGRST116 on zero *or* multiple rows, and unwrap()
+  // rethrows that unconditionally — it can't tell "missing row, refresh
+  // hasn't ticked yet" apart from "something is actually broken."
+  // `.maybeSingle()` doesn't error on zero rows, so we can make that
+  // distinction explicitly below: a real Postgres/PostgREST error (RLS,
+  // permissions, connection) still throws into app/dashboard/error.tsx;
+  // "no row yet" falls through to an all-zero stats object, same as any
+  // other legitimately-empty state on this dashboard.
+  const { data: summary, error: summaryError } = await supabase
     .from('v_farm_summary')
     .select('*')
     .eq('id', farmManager.farm_id)
-    .single()
-  const summary = unwrap(summaryRes, 'v_farm_summary')
+    .maybeSingle()
+
+  if (summaryError) {
+    throw new Error(`[v_farm_summary] ${summaryError.message}`)
+  }
 
   const stats = {
     total_plots: summary?.total_coffee_plots || 0,
