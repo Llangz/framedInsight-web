@@ -128,6 +128,22 @@ CREATE INDEX idx_daily_prod_farm_date ON v_daily_production_new(farm_id, product
 -- 20260711_fix_secondary_materialized_views.sql switches this view to)
 -- could never work. farm_events.id is the underlying table's primary key,
 -- so carrying it through here is the direct fix.
+--
+-- `plot_id`/`actor_id`/`actor_type` require
+-- 20260612b_fix_farm_events_missing_columns.sql to have already run —
+-- the live farm_events table didn't have those columns at all until that
+-- migration adds them (confirmed against a live information_schema query,
+-- not just the original CREATE TABLE's intent).
+--
+-- Was also `fe.event_data->>'risk_level'` / `->>'assessment_service'` —
+-- one level too shallow. EventStore.recordEvent() (lib/event-sourcing.ts)
+-- stores the *entire* event object under the `event_data` column,
+-- including a nested `event_data` key holding the event-type-specific
+-- payload — so risk_level actually lives at `event_data.event_data.risk_level`,
+-- not `event_data.risk_level`. The old path silently returned NULL for
+-- every row rather than erroring, which would have been a second,
+-- quieter version of the dairy_records bug: the view would "work" and
+-- just show blank risk levels for every EUDR assessment forever.
 CREATE MATERIALIZED VIEW v_compliance_timeline AS
 SELECT
   fe.id,
@@ -136,8 +152,8 @@ SELECT
   fe.actor_id,
   fe.actor_type,
   fe.event_type,
-  fe.event_data->>'risk_level' as risk_level,
-  fe.event_data->>'assessment_service' as assessment_service,
+  fe.event_data #>> '{event_data,risk_level}' as risk_level,
+  fe.event_data #>> '{event_data,assessment_service}' as assessment_service,
   fe.created_at,
   (fe.created_at AT TIME ZONE 'Africa/Nairobi') as created_at_local_tz
 FROM farm_events fe
