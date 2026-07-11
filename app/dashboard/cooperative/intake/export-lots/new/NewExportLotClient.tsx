@@ -11,6 +11,8 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { OfflineActionNotice } from '@/components/ui/OfflineActionNotice'
 import {
   Ship, ArrowLeft, AlertCircle, Calendar, Package,
   Shield, Info, Globe, Anchor, FileText,
@@ -42,6 +44,7 @@ function fmt(d: string | null) {
 
 export default function NewExportLotClient({ millLots, coopId }: Props) {
   const router = useRouter()
+  const isOnline = useOnlineStatus()
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [exporterName, setExporterName] = useState('')
@@ -360,8 +363,10 @@ export default function NewExportLotClient({ millLots, coopId }: Props) {
             </div>
           )}
 
+          <OfflineActionNotice reason="creating an export lot generates a shipping/EUDR record and needs a live connection" />
+
           <div className="flex gap-3 pt-1">
-            <button type="submit" disabled={loading || selected.size === 0}
+            <button type="submit" disabled={loading || selected.size === 0 || !isOnline}
               className="flex-1 py-3 bg-[#C9A96E] hover:bg-[#B8935C] disabled:opacity-40 text-black font-bold rounded-xl text-sm transition">
               {loading ? 'Creating…' : 'Create export lot'}
             </button>

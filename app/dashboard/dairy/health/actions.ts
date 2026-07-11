@@ -41,11 +41,15 @@ interface DiagnosisForm {
 
 type HealthEventFormData = VaccinationForm | TreatmentForm | DiagnosisForm;
 
-export async function recordHealthEvent(formData: HealthEventFormData) {
+export async function recordHealthEvent(formData: HealthEventFormData): Promise<
+  { success: true } | { success: false; error: string }
+> {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
 
   let insertData: HealthRecordInsert;
 
@@ -76,8 +80,14 @@ export async function recordHealthEvent(formData: HealthEventFormData) {
     };
   }
 
+  // Was `if (error) throw error` — see coffee/activities/actions.ts's
+  // recordActivity for why a thrown error here loses its message to
+  // Next.js's production redaction.
   const { error } = await supabase.from('health_records').insert([insertData]);
-  if (error) throw error;
+  if (error) {
+    console.error('recordHealthEvent error:', error);
+    return { success: false, error: error.message };
+  }
 
   revalidatePath("/dashboard/dairy/health");
   return { success: true };

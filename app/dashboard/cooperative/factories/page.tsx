@@ -12,11 +12,15 @@ export default async function CooperativeFactoriesPage() {
   const supabase = await createClient()
 
   // 1. Fetch cooperative details
+  //
+  // Was `.single()` — throws on zero rows, making the `if (!coop)` redirect
+  // below unreachable dead code. See app/dashboard/cooperative/page.tsx for
+  // the full explanation; same fix here.
   const { data: coop } = await supabase
     .from('cooperatives')
     .select('primary_enterprise')
     .eq('id', access.coopId)
-    .single()
+    .maybeSingle()
   if (!coop) {
     redirect('/onboarding')
   }

@@ -15,6 +15,8 @@ import {
   Package, ArrowLeft, AlertCircle, Calendar, Droplets,
   Gavel, Info, CheckCircle2, Coffee,
 } from 'lucide-react'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { OfflineActionNotice } from '@/components/ui/OfflineActionNotice'
 import { createMillLot } from '../actions'
 
 interface Batch {
@@ -42,6 +44,7 @@ function fmt(d: string) {
 
 export default function NewMillLotClient({ batches, coopId }: Props) {
   const router = useRouter()
+  const isOnline = useOnlineStatus()
   const today = new Date().toISOString().slice(0, 10)
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -275,8 +278,10 @@ export default function NewMillLotClient({ batches, coopId }: Props) {
             </div>
           )}
 
+          <OfflineActionNotice reason="creating a mill lot links milled batches on the traceability ledger and needs a live connection" />
+
           <div className="flex gap-3 pt-1">
-            <button type="submit" disabled={loading || selected.size === 0 || !cleanKgOut}
+            <button type="submit" disabled={loading || selected.size === 0 || !cleanKgOut || !isOnline}
               className="flex-1 py-3 bg-[#C9A96E] hover:bg-[#B8935C] disabled:opacity-40 text-black font-bold rounded-xl text-sm transition">
               {loading ? 'Creating…' : 'Create mill lot'}
             </button>

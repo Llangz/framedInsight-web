@@ -40,7 +40,11 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
       const selected = pregnantDams.find(d => d.id === breedingId);
       if (!selected) throw new Error("Select a dam");
       const kiddingData = { breeding_id: breedingId, dam_id: selected.dam_id, delivery_date: deliveryDate, number_of_offspring: numberOfOffspring };
-      await recordKidding(kiddingData, offspring, breedingId);
+      const result = await recordKidding(kiddingData, offspring, breedingId);
+      if (!result.success) {
+        setError(result.error || 'Failed to record kidding');
+        return;
+      }
       router.push("/dashboard/smallRuminants/breeding");
     } catch (e: any) {
       setError(e.message);

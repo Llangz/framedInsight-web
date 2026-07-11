@@ -14,11 +14,20 @@ export default async function CooperativeDashboardOverview() {
   const supabase = await createClient()
 
   // 1. Fetch Cooperative details
+  //
+  // Was `.single()`, which throws on zero rows instead of returning null —
+  // the `if (!coop) redirect('/onboarding')` right below was dead code,
+  // unreachable because the throw happens first. Same root-cause class as
+  // the coffee-dashboard `v_farm_summary` bug this file's neighbours fix:
+  // an officer whose cooperative record is momentarily unreadable (or
+  // genuinely gone) hard-crashed into app/dashboard/error.tsx instead of
+  // getting the graceful onboarding redirect this code was clearly meant
+  // to provide. `.maybeSingle()` makes that redirect actually run.
   const { data: coop } = await supabase
     .from('cooperatives')
     .select('*')
     .eq('id', access.coopId)
-    .single()
+    .maybeSingle()
 
   if (!coop) {
     redirect('/onboarding')

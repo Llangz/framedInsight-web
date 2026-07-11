@@ -50,6 +50,7 @@ export default function FinanceClient({
   const [showAdd, setShowAdd] = useState(false)
   const [loading, setLoading] = useState(false)
   const [txForm, setTxForm] = useState({ category: 'expense', description: '', amount: '', payment_method: 'mpesa', transaction_date: new Date().toISOString().split('T')[0] })
+  const [txError, setTxError] = useState('')
 
   const s = useMemo(() => years.find(y => y.year === selectedYear), [years, selectedYear])
 
@@ -63,10 +64,17 @@ export default function FinanceClient({
   async function handleAddTransaction() {
     if (!txForm.description || !txForm.amount) return
     setLoading(true)
+    setTxError('')
     try {
-      await addTransaction({ ...txForm, amount: parseFloat(txForm.amount) })
+      const result = await addTransaction({ ...txForm, amount: parseFloat(txForm.amount) })
+      if (!result.success) {
+        setTxError(result.error || 'Failed to save record')
+        return
+      }
       setShowAdd(false)
       setTxForm({ category: 'expense', description: '', amount: '', payment_method: 'mpesa', transaction_date: new Date().toISOString().split('T')[0] })
+    } catch (err: any) {
+      setTxError(err.message || 'Failed to save record')
     } finally {
       setLoading(false)
     }
@@ -95,7 +103,7 @@ export default function FinanceClient({
               {years.map(y => <option key={y.year} value={y.year}>{y.year} season</option>)}
             </select>
             <button
-              onClick={() => setShowAdd(true)}
+              onClick={() => { setTxError(''); setShowAdd(true) }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors"
             >
               <Plus size={12} /> Add record
@@ -267,11 +275,16 @@ export default function FinanceClient({
             <div className="w-full max-w-md rounded-xl border border-[#2A2D35] bg-[#0D0F14] shadow-2xl">
               <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A2D35]">
                 <h3 className="text-sm font-semibold text-white">Add financial record</h3>
-                <button onClick={() => setShowAdd(false)} className="text-[#6B7280] hover:text-white transition-colors">
+                <button onClick={() => { setTxError(''); setShowAdd(false) }} className="text-[#6B7280] hover:text-white transition-colors">
                   <X size={16} />
                 </button>
               </div>
               <div className="p-5 space-y-4">
+                {txError && (
+                  <div className="bg-red-950/40 border border-red-900/30 p-3 rounded-md text-xs text-red-300">
+                    {txError}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={LABEL}>Type</label>
@@ -305,7 +318,7 @@ export default function FinanceClient({
                   </div>
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setShowAdd(false)} className="flex-1 py-2.5 rounded-md border border-[#2A2D35] text-sm text-[#9CA3AF] hover:text-white transition-colors">
+                  <button onClick={() => { setTxError(''); setShowAdd(false) }} className="flex-1 py-2.5 rounded-md border border-[#2A2D35] text-sm text-[#9CA3AF] hover:text-white transition-colors">
                     Cancel
                   </button>
                   <button onClick={handleAddTransaction} disabled={loading || !txForm.description || !txForm.amount}

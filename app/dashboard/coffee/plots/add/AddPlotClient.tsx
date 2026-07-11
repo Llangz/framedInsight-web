@@ -66,7 +66,7 @@ export default function AddPlotClient() {
     setLoading(true)
     setError('')
     try {
-      await addCoffeePlot({
+      const result = await addCoffeePlot({
         plot_name: formData.plot_name,
         variety: formData.variety,
         total_trees: parseInt(formData.total_trees) || 0,
@@ -81,6 +81,11 @@ export default function AddPlotClient() {
           area_hectares: boundary.areaHa,
         }),
       })
+      if (!result.success) {
+        setError(result.error || 'Failed to add plot')
+        setStep('review') // stay on review to show error
+        return
+      }
       router.push('/dashboard/coffee/plots')
     } catch (err: any) {
       setError(err.message || 'Failed to add plot')

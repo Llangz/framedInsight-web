@@ -269,7 +269,12 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
       notes:                      form.notes                      || null,
     };
     try {
-      await recordScouting(payload as any);
+      const result = await recordScouting(payload as any);
+      if (!result.success) {
+        setError(result.error || 'Failed to save scouting record');
+        setSubmitting(false);
+        return;
+      }
       router.push("/dashboard/coffee/disease?saved=1");
     } catch (e: any) {
       setError(e.message);

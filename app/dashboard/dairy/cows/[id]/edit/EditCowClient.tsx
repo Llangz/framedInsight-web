@@ -81,7 +81,7 @@ export default function EditCowClient({ cow, farmCows }: Props) {
     if (!form.cow_tag.trim()) { setError('Tag/ID is required'); return }
     setSaving(true)
     try {
-      await updateCow(cow.id, {
+      const result = await updateCow(cow.id, {
         cow_tag:        form.cow_tag.trim().toUpperCase(),
         name:           form.name.trim() || null,
         breed:          form.breed || null,
@@ -100,6 +100,10 @@ export default function EditCowClient({ cow, farmCows }: Props) {
         qr_code:        form.qr_code.trim() || null,
         notes:          form.notes.trim() || null,
       })
+      if (!result.success) {
+        setError(result.error || 'Failed to save changes')
+        return
+      }
       setSuccess(true)
       setTimeout(() => router.push(`/dashboard/dairy/cows/${cow.id}`), 700)
     } catch (e: unknown) {

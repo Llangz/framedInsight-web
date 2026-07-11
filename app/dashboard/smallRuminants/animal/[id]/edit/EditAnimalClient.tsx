@@ -140,7 +140,7 @@ export default function EditAnimalClient(props: Props) {
 
     setSaving(true)
     try {
-      await updateAnimal(animal.id, {
+      const result = await updateAnimal(animal.id, {
         animal_tag:           form.animal_tag.trim().toUpperCase(),
         name:                 form.name.trim() || null,
         species:              form.species,
@@ -166,6 +166,10 @@ export default function EditAnimalClient(props: Props) {
         exit_value:           form.exit_value ? parseFloat(form.exit_value) : null,
         notes:                form.notes.trim() || null,
       })
+      if (!result.success) {
+        setError(result.error || 'Failed to save changes')
+        return
+      }
       setSuccess(true)
       setTimeout(() => router.push(`/dashboard/smallRuminants/animal/${animal.id}`), 700)
     } catch (e: unknown) {

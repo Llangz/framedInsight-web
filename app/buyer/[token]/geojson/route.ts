@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getBuyerLotGeoJson } from '@/lib/passport/buyer-access.service'
+import { checkPublicPageRateLimit } from '@/lib/security'
 
 interface Props {
   params: Promise<{ token: string }>
@@ -7,6 +8,13 @@ interface Props {
 
 export async function GET(_req: Request, { params }: Props) {
   const { token } = await params
+
+  // Unauthenticated, guessable-adjacent path — rate-limit by IP before
+  // hitting the DB. See lib/security.ts's checkPublicPageRateLimit.
+  const allowed = await checkPublicPageRateLimit(`buyer-geojson:${token}`)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again shortly.' }, { status: 429 })
+  }
 
   let result: Awaited<ReturnType<typeof getBuyerLotGeoJson>>
   try {

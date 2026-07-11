@@ -23,20 +23,37 @@ export interface HarvestPayload {
   notes?: string | null;
 }
 
-export async function recordHarvest(payload: HarvestPayload) {
+export async function recordHarvest(payload: HarvestPayload): Promise<
+  { success: true } | { success: false; error: string }
+> {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
 
   // Resolve plot_name from plot_id — coffee_harvests.plot_name is required (NOT NULL)
+  //
+  // Was `.single()` followed by `if (plotError || !plot) throw ...` — the
+  // throw happened before that check could ever run, so the deliberate
+  // "Plot not found" message was dead code; the raw Postgres error reached
+  // the client instead (and, worse, got redacted entirely in production —
+  // see coffee/activities/actions.ts's recordActivity for that half of the
+  // fix). `.maybeSingle()` makes the existing check actually execute.
   const { data: plot, error: plotError } = await supabase
     .from('coffee_plots')
     .select('plot_name')
     .eq('id', payload.plot_id)
-    .single();
+    .maybeSingle();
 
-  if (plotError || !plot) throw new Error("Plot not found");
+  if (plotError) {
+    console.error('recordHarvest plot lookup error:', plotError);
+    return { success: false, error: plotError.message };
+  }
+  if (!plot) {
+    return { success: false, error: 'Plot not found' };
+  }
 
   // Destructure out plot_id — it is not a column on coffee_harvests
   const { plot_id, ...rest } = payload;
@@ -51,7 +68,10 @@ export async function recordHarvest(payload: HarvestPayload) {
     .from('coffee_harvests')
     .insert(insert);
 
-  if (error) throw error;
+  if (error) {
+    console.error('recordHarvest error:', error);
+    return { success: false, error: error.message };
+  }
 
   revalidatePath("/dashboard/coffee/harvest/record");
   revalidatePath("/dashboard/coffee/finance");

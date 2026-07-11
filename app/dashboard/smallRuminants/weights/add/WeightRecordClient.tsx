@@ -30,11 +30,15 @@ export default function WeightRecordClient({ animals }: { animals: Animal[] }) {
     setLoading(true)
     setError('')
     try {
-      await recordWeight({
+      const result = await recordWeight({
         ...formData,
         weight_kg: parseFloat(formData.weight_kg),
         body_condition_score: parseInt(formData.body_condition_score)
       })
+      if (!result.success) {
+        setError(result.error || 'Failed to record weight')
+        return
+      }
       router.push('/dashboard/smallRuminants/weights')
     } catch (err: any) {
       setError(err.message || 'Failed to record weight')

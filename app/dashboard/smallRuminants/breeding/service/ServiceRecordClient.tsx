@@ -52,7 +52,11 @@ export default function ServiceRecordClient({ females, males, farmId }: { female
         pregnancy_result: "pending",
         notes: notes || null,
       };
-      await recordBreedingService(breedingData);
+      const result = await recordBreedingService(breedingData);
+      if (!result.success) {
+        setError(result.error || 'Failed to record breeding service');
+        return;
+      }
       router.push("/dashboard/smallRuminants/breeding");
     } catch (e: any) {
       setError(e.message);

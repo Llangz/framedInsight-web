@@ -163,12 +163,16 @@ function HarvestModal({ plots, farmId, onClose, onSuccess }: {
     if (!form.cherry_kg || parseFloat(form.cherry_kg) <= 0) { setError('Enter a valid weight'); return }
     setLoading(true); setError('')
     try {
-      await recordHarvest({
+      const result = await recordHarvest({
         farm_id: farmId, plot_id: form.plot_id, harvest_date: form.harvest_date,
         cherry_kg: parseFloat(form.cherry_kg), produce_kg: parseFloat(form.cherry_kg),
         quality_grade: form.quality_grade, price_per_kg: parseFloat(form.price_per_kg),
         total_value: parseFloat(form.total_value || '0'), notes: form.notes || null,
       })
+      if (!result.success) {
+        setError(result.error || 'Failed to record harvest')
+        return
+      }
       onSuccess()
     } catch (err: any) {
       setError(err.message || 'Failed to record harvest')

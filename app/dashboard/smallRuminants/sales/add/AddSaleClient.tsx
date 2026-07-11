@@ -76,7 +76,11 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[], 
         notes: notes || null,
       };
 
-      await recordSale(saleData);
+      const result = await recordSale(saleData);
+      if (!result.success) {
+        setError(result.error || 'Failed to record sale');
+        return;
+      }
       router.push("/dashboard/smallRuminants/sales");
     } catch (e: any) {
       setError(e.message);

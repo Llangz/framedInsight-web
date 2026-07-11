@@ -68,7 +68,11 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
     setLoading(true)
     setError('')
     try {
-      await recordHealthEvent(form)
+      const result = await recordHealthEvent(form)
+      if (!result.success) {
+        setError(result.error || 'Failed to record health event')
+        return
+      }
       setSuccess(`${form.record_type === 'vaccination' ? 'Vaccination' : 'Health'} record saved!`)
       setForm({
         animal_id: '', record_type: 'treatment', health_issue: '',

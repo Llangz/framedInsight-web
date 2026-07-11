@@ -16,11 +16,15 @@ interface MilkRecordFormData {
   notes?: string | null;
 }
 
-export async function recordMilk(formData: MilkRecordFormData) {
+export async function recordMilk(formData: MilkRecordFormData): Promise<
+  { success: true } | { success: false; error: string }
+> {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
 
   const morningMilk = parseFloat(String(formData.morning_milk || 0)) || 0;
   const eveningMilk = parseFloat(String(formData.evening_milk || 0)) || 0;
@@ -38,11 +42,17 @@ export async function recordMilk(formData: MilkRecordFormData) {
     created_at: new Date().toISOString()
   };
 
+  // Was `if (error) throw error` — see coffee/activities/actions.ts's
+  // recordActivity for why a thrown error here loses its message to
+  // Next.js's production redaction.
   const { error } = await supabase
     .from('milk_records')
     .insert([milkRecord]);
 
-  if (error) throw error;
+  if (error) {
+    console.error('recordMilk error:', error);
+    return { success: false, error: error.message };
+  }
 
   revalidatePath("/dashboard/dairy");
   revalidatePath("/dashboard/dairy/milk");

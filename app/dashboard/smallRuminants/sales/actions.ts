@@ -13,17 +13,27 @@ interface SaleData extends SmallRuminantSalesInsert {
   total_price: number;
 }
 
-export async function recordSale(saleData: SaleData) {
+export async function recordSale(saleData: SaleData): Promise<
+  { success: true } | { success: false; error: string }
+> {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
 
+  // Was `if (insertError/updateError) throw ...` — see coffee/activities/
+  // actions.ts's recordActivity for why a thrown error here loses its
+  // message to Next.js's production redaction.
   const { error: insertError } = await supabase
     .from("small_ruminant_sales")
     .insert([saleData]);
 
-  if (insertError) throw insertError;
+  if (insertError) {
+    console.error('recordSale insert error:', insertError);
+    return { success: false, error: insertError.message };
+  }
 
   // If animal was sold (not milk), update animal status
   if (saleData.sale_type !== "milk" && saleData.animal_id) {
@@ -31,8 +41,11 @@ export async function recordSale(saleData: SaleData) {
       .from("small_ruminants")
       .update({ status: "sold" })
       .eq("id", saleData.animal_id);
-    
-    if (updateError) throw updateError;
+
+    if (updateError) {
+      console.error('recordSale status-update error:', updateError);
+      return { success: false, error: updateError.message };
+    }
   }
 
   revalidatePath("/dashboard/smallRuminants/sales");

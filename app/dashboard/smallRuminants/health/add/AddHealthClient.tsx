@@ -194,7 +194,11 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
         return;
       }
 
-      await recordHealth(records);
+      const result = await recordHealth(records);
+      if (!result.success) {
+        setError(result.error || 'Failed to save health record');
+        return;
+      }
       setSuccess(true);
       setTimeout(() => router.push("/dashboard/smallRuminants/health"), 1200);
     } catch (e: any) {

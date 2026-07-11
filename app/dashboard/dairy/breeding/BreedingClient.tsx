@@ -53,7 +53,11 @@ export default function BreedingClient({ initialCows, initialHistory }: Breeding
     setLoading(true)
     setError('')
     try {
-      await recordBreeding(form)
+      const result = await recordBreeding(form)
+      if (!result.success) {
+        setError(result.error || 'Failed to record breeding event')
+        return
+      }
       setSuccess('Breeding record saved!')
       setForm({
         dam_id: '',

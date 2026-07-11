@@ -109,7 +109,11 @@ export default function AddCowClient() {
     setLoading(true)
     setError('')
     try {
-      await addCow(form)
+      const result = await addCow(form)
+      if (!result.success) {
+        setError(result.error || 'Failed to add cow')
+        return
+      }
       setSuccess(true)
       setTimeout(() => router.push('/dashboard/dairy/herd'), 1500)
     } catch (err: any) {

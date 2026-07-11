@@ -25,6 +25,7 @@ import {
   Ship,
   XCircle,
 } from 'lucide-react'
+import { checkPublicPageRateLimit } from '@/lib/security'
 import { getBuyerDataRoom } from '@/lib/passport/buyer-access.service'
 
 interface Props {
@@ -61,8 +62,27 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
+function TooManyRequests() {
+  return (
+    <div className="min-h-screen bg-[#08090C] flex items-center justify-center p-6">
+      <div className="max-w-sm text-center">
+        <h1 className="text-lg font-bold text-white mb-2">Too many requests</h1>
+        <p className="text-sm text-zinc-400">
+          This link has been accessed too many times in a short period. Please wait a moment and try again.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default async function BuyerDataRoomPage({ params }: Props) {
   const { token } = await params
+
+  // Unauthenticated, guessable-adjacent path — rate-limit lookups by IP
+  // before hitting the DB. See lib/security.ts's checkPublicPageRateLimit.
+  const allowed = await checkPublicPageRateLimit(`buyer-page:${token}`)
+  if (!allowed) return <TooManyRequests />
+
   const dataRoom = await getBuyerDataRoom(token)
 
   if (!dataRoom) notFound()

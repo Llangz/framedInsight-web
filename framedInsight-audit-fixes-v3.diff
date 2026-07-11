@@ -1,0 +1,2082 @@
+diff --git a/app/buyer/[token]/documents/[documentId]/route.ts b/app/buyer/[token]/documents/[documentId]/route.ts
+index fad6e17..7296d2e 100644
+--- a/app/buyer/[token]/documents/[documentId]/route.ts
++++ b/app/buyer/[token]/documents/[documentId]/route.ts
+@@ -1,5 +1,6 @@
+ import { NextResponse } from 'next/server'
+ import { getBuyerDocumentDownloadUrl } from '@/lib/passport/buyer-access.service'
++import { checkPublicPageRateLimit } from '@/lib/security'
+ 
+ interface Props {
+   params: Promise<{ token: string; documentId: string }>
+@@ -7,6 +8,14 @@ interface Props {
+ 
+ export async function GET(_req: Request, { params }: Props) {
+   const { token, documentId } = await params
++
++  // Unauthenticated, guessable-adjacent path — rate-limit by IP before
++  // hitting the DB. See lib/security.ts's checkPublicPageRateLimit.
++  const allowed = await checkPublicPageRateLimit(`buyer-document:${token}`)
++  if (!allowed) {
++    return NextResponse.json({ error: 'Too many requests. Please try again shortly.' }, { status: 429 })
++  }
++
+   const result = await getBuyerDocumentDownloadUrl(token, documentId)
+ 
+   if (!result) {
+diff --git a/app/buyer/[token]/documents/page.tsx b/app/buyer/[token]/documents/page.tsx
+index c39f3d1..22b2e1b 100644
+--- a/app/buyer/[token]/documents/page.tsx
++++ b/app/buyer/[token]/documents/page.tsx
+@@ -22,6 +22,7 @@ import {
+   ShieldCheck,
+   Ship,
+ } from 'lucide-react'
++import { checkPublicPageRateLimit } from '@/lib/security'
+ import { getBuyerDataRoom } from '@/lib/passport/buyer-access.service'
+ import { DOCUMENT_TYPE_LABELS } from '@/lib/passport/document-types'
+ 
+@@ -59,8 +60,27 @@ function Stat({ label, value }: { label: string; value: string }) {
+   )
+ }
+ 
++function TooManyRequests() {
++  return (
++    <div className="min-h-screen bg-[#08090C] flex items-center justify-center p-6">
++      <div className="max-w-sm text-center">
++        <h1 className="text-lg font-bold text-white mb-2">Too many requests</h1>
++        <p className="text-sm text-zinc-400">
++          This link has been accessed too many times in a short period. Please wait a moment and try again.
++        </p>
++      </div>
++    </div>
++  )
++}
++
+ export default async function BuyerDataRoomPage({ params }: Props) {
+   const { token } = await params
++
++  // Unauthenticated, guessable-adjacent path — rate-limit lookups by IP
++  // before hitting the DB. See lib/security.ts's checkPublicPageRateLimit.
++  const allowed = await checkPublicPageRateLimit(`buyer-documents:${token}`)
++  if (!allowed) return <TooManyRequests />
++
+   const dataRoom = await getBuyerDataRoom(token)
+ 
+   if (!dataRoom) notFound()
+diff --git a/app/buyer/[token]/geojson/route.ts b/app/buyer/[token]/geojson/route.ts
+index 8a0f47e..1960ed3 100644
+--- a/app/buyer/[token]/geojson/route.ts
++++ b/app/buyer/[token]/geojson/route.ts
+@@ -1,5 +1,6 @@
+ import { NextResponse } from 'next/server'
+ import { getBuyerLotGeoJson } from '@/lib/passport/buyer-access.service'
++import { checkPublicPageRateLimit } from '@/lib/security'
+ 
+ interface Props {
+   params: Promise<{ token: string }>
+@@ -8,6 +9,13 @@ interface Props {
+ export async function GET(_req: Request, { params }: Props) {
+   const { token } = await params
+ 
++  // Unauthenticated, guessable-adjacent path — rate-limit by IP before
++  // hitting the DB. See lib/security.ts's checkPublicPageRateLimit.
++  const allowed = await checkPublicPageRateLimit(`buyer-geojson:${token}`)
++  if (!allowed) {
++    return NextResponse.json({ error: 'Too many requests. Please try again shortly.' }, { status: 429 })
++  }
++
+   let result: Awaited<ReturnType<typeof getBuyerLotGeoJson>>
+   try {
+     result = await getBuyerLotGeoJson(token)
+diff --git a/app/buyer/[token]/page.tsx b/app/buyer/[token]/page.tsx
+index 9a67224..33b9233 100644
+--- a/app/buyer/[token]/page.tsx
++++ b/app/buyer/[token]/page.tsx
+@@ -25,6 +25,7 @@ import {
+   Ship,
+   XCircle,
+ } from 'lucide-react'
++import { checkPublicPageRateLimit } from '@/lib/security'
+ import { getBuyerDataRoom } from '@/lib/passport/buyer-access.service'
+ 
+ interface Props {
+@@ -61,8 +62,27 @@ function Stat({ label, value }: { label: string; value: string }) {
+   )
+ }
+ 
++function TooManyRequests() {
++  return (
++    <div className="min-h-screen bg-[#08090C] flex items-center justify-center p-6">
++      <div className="max-w-sm text-center">
++        <h1 className="text-lg font-bold text-white mb-2">Too many requests</h1>
++        <p className="text-sm text-zinc-400">
++          This link has been accessed too many times in a short period. Please wait a moment and try again.
++        </p>
++      </div>
++    </div>
++  )
++}
++
+ export default async function BuyerDataRoomPage({ params }: Props) {
+   const { token } = await params
++
++  // Unauthenticated, guessable-adjacent path — rate-limit lookups by IP
++  // before hitting the DB. See lib/security.ts's checkPublicPageRateLimit.
++  const allowed = await checkPublicPageRateLimit(`buyer-page:${token}`)
++  if (!allowed) return <TooManyRequests />
++
+   const dataRoom = await getBuyerDataRoom(token)
+ 
+   if (!dataRoom) notFound()
+diff --git a/app/buyer/error.tsx b/app/buyer/error.tsx
+index 35cf534..8fe02ac 100644
+--- a/app/buyer/error.tsx
++++ b/app/buyer/error.tsx
+@@ -1,7 +1,7 @@
+ // 📁 FILE PATH: app/buyer/error.tsx
+ 'use client'
+ 
+-import { useEffect } from 'react'
++import { useEffect, useState } from 'react'
+ import { AlertTriangle, RefreshCcw } from 'lucide-react'
+ 
+ /**
+@@ -19,7 +19,15 @@ import { AlertTriangle, RefreshCcw } from 'lucide-react'
+  * Also swaps app/error.tsx's "Back Home" action for "Try again" only: a
+  * buyer's only way into this room is their private access-token link, so
+  * sending them to the marketing homepage is a dead end, not a recovery path.
++ *
++ * `reset()` re-renders the segment but doesn't force a fresh network fetch
++ * — for a failure whose root cause is external (an ungranted materialized
++ * view, a schema cache that hasn't reloaded), it can fail identically every
++ * time with no visible difference. After a couple of failed attempts, this
++ * switches to a genuine hard reload, same reasoning as app/dashboard/error.tsx.
+  */
++const HARD_REFRESH_AFTER = 2
++
+ export default function BuyerError({
+   error,
+   reset,
+@@ -27,10 +35,14 @@ export default function BuyerError({
+   error: Error & { digest?: string }
+   reset: () => void
+ }) {
++  const [attempts, setAttempts] = useState(0)
++
+   useEffect(() => {
+     console.error('[BuyerError]', error.digest ? `(${error.digest}) ` : '', error)
+   }, [error])
+ 
++  const stuck = attempts >= HARD_REFRESH_AFTER
++
+   return (
+     <main className="min-h-screen flex items-center justify-center bg-[#0A0C10] text-white font-['Outfit'] px-4">
+       <div className="max-w-md w-full border border-[#2A2D35] bg-[#0D0F14] rounded-2xl p-8 text-center">
+@@ -39,8 +51,9 @@ export default function BuyerError({
+         </div>
+         <h1 className="text-xl font-bold mb-2">This data room didn't load</h1>
+         <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
+-          Something went wrong loading this due-diligence room. This is almost always temporary -
+-          your access link is still valid, and a retry usually fixes it.
++          {stuck
++            ? "Still not loading after a few tries. A full page reload almost always clears it — your access link is still valid."
++            : "Something went wrong loading this due-diligence room. This is almost always temporary - your access link is still valid, and a retry usually fixes it."}
+         </p>
+ 
+         {error.digest && (
+@@ -48,11 +61,18 @@ export default function BuyerError({
+         )}
+ 
+         <button
+-          onClick={reset}
++          onClick={() => {
++            if (stuck) {
++              window.location.reload()
++            } else {
++              setAttempts((a) => a + 1)
++              reset()
++            }
++          }}
+           className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#C9A96E] hover:bg-[#B8935C] text-black font-bold rounded-xl transition-colors"
+         >
+           <RefreshCcw className="w-4 h-4" />
+-          Try again
++          {stuck ? 'Reload page' : 'Try again'}
+         </button>
+       </div>
+     </main>
+diff --git a/app/dashboard/coffee/activities/actions.ts b/app/dashboard/coffee/activities/actions.ts
+index 1a80fc9..624a3e0 100644
+--- a/app/dashboard/coffee/activities/actions.ts
++++ b/app/dashboard/coffee/activities/actions.ts
+@@ -35,11 +35,15 @@ interface ActivityFormData {
+   weeding_method?: string | null;
+ }
+ 
+-export async function recordActivity(formData: ActivityFormData) {
++export async function recordActivity(formData: ActivityFormData): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+   const { data: manager } = await supabase
+     .from("farm_managers")
+@@ -47,7 +51,9 @@ export async function recordActivity(formData: ActivityFormData) {
+     .eq("user_id", user.id)
+     .maybeSingle();
+ 
+-  if (!manager) throw new Error("Farm manager record not found");
++  if (!manager) {
++    return { success: false, error: 'Farm manager record not found' };
++  }
+ 
+   const { plot_ids, ...rest } = formData;
+ 
+@@ -59,9 +65,10 @@ export async function recordActivity(formData: ActivityFormData) {
+     if (compliance) {
+       const severity = getComplianceSeverity(compliance.entry, 'coffee')
+       if (severity === 'critical') {
+-        throw new Error(
+-          `Compliance violation: ${compliance.entry.activeIngredient} is ${compliance.entry.kenyaStatus.replace('_', ' ')} and cannot be recorded. ${compliance.entry.reason}`
+-        )
++        return {
++          success: false,
++          error: `Compliance violation: ${compliance.entry.activeIngredient} is ${compliance.entry.kenyaStatus.replace('_', ' ')} and cannot be recorded. ${compliance.entry.reason}`,
++        }
+       }
+     }
+   }
+@@ -95,8 +102,21 @@ export async function recordActivity(formData: ActivityFormData) {
+     weeding_method: rest.weeding_method,
+   }));
+ 
++  // Was `if (error) throw error` — a thrown error inside a 'use server'
++  // action gets its message stripped by Next.js in production ("An error
++  // occurred in the Server Components render...", digest only), which is
++  // exactly the unhelpful message this was surfacing to farmers with no way
++  // for either of us to tell what actually failed (RLS denial, a bad
++  // enum value, a NOT NULL violation, etc.). Logging the real error
++  // server-side (visible in Vercel logs) and *returning* a normal object
++  // instead of throwing lets the real message reach ActivityRecordClient's
++  // error banner, matching the pattern already used in every cooperative
++  // action (see createIntakeLot in app/dashboard/cooperative/intake/actions.ts).
+   const { error } = await supabase.from("coffee_activities").insert(records);
+-  if (error) throw error;
++  if (error) {
++    console.error('recordActivity error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/coffee/activities");
+   return { success: true };
+diff --git a/app/dashboard/coffee/activities/record/ActivityRecordClient.tsx b/app/dashboard/coffee/activities/record/ActivityRecordClient.tsx
+index 0f78762..bf2da2e 100644
+--- a/app/dashboard/coffee/activities/record/ActivityRecordClient.tsx
++++ b/app/dashboard/coffee/activities/record/ActivityRecordClient.tsx
+@@ -368,7 +368,11 @@ export default function ActivityRecordClient({ farmId, plots }: Props) {
+     }
+ 
+     try {
+-      await recordActivity(payload)
++      const result = await recordActivity(payload)
++      if (!result.success) {
++        setError(result.error || 'Failed to record activity')
++        return
++      }
+       setSuccess('Activity recorded!')
+       setForm(INITIAL)
+       setStep(1)
+diff --git a/app/dashboard/coffee/disease/actions.ts b/app/dashboard/coffee/disease/actions.ts
+index 3c8f3ce..72c338e 100644
+--- a/app/dashboard/coffee/disease/actions.ts
++++ b/app/dashboard/coffee/disease/actions.ts
+@@ -13,17 +13,27 @@ interface ScoutingPayload extends CoffeeScoutingRecordsInsert {
+   scouting_date?: string;
+ }
+ 
+-export async function recordScouting(payload: ScoutingPayload) {
++export async function recordScouting(payload: ScoutingPayload): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
++  // Was `if (error) throw error` — see coffee/activities/actions.ts's
++  // recordActivity for why a thrown error here loses its message to
++  // Next.js's production redaction.
+   const { error } = await supabase
+     .from("coffee_scouting_records")
+     .insert(payload);
+ 
+-  if (error) throw error;
++  if (error) {
++    console.error('recordScouting error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/coffee/disease");
+   return { success: true };
+diff --git a/app/dashboard/coffee/disease/scout/ScoutingClient.tsx b/app/dashboard/coffee/disease/scout/ScoutingClient.tsx
+index 862ca0d..e09f07c 100644
+--- a/app/dashboard/coffee/disease/scout/ScoutingClient.tsx
++++ b/app/dashboard/coffee/disease/scout/ScoutingClient.tsx
+@@ -269,7 +269,12 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
+       notes:                      form.notes                      || null,
+     };
+     try {
+-      await recordScouting(payload as any);
++      const result = await recordScouting(payload as any);
++      if (!result.success) {
++        setError(result.error || 'Failed to save scouting record');
++        setSubmitting(false);
++        return;
++      }
+       router.push("/dashboard/coffee/disease?saved=1");
+     } catch (e: any) {
+       setError(e.message);
+diff --git a/app/dashboard/coffee/finance/FinanceClient.tsx b/app/dashboard/coffee/finance/FinanceClient.tsx
+index 26ec325..e45b9fd 100644
+--- a/app/dashboard/coffee/finance/FinanceClient.tsx
++++ b/app/dashboard/coffee/finance/FinanceClient.tsx
+@@ -50,6 +50,7 @@ export default function FinanceClient({
+   const [showAdd, setShowAdd] = useState(false)
+   const [loading, setLoading] = useState(false)
+   const [txForm, setTxForm] = useState({ category: 'expense', description: '', amount: '', payment_method: 'mpesa', transaction_date: new Date().toISOString().split('T')[0] })
++  const [txError, setTxError] = useState('')
+ 
+   const s = useMemo(() => years.find(y => y.year === selectedYear), [years, selectedYear])
+ 
+@@ -63,10 +64,17 @@ export default function FinanceClient({
+   async function handleAddTransaction() {
+     if (!txForm.description || !txForm.amount) return
+     setLoading(true)
++    setTxError('')
+     try {
+-      await addTransaction({ ...txForm, amount: parseFloat(txForm.amount) })
++      const result = await addTransaction({ ...txForm, amount: parseFloat(txForm.amount) })
++      if (!result.success) {
++        setTxError(result.error || 'Failed to save record')
++        return
++      }
+       setShowAdd(false)
+       setTxForm({ category: 'expense', description: '', amount: '', payment_method: 'mpesa', transaction_date: new Date().toISOString().split('T')[0] })
++    } catch (err: any) {
++      setTxError(err.message || 'Failed to save record')
+     } finally {
+       setLoading(false)
+     }
+@@ -95,7 +103,7 @@ export default function FinanceClient({
+               {years.map(y => <option key={y.year} value={y.year}>{y.year} season</option>)}
+             </select>
+             <button
+-              onClick={() => setShowAdd(true)}
++              onClick={() => { setTxError(''); setShowAdd(true) }}
+               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors"
+             >
+               <Plus size={12} /> Add record
+@@ -267,11 +275,16 @@ export default function FinanceClient({
+             <div className="w-full max-w-md rounded-xl border border-[#2A2D35] bg-[#0D0F14] shadow-2xl">
+               <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A2D35]">
+                 <h3 className="text-sm font-semibold text-white">Add financial record</h3>
+-                <button onClick={() => setShowAdd(false)} className="text-[#6B7280] hover:text-white transition-colors">
++                <button onClick={() => { setTxError(''); setShowAdd(false) }} className="text-[#6B7280] hover:text-white transition-colors">
+                   <X size={16} />
+                 </button>
+               </div>
+               <div className="p-5 space-y-4">
++                {txError && (
++                  <div className="bg-red-950/40 border border-red-900/30 p-3 rounded-md text-xs text-red-300">
++                    {txError}
++                  </div>
++                )}
+                 <div className="grid grid-cols-2 gap-3">
+                   <div>
+                     <label className={LABEL}>Type</label>
+@@ -305,7 +318,7 @@ export default function FinanceClient({
+                   </div>
+                 </div>
+                 <div className="flex gap-3 pt-2">
+-                  <button onClick={() => setShowAdd(false)} className="flex-1 py-2.5 rounded-md border border-[#2A2D35] text-sm text-[#9CA3AF] hover:text-white transition-colors">
++                  <button onClick={() => { setTxError(''); setShowAdd(false) }} className="flex-1 py-2.5 rounded-md border border-[#2A2D35] text-sm text-[#9CA3AF] hover:text-white transition-colors">
+                     Cancel
+                   </button>
+                   <button onClick={handleAddTransaction} disabled={loading || !txForm.description || !txForm.amount}
+diff --git a/app/dashboard/coffee/finance/actions.ts b/app/dashboard/coffee/finance/actions.ts
+index b61fc93..7d0c041 100644
+--- a/app/dashboard/coffee/finance/actions.ts
++++ b/app/dashboard/coffee/finance/actions.ts
+@@ -7,11 +7,15 @@ import { Database } from "@/lib/database.types";
+ 
+ type TransactionInsert = Database['public']['Tables']['coffee_financials']['Insert'];
+ 
+-export async function addTransaction(transactionData: Omit<TransactionInsert, 'farm_id'>) {
++export async function addTransaction(transactionData: Omit<TransactionInsert, 'farm_id'>): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+   const { data: farmManager } = await supabase
+     .from("farm_managers")
+@@ -19,8 +23,16 @@ export async function addTransaction(transactionData: Omit<TransactionInsert, 'f
+     .eq("user_id", user.id)
+     .maybeSingle();
+ 
+-  if (!farmManager) throw new Error("Farm profile not found");
++  if (!farmManager) {
++    return { success: false, error: 'Farm profile not found' };
++  }
+ 
++  // Was `if (error) throw error` — see coffee/activities/actions.ts's
++  // recordActivity for why a thrown error here loses its message to
++  // Next.js's production redaction. Doubly important here: the caller
++  // (FinanceClient.tsx) previously had no catch block at all, so a thrown
++  // error didn't just lose its message — it silently failed with no
++  // feedback whatsoever. Fixed on both ends; see FinanceClient.tsx.
+   const { error } = await supabase
+     .from("coffee_financials")
+     .insert([{
+@@ -28,7 +40,10 @@ export async function addTransaction(transactionData: Omit<TransactionInsert, 'f
+       farm_id: farmManager.farm_id
+     }]);
+ 
+-  if (error) throw error;
++  if (error) {
++    console.error('addTransaction error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/coffee/finance");
+   return { success: true };
+diff --git a/app/dashboard/coffee/harvest/actions.ts b/app/dashboard/coffee/harvest/actions.ts
+index 5457b22..cfd66b3 100644
+--- a/app/dashboard/coffee/harvest/actions.ts
++++ b/app/dashboard/coffee/harvest/actions.ts
+@@ -23,20 +23,37 @@ export interface HarvestPayload {
+   notes?: string | null;
+ }
+ 
+-export async function recordHarvest(payload: HarvestPayload) {
++export async function recordHarvest(payload: HarvestPayload): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+   // Resolve plot_name from plot_id — coffee_harvests.plot_name is required (NOT NULL)
++  //
++  // Was `.single()` followed by `if (plotError || !plot) throw ...` — the
++  // throw happened before that check could ever run, so the deliberate
++  // "Plot not found" message was dead code; the raw Postgres error reached
++  // the client instead (and, worse, got redacted entirely in production —
++  // see coffee/activities/actions.ts's recordActivity for that half of the
++  // fix). `.maybeSingle()` makes the existing check actually execute.
+   const { data: plot, error: plotError } = await supabase
+     .from('coffee_plots')
+     .select('plot_name')
+     .eq('id', payload.plot_id)
+-    .single();
++    .maybeSingle();
+ 
+-  if (plotError || !plot) throw new Error("Plot not found");
++  if (plotError) {
++    console.error('recordHarvest plot lookup error:', plotError);
++    return { success: false, error: plotError.message };
++  }
++  if (!plot) {
++    return { success: false, error: 'Plot not found' };
++  }
+ 
+   // Destructure out plot_id — it is not a column on coffee_harvests
+   const { plot_id, ...rest } = payload;
+@@ -51,7 +68,10 @@ export async function recordHarvest(payload: HarvestPayload) {
+     .from('coffee_harvests')
+     .insert(insert);
+ 
+-  if (error) throw error;
++  if (error) {
++    console.error('recordHarvest error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/coffee/harvest/record");
+   revalidatePath("/dashboard/coffee/finance");
+diff --git a/app/dashboard/coffee/harvest/record/HarvestRecordClient.tsx b/app/dashboard/coffee/harvest/record/HarvestRecordClient.tsx
+index 4e21b2d..a8f0936 100644
+--- a/app/dashboard/coffee/harvest/record/HarvestRecordClient.tsx
++++ b/app/dashboard/coffee/harvest/record/HarvestRecordClient.tsx
+@@ -163,12 +163,16 @@ function HarvestModal({ plots, farmId, onClose, onSuccess }: {
+     if (!form.cherry_kg || parseFloat(form.cherry_kg) <= 0) { setError('Enter a valid weight'); return }
+     setLoading(true); setError('')
+     try {
+-      await recordHarvest({
++      const result = await recordHarvest({
+         farm_id: farmId, plot_id: form.plot_id, harvest_date: form.harvest_date,
+         cherry_kg: parseFloat(form.cherry_kg), produce_kg: parseFloat(form.cherry_kg),
+         quality_grade: form.quality_grade, price_per_kg: parseFloat(form.price_per_kg),
+         total_value: parseFloat(form.total_value || '0'), notes: form.notes || null,
+       })
++      if (!result.success) {
++        setError(result.error || 'Failed to record harvest')
++        return
++      }
+       onSuccess()
+     } catch (err: any) {
+       setError(err.message || 'Failed to record harvest')
+diff --git a/app/dashboard/coffee/plots/[plotId]/edit/EditPlotClient.tsx b/app/dashboard/coffee/plots/[plotId]/edit/EditPlotClient.tsx
+index 2bc58ec..f1a81d8 100644
+--- a/app/dashboard/coffee/plots/[plotId]/edit/EditPlotClient.tsx
++++ b/app/dashboard/coffee/plots/[plotId]/edit/EditPlotClient.tsx
+@@ -74,7 +74,11 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
+         updates.area_hectares = boundary.areaHa
+       }
+ 
+-      await updateCoffeePlot(plot.id, updates)
++      const result = await updateCoffeePlot(plot.id, updates)
++      if (!result.success) {
++        setError(result.error || 'An error occurred')
++        return
++      }
+       setSuccess('Plot updated successfully!')
+       setTimeout(() => router.push(`/dashboard/coffee/plots/${plot.id}`), 1200)
+     } catch (err: any) {
+diff --git a/app/dashboard/coffee/plots/actions.ts b/app/dashboard/coffee/plots/actions.ts
+index 89dab93..b2d1c17 100644
+--- a/app/dashboard/coffee/plots/actions.ts
++++ b/app/dashboard/coffee/plots/actions.ts
+@@ -7,11 +7,15 @@ import { Database } from "@/lib/database.types";
+ type PlotInsert = Database['public']['Tables']['coffee_plots']['Insert'];
+ type PlotUpdate = Database['public']['Tables']['coffee_plots']['Update'];
+ 
+-export async function addCoffeePlot(plotData: Omit<PlotInsert, 'farm_id'>) {
++export async function addCoffeePlot(plotData: Omit<PlotInsert, 'farm_id'>): Promise<
++  { success: true; id: string } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+   const { data: farmManager } = await supabase
+     .from("farm_managers")
+@@ -19,15 +23,23 @@ export async function addCoffeePlot(plotData: Omit<PlotInsert, 'farm_id'>) {
+     .eq("user_id", user.id)
+     .maybeSingle();
+ 
+-  if (!farmManager) throw new Error("Farm profile not found");
++  if (!farmManager) {
++    return { success: false, error: 'Farm profile not found' };
++  }
+ 
++  // Was `if (error) throw error` — see coffee/activities/actions.ts's
++  // recordActivity for why a thrown error here loses its message to
++  // Next.js's production redaction.
+   const { data, error } = await supabase
+     .from("coffee_plots")
+     .insert([{ ...plotData, farm_id: farmManager.farm_id }])
+     .select('id')
+     .single();
+ 
+-  if (error) throw error;
++  if (error) {
++    console.error('addCoffeePlot error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/coffee/plots");
+   return { success: true, id: data.id };
+@@ -36,11 +48,13 @@ export async function addCoffeePlot(plotData: Omit<PlotInsert, 'farm_id'>) {
+ export async function updateCoffeePlot(
+   plotId: string,
+   updates: Omit<PlotUpdate, 'farm_id' | 'id'>
+-) {
++): Promise<{ success: true } | { success: false; error: string }> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+   // Verify the plot belongs to this user's farm (RLS will also enforce this)
+   const { data: farmManager } = await supabase
+@@ -49,7 +63,9 @@ export async function updateCoffeePlot(
+     .eq("user_id", user.id)
+     .maybeSingle();
+ 
+-  if (!farmManager) throw new Error("Farm profile not found");
++  if (!farmManager) {
++    return { success: false, error: 'Farm profile not found' };
++  }
+ 
+   const { error } = await supabase
+     .from("coffee_plots")
+@@ -57,7 +73,10 @@ export async function updateCoffeePlot(
+     .eq("id", plotId)
+     .eq("farm_id", farmManager.farm_id); // belt-and-suspenders ownership check
+ 
+-  if (error) throw error;
++  if (error) {
++    console.error('updateCoffeePlot error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/coffee/plots");
+   revalidatePath(`/dashboard/coffee/plots/${plotId}`);
+diff --git a/app/dashboard/coffee/plots/add/AddPlotClient.tsx b/app/dashboard/coffee/plots/add/AddPlotClient.tsx
+index 48d358b..1679781 100644
+--- a/app/dashboard/coffee/plots/add/AddPlotClient.tsx
++++ b/app/dashboard/coffee/plots/add/AddPlotClient.tsx
+@@ -66,7 +66,7 @@ export default function AddPlotClient() {
+     setLoading(true)
+     setError('')
+     try {
+-      await addCoffeePlot({
++      const result = await addCoffeePlot({
+         plot_name: formData.plot_name,
+         variety: formData.variety,
+         total_trees: parseInt(formData.total_trees) || 0,
+@@ -81,6 +81,11 @@ export default function AddPlotClient() {
+           area_hectares: boundary.areaHa,
+         }),
+       })
++      if (!result.success) {
++        setError(result.error || 'Failed to add plot')
++        setStep('review') // stay on review to show error
++        return
++      }
+       router.push('/dashboard/coffee/plots')
+     } catch (err: any) {
+       setError(err.message || 'Failed to add plot')
+diff --git a/app/dashboard/cooperative/eudr/page.tsx b/app/dashboard/cooperative/eudr/page.tsx
+index 70191c2..b65ee37 100644
+--- a/app/dashboard/cooperative/eudr/page.tsx
++++ b/app/dashboard/cooperative/eudr/page.tsx
+@@ -13,11 +13,15 @@ export default async function CooperativeEudrPage() {
+   const supabase = await createClient()
+ 
+   // 1. Fetch cooperative details
++  //
++  // Was `.single()` — throws on zero rows, making the `if (!coop)` redirect
++  // below unreachable dead code. See app/dashboard/cooperative/page.tsx for
++  // the full explanation; same fix here.
+   const { data: coop } = await supabase
+     .from('cooperatives')
+     .select('cooperative_name')
+     .eq('id', access.coopId)
+-    .single()
++    .maybeSingle()
+ 
+   if (!coop) {
+     redirect('/onboarding')
+diff --git a/app/dashboard/cooperative/factories/page.tsx b/app/dashboard/cooperative/factories/page.tsx
+index 828ba0a..b6a628d 100644
+--- a/app/dashboard/cooperative/factories/page.tsx
++++ b/app/dashboard/cooperative/factories/page.tsx
+@@ -12,11 +12,15 @@ export default async function CooperativeFactoriesPage() {
+   const supabase = await createClient()
+ 
+   // 1. Fetch cooperative details
++  //
++  // Was `.single()` — throws on zero rows, making the `if (!coop)` redirect
++  // below unreachable dead code. See app/dashboard/cooperative/page.tsx for
++  // the full explanation; same fix here.
+   const { data: coop } = await supabase
+     .from('cooperatives')
+     .select('primary_enterprise')
+     .eq('id', access.coopId)
+-    .single()
++    .maybeSingle()
+   if (!coop) {
+     redirect('/onboarding')
+   }
+diff --git a/app/dashboard/cooperative/farmers/new/MapFarmerClient.tsx b/app/dashboard/cooperative/farmers/new/MapFarmerClient.tsx
+index 4ac6e85..3cc5378 100644
+--- a/app/dashboard/cooperative/farmers/new/MapFarmerClient.tsx
++++ b/app/dashboard/cooperative/farmers/new/MapFarmerClient.tsx
+@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
+ import Link from 'next/link'
+ import dynamic from 'next/dynamic'
+ import { ArrowLeft, Check, Copy, User, MapPinned } from 'lucide-react'
++import { useOnlineStatus } from '@/hooks/useOnlineStatus'
++import { OfflineActionNotice } from '@/components/ui/OfflineActionNotice'
+ import { createCoopManagedFarm } from './actions'
+ import { validateName, KENYAN_COUNTIES } from '@/lib/validation'
+ import type { BoundaryResult } from '@/components/coffee/PlotBoundaryMapper'
+@@ -27,6 +29,7 @@ interface FactoryOption { id: string; factory_name: string }
+ 
+ export default function MapFarmerClient({ factories }: { factories: FactoryOption[] }) {
+   const router = useRouter()
++  const isOnline = useOnlineStatus()
+   const [step, setStep] = useState<Step>('details')
+   const [loading, setLoading] = useState(false)
+   const [errors, setErrors] = useState<Record<string, string>>({})
+@@ -340,6 +343,8 @@ export default function MapFarmerClient({ factories }: { factories: FactoryOptio
+               </div>
+             )}
+ 
++            <OfflineActionNotice reason="registering a farmer generates a claim code and farmer record and needs a live connection" />
++
+             <div className="flex gap-3">
+               <button
+                 onClick={() => setStep('details')}
+@@ -349,7 +354,7 @@ export default function MapFarmerClient({ factories }: { factories: FactoryOptio
+               </button>
+               <button
+                 onClick={handleSubmit}
+-                disabled={loading || (!skipMapping && (!boundary || !plotData.plotName))}
++                disabled={loading || !isOnline || (!skipMapping && (!boundary || !plotData.plotName))}
+                 className="flex-1 bg-green-700 hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+               >
+                 {loading ? 'Saving…' : 'Save farmer'}
+diff --git a/app/dashboard/cooperative/intake/export-lots/new/NewExportLotClient.tsx b/app/dashboard/cooperative/intake/export-lots/new/NewExportLotClient.tsx
+index 77e556e..1ff9da4 100644
+--- a/app/dashboard/cooperative/intake/export-lots/new/NewExportLotClient.tsx
++++ b/app/dashboard/cooperative/intake/export-lots/new/NewExportLotClient.tsx
+@@ -11,6 +11,8 @@
+ import { useState, useMemo } from 'react'
+ import { useRouter } from 'next/navigation'
+ import Link from 'next/link'
++import { useOnlineStatus } from '@/hooks/useOnlineStatus'
++import { OfflineActionNotice } from '@/components/ui/OfflineActionNotice'
+ import {
+   Ship, ArrowLeft, AlertCircle, Calendar, Package,
+   Shield, Info, Globe, Anchor, FileText,
+@@ -42,6 +44,7 @@ function fmt(d: string | null) {
+ 
+ export default function NewExportLotClient({ millLots, coopId }: Props) {
+   const router = useRouter()
++  const isOnline = useOnlineStatus()
+ 
+   const [selected, setSelected] = useState<Set<string>>(new Set())
+   const [exporterName, setExporterName] = useState('')
+@@ -360,8 +363,10 @@ export default function NewExportLotClient({ millLots, coopId }: Props) {
+             </div>
+           )}
+ 
++          <OfflineActionNotice reason="creating an export lot generates a shipping/EUDR record and needs a live connection" />
++
+           <div className="flex gap-3 pt-1">
+-            <button type="submit" disabled={loading || selected.size === 0}
++            <button type="submit" disabled={loading || selected.size === 0 || !isOnline}
+               className="flex-1 py-3 bg-[#C9A96E] hover:bg-[#B8935C] disabled:opacity-40 text-black font-bold rounded-xl text-sm transition">
+               {loading ? 'Creating…' : 'Create export lot'}
+             </button>
+diff --git a/app/dashboard/cooperative/intake/mill-lots/new/NewMillLotClient.tsx b/app/dashboard/cooperative/intake/mill-lots/new/NewMillLotClient.tsx
+index ff91077..e324ef7 100644
+--- a/app/dashboard/cooperative/intake/mill-lots/new/NewMillLotClient.tsx
++++ b/app/dashboard/cooperative/intake/mill-lots/new/NewMillLotClient.tsx
+@@ -15,6 +15,8 @@ import {
+   Package, ArrowLeft, AlertCircle, Calendar, Droplets,
+   Gavel, Info, CheckCircle2, Coffee,
+ } from 'lucide-react'
++import { useOnlineStatus } from '@/hooks/useOnlineStatus'
++import { OfflineActionNotice } from '@/components/ui/OfflineActionNotice'
+ import { createMillLot } from '../actions'
+ 
+ interface Batch {
+@@ -42,6 +44,7 @@ function fmt(d: string) {
+ 
+ export default function NewMillLotClient({ batches, coopId }: Props) {
+   const router = useRouter()
++  const isOnline = useOnlineStatus()
+   const today = new Date().toISOString().slice(0, 10)
+ 
+   const [selected, setSelected] = useState<Set<string>>(new Set())
+@@ -275,8 +278,10 @@ export default function NewMillLotClient({ batches, coopId }: Props) {
+             </div>
+           )}
+ 
++          <OfflineActionNotice reason="creating a mill lot links milled batches on the traceability ledger and needs a live connection" />
++
+           <div className="flex gap-3 pt-1">
+-            <button type="submit" disabled={loading || selected.size === 0 || !cleanKgOut}
++            <button type="submit" disabled={loading || selected.size === 0 || !cleanKgOut || !isOnline}
+               className="flex-1 py-3 bg-[#C9A96E] hover:bg-[#B8935C] disabled:opacity-40 text-black font-bold rounded-xl text-sm transition">
+               {loading ? 'Creating…' : 'Create mill lot'}
+             </button>
+diff --git a/app/dashboard/cooperative/legality/page.tsx b/app/dashboard/cooperative/legality/page.tsx
+index 34631f7..02495b7 100644
+--- a/app/dashboard/cooperative/legality/page.tsx
++++ b/app/dashboard/cooperative/legality/page.tsx
+@@ -13,11 +13,15 @@ export default async function CooperativeLegalityPage() {
+   const supabase = await createClient()
+ 
+   // Cooperative details for display
++  //
++  // Was `.single()` — throws on zero rows, making the `if (!coop)` redirect
++  // below unreachable dead code. See app/dashboard/cooperative/page.tsx for
++  // the full explanation; same fix here.
+   const { data: coop } = await supabase
+     .from('cooperatives')
+     .select('cooperative_name, registration_number')
+     .eq('id', access.coopId)
+-    .single()
++    .maybeSingle()
+ 
+   if (!coop) {
+     redirect('/onboarding')
+diff --git a/app/dashboard/cooperative/page.tsx b/app/dashboard/cooperative/page.tsx
+index 1027e5d..3023937 100644
+--- a/app/dashboard/cooperative/page.tsx
++++ b/app/dashboard/cooperative/page.tsx
+@@ -14,11 +14,20 @@ export default async function CooperativeDashboardOverview() {
+   const supabase = await createClient()
+ 
+   // 1. Fetch Cooperative details
++  //
++  // Was `.single()`, which throws on zero rows instead of returning null —
++  // the `if (!coop) redirect('/onboarding')` right below was dead code,
++  // unreachable because the throw happens first. Same root-cause class as
++  // the coffee-dashboard `v_farm_summary` bug this file's neighbours fix:
++  // an officer whose cooperative record is momentarily unreadable (or
++  // genuinely gone) hard-crashed into app/dashboard/error.tsx instead of
++  // getting the graceful onboarding redirect this code was clearly meant
++  // to provide. `.maybeSingle()` makes that redirect actually run.
+   const { data: coop } = await supabase
+     .from('cooperatives')
+     .select('*')
+     .eq('id', access.coopId)
+-    .single()
++    .maybeSingle()
+ 
+   if (!coop) {
+     redirect('/onboarding')
+diff --git a/app/dashboard/dairy/add-cow/AddCowClient.tsx b/app/dashboard/dairy/add-cow/AddCowClient.tsx
+index ea623fe..ab163e9 100644
+--- a/app/dashboard/dairy/add-cow/AddCowClient.tsx
++++ b/app/dashboard/dairy/add-cow/AddCowClient.tsx
+@@ -109,7 +109,11 @@ export default function AddCowClient() {
+     setLoading(true)
+     setError('')
+     try {
+-      await addCow(form)
++      const result = await addCow(form)
++      if (!result.success) {
++        setError(result.error || 'Failed to add cow')
++        return
++      }
+       setSuccess(true)
+       setTimeout(() => router.push('/dashboard/dairy/herd'), 1500)
+     } catch (err: any) {
+diff --git a/app/dashboard/dairy/add-cow/actions.ts b/app/dashboard/dairy/add-cow/actions.ts
+index 615370a..07bf321 100644
+--- a/app/dashboard/dairy/add-cow/actions.ts
++++ b/app/dashboard/dairy/add-cow/actions.ts
+@@ -16,11 +16,15 @@ interface AddCowFormData {
+   status?: string;
+ }
+ 
+-export async function addCow(formData: AddCowFormData) {
++export async function addCow(formData: AddCowFormData): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user }, error: authError } = await supabase.auth.getUser();
+-  if (authError || !user) throw new Error("Not authenticated. Please sign in again.");
++  if (authError || !user) {
++    return { success: false, error: 'Not authenticated. Please sign in again.' };
++  }
+ 
+   const { data: farmManager, error: fmError } = await supabase
+     .from('farm_managers')
+@@ -28,10 +32,14 @@ export async function addCow(formData: AddCowFormData) {
+     .eq('user_id', user.id)
+     .maybeSingle();
+ 
+-  if (fmError || !farmManager) throw new Error("Farm profile not found. Please complete onboarding.");
++  if (fmError || !farmManager) {
++    return { success: false, error: 'Farm profile not found. Please complete onboarding.' };
++  }
+ 
+   const cowTag = (formData.tag_number || formData.animal_id || '').trim();
+-  if (!cowTag) throw new Error("Animal ID or tag number is required.");
++  if (!cowTag) {
++    return { success: false, error: 'Animal ID or tag number is required.' };
++  }
+ 
+   const cowData: CowInsert = {
+     farm_id: farmManager.farm_id,
+@@ -50,12 +58,19 @@ export async function addCow(formData: AddCowFormData) {
+     .from('cows')
+     .insert([cowData]);
+ 
++  // Was `throw new Error(...)` — even a hand-crafted, safe message like
++  // these gets stripped by Next.js's production redaction of Server
++  // Action errors ("An error occurred in the Server Components render...",
++  // digest only). Returning it instead of throwing is the only way for it
++  // to actually reach the client. See coffee/activities/actions.ts's
++  // recordActivity for the fuller explanation.
+   if (insertError) {
++    console.error('addCow error:', insertError);
+     // Friendly error for unique constraint violations
+     if (insertError.code === '23505') {
+-      throw new Error(`A cow with tag "${cowTag}" already exists in your herd.`);
++      return { success: false, error: `A cow with tag "${cowTag}" already exists in your herd.` };
+     }
+-    throw new Error(insertError.message || "Failed to add cow. Please try again.");
++    return { success: false, error: insertError.message || 'Failed to add cow. Please try again.' };
+   }
+ 
+   revalidatePath("/dashboard/dairy/herd");
+@@ -63,11 +78,15 @@ export async function addCow(formData: AddCowFormData) {
+   return { success: true };
+ }
+ 
+-export async function updateCow(cowId: string, updates: Partial<CowInsert>) {
++export async function updateCow(cowId: string, updates: Partial<CowInsert>): Promise<
++  { success: true; cow: any } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user }, error: authError } = await supabase.auth.getUser();
+-  if (authError || !user) throw new Error('Not authenticated');
++  if (authError || !user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+   const { data: farmManager, error: fmError } = await supabase
+     .from('farm_managers')
+@@ -75,15 +94,22 @@ export async function updateCow(cowId: string, updates: Partial<CowInsert>) {
+     .eq('user_id', user.id)
+     .maybeSingle();
+ 
+-  if (fmError || !farmManager) throw new Error('Farm profile not found');
++  if (fmError || !farmManager) {
++    return { success: false, error: 'Farm profile not found' };
++  }
+ 
++  // Was `.single()` — throws on zero rows, so a bad/deleted cowId hit the
++  // generic redacted error instead of the deliberate "Access denied"
++  // message below, which was dead code. `.maybeSingle()` makes it live.
+   const { data: cow } = await supabase
+     .from('cows')
+     .select('farm_id')
+     .eq('id', cowId)
+-    .single();
++    .maybeSingle();
+ 
+-  if (!cow || cow.farm_id !== farmManager.farm_id) throw new Error('Access denied');
++  if (!cow || cow.farm_id !== farmManager.farm_id) {
++    return { success: false, error: 'Access denied' };
++  }
+ 
+   const { data, error } = await supabase
+     .from('cows')
+@@ -92,10 +118,13 @@ export async function updateCow(cowId: string, updates: Partial<CowInsert>) {
+     .select()
+     .single();
+ 
+-  if (error) throw new Error(error.message || 'Failed to update cow');
++  if (error) {
++    console.error('updateCow (add-cow) error:', error);
++    return { success: false, error: error.message || 'Failed to update cow' };
++  }
+ 
+   revalidatePath('/dashboard/dairy/herd');
+   revalidatePath(`/dashboard/dairy/cows/${cowId}`);
+ 
+-  return { cow: data };
++  return { success: true, cow: data };
+ }
+\ No newline at end of file
+diff --git a/app/dashboard/dairy/breeding/BreedingClient.tsx b/app/dashboard/dairy/breeding/BreedingClient.tsx
+index 032fb3a..6f99a7b 100644
+--- a/app/dashboard/dairy/breeding/BreedingClient.tsx
++++ b/app/dashboard/dairy/breeding/BreedingClient.tsx
+@@ -53,7 +53,11 @@ export default function BreedingClient({ initialCows, initialHistory }: Breeding
+     setLoading(true)
+     setError('')
+     try {
+-      await recordBreeding(form)
++      const result = await recordBreeding(form)
++      if (!result.success) {
++        setError(result.error || 'Failed to record breeding event')
++        return
++      }
+       setSuccess('Breeding record saved!')
+       setForm({
+         dam_id: '',
+diff --git a/app/dashboard/dairy/breeding/actions.ts b/app/dashboard/dairy/breeding/actions.ts
+index 65e0f0b..a6a9d90 100644
+--- a/app/dashboard/dairy/breeding/actions.ts
++++ b/app/dashboard/dairy/breeding/actions.ts
+@@ -15,11 +15,15 @@ interface BreedingFormData {
+   notes?: string | null;
+ }
+ 
+-export async function recordBreeding(formData: BreedingFormData) {
++export async function recordBreeding(formData: BreedingFormData): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+   const serviceDate = new Date(formData.service_date);
+   const calvingDate = new Date(serviceDate.getTime() + 283 * 24 * 60 * 60 * 1000);
+@@ -35,11 +39,17 @@ export async function recordBreeding(formData: BreedingFormData) {
+     notes: formData.notes,
+   };
+ 
++  // Was `if (error) throw error` — see coffee/activities/actions.ts's
++  // recordActivity for why a thrown error here loses its message to
++  // Next.js's production redaction.
+   const { error } = await supabase
+     .from('breeding_events')
+     .insert([breedingData]);
+ 
+-  if (error) throw error;
++  if (error) {
++    console.error('recordBreeding error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/dairy/breeding");
+   return { success: true };
+diff --git a/app/dashboard/dairy/cows/[id]/edit/EditCowClient.tsx b/app/dashboard/dairy/cows/[id]/edit/EditCowClient.tsx
+index a6ca2d9..ecb3681 100644
+--- a/app/dashboard/dairy/cows/[id]/edit/EditCowClient.tsx
++++ b/app/dashboard/dairy/cows/[id]/edit/EditCowClient.tsx
+@@ -81,7 +81,7 @@ export default function EditCowClient({ cow, farmCows }: Props) {
+     if (!form.cow_tag.trim()) { setError('Tag/ID is required'); return }
+     setSaving(true)
+     try {
+-      await updateCow(cow.id, {
++      const result = await updateCow(cow.id, {
+         cow_tag:        form.cow_tag.trim().toUpperCase(),
+         name:           form.name.trim() || null,
+         breed:          form.breed || null,
+@@ -100,6 +100,10 @@ export default function EditCowClient({ cow, farmCows }: Props) {
+         qr_code:        form.qr_code.trim() || null,
+         notes:          form.notes.trim() || null,
+       })
++      if (!result.success) {
++        setError(result.error || 'Failed to save changes')
++        return
++      }
+       setSuccess(true)
+       setTimeout(() => router.push(`/dashboard/dairy/cows/${cow.id}`), 700)
+     } catch (e: unknown) {
+diff --git a/app/dashboard/dairy/cows/action.ts b/app/dashboard/dairy/cows/action.ts
+index 6a79199..14d0380 100644
+--- a/app/dashboard/dairy/cows/action.ts
++++ b/app/dashboard/dairy/cows/action.ts
+@@ -9,11 +9,13 @@ type CowUpdate = Database['public']['Tables']['cows']['Update']
+ export async function updateCow(
+   cowId: string,
+   updates: Omit<CowUpdate, 'farm_id' | 'id'>
+-) {
++): Promise<{ success: true } | { success: false; error: string }> {
+   const supabase = await createClient()
+ 
+   const { data: { user } } = await supabase.auth.getUser()
+-  if (!user) throw new Error('Not authenticated')
++  if (!user) {
++    return { success: false, error: 'Not authenticated' }
++  }
+ 
+   const { data: farmManager } = await supabase
+     .from('farm_managers')
+@@ -21,15 +23,23 @@ export async function updateCow(
+     .eq('user_id', user.id)
+     .maybeSingle()
+ 
+-  if (!farmManager) throw new Error('Farm profile not found')
++  if (!farmManager) {
++    return { success: false, error: 'Farm profile not found' }
++  }
+ 
++  // Was `if (error) throw error` — see coffee/activities/actions.ts's
++  // recordActivity for why a thrown error here loses its message to
++  // Next.js's production redaction.
+   const { error } = await supabase
+     .from('cows')
+     .update({ ...updates, updated_at: new Date().toISOString() })
+     .eq('id', cowId)
+     .eq('farm_id', farmManager.farm_id)
+ 
+-  if (error) throw error
++  if (error) {
++    console.error('updateCow error:', error)
++    return { success: false, error: error.message }
++  }
+ 
+   revalidatePath('/dashboard/dairy/cows')
+   revalidatePath(`/dashboard/dairy/cows/${cowId}`)
+@@ -37,11 +47,15 @@ export async function updateCow(
+   return { success: true }
+ }
+ 
+-export async function deleteCow(cowId: string) {
++export async function deleteCow(cowId: string): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient()
+ 
+   const { data: { user } } = await supabase.auth.getUser()
+-  if (!user) throw new Error('Not authenticated')
++  if (!user) {
++    return { success: false, error: 'Not authenticated' }
++  }
+ 
+   const { data: farmManager } = await supabase
+     .from('farm_managers')
+@@ -49,7 +63,9 @@ export async function deleteCow(cowId: string) {
+     .eq('user_id', user.id)
+     .maybeSingle()
+ 
+-  if (!farmManager) throw new Error('Farm profile not found')
++  if (!farmManager) {
++    return { success: false, error: 'Farm profile not found' }
++  }
+ 
+   const { error } = await supabase
+     .from('cows')
+@@ -57,7 +73,10 @@ export async function deleteCow(cowId: string) {
+     .eq('id', cowId)
+     .eq('farm_id', farmManager.farm_id)
+ 
+-  if (error) throw error
++  if (error) {
++    console.error('deleteCow error:', error)
++    return { success: false, error: error.message }
++  }
+ 
+   revalidatePath('/dashboard/dairy/cows')
+   revalidatePath('/dashboard/dairy/herd')
+diff --git a/app/dashboard/dairy/health/HealthClient.tsx b/app/dashboard/dairy/health/HealthClient.tsx
+index b384cad..50c07e2 100644
+--- a/app/dashboard/dairy/health/HealthClient.tsx
++++ b/app/dashboard/dairy/health/HealthClient.tsx
+@@ -68,7 +68,11 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
+     setLoading(true)
+     setError('')
+     try {
+-      await recordHealthEvent(form)
++      const result = await recordHealthEvent(form)
++      if (!result.success) {
++        setError(result.error || 'Failed to record health event')
++        return
++      }
+       setSuccess(`${form.record_type === 'vaccination' ? 'Vaccination' : 'Health'} record saved!`)
+       setForm({
+         animal_id: '', record_type: 'treatment', health_issue: '',
+diff --git a/app/dashboard/dairy/health/actions.ts b/app/dashboard/dairy/health/actions.ts
+index 281647c..8b3ffac 100644
+--- a/app/dashboard/dairy/health/actions.ts
++++ b/app/dashboard/dairy/health/actions.ts
+@@ -41,11 +41,15 @@ interface DiagnosisForm {
+ 
+ type HealthEventFormData = VaccinationForm | TreatmentForm | DiagnosisForm;
+ 
+-export async function recordHealthEvent(formData: HealthEventFormData) {
++export async function recordHealthEvent(formData: HealthEventFormData): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+   let insertData: HealthRecordInsert;
+ 
+@@ -76,8 +80,14 @@ export async function recordHealthEvent(formData: HealthEventFormData) {
+     };
+   }
+ 
++  // Was `if (error) throw error` — see coffee/activities/actions.ts's
++  // recordActivity for why a thrown error here loses its message to
++  // Next.js's production redaction.
+   const { error } = await supabase.from('health_records').insert([insertData]);
+-  if (error) throw error;
++  if (error) {
++    console.error('recordHealthEvent error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/dairy/health");
+   return { success: true };
+diff --git a/app/dashboard/dairy/record-milk/RecordMilkClient.tsx b/app/dashboard/dairy/record-milk/RecordMilkClient.tsx
+index 36784dc..6cfa5b5 100644
+--- a/app/dashboard/dairy/record-milk/RecordMilkClient.tsx
++++ b/app/dashboard/dairy/record-milk/RecordMilkClient.tsx
+@@ -97,7 +97,11 @@ export default function RecordMilkClient({ farmId, initialCows }: Props) {
+     }
+ 
+     try {
+-      await recordMilk(payload)
++      const result = await recordMilk(payload)
++      if (!result.success) {
++        setError(result.error || 'Failed to save milk record')
++        return
++      }
+       setSuccess('Milk record saved!')
+       setForm(f => ({
+         ...f,
+diff --git a/app/dashboard/dairy/record-milk/actions.ts b/app/dashboard/dairy/record-milk/actions.ts
+index d85d811..c9356c0 100644
+--- a/app/dashboard/dairy/record-milk/actions.ts
++++ b/app/dashboard/dairy/record-milk/actions.ts
+@@ -16,11 +16,15 @@ interface MilkRecordFormData {
+   notes?: string | null;
+ }
+ 
+-export async function recordMilk(formData: MilkRecordFormData) {
++export async function recordMilk(formData: MilkRecordFormData): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+   const morningMilk = parseFloat(String(formData.morning_milk || 0)) || 0;
+   const eveningMilk = parseFloat(String(formData.evening_milk || 0)) || 0;
+@@ -38,11 +42,17 @@ export async function recordMilk(formData: MilkRecordFormData) {
+     created_at: new Date().toISOString()
+   };
+ 
++  // Was `if (error) throw error` — see coffee/activities/actions.ts's
++  // recordActivity for why a thrown error here loses its message to
++  // Next.js's production redaction.
+   const { error } = await supabase
+     .from('milk_records')
+     .insert([milkRecord]);
+ 
+-  if (error) throw error;
++  if (error) {
++    console.error('recordMilk error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/dairy");
+   revalidatePath("/dashboard/dairy/milk");
+diff --git a/app/dashboard/error.tsx b/app/dashboard/error.tsx
+index fcf70c0..b346676 100644
+--- a/app/dashboard/error.tsx
++++ b/app/dashboard/error.tsx
+@@ -1,7 +1,7 @@
+ // 📁 FILE PATH: app/dashboard/error.tsx
+ 'use client'
+ 
+-import { useEffect } from 'react'
++import { useEffect, useState } from 'react'
+ import { AccountIssueScreen } from '@/components/ui/AccountIssueScreen'
+ 
+ /**
+@@ -30,6 +30,8 @@ import { AccountIssueScreen } from '@/components/ui/AccountIssueScreen'
+  * broke" card, so a farmer sees one consistent failure pattern everywhere
+  * in the dashboard instead of three different ones.
+  */
++const HARD_REFRESH_AFTER = 2
++
+ export default function DashboardError({
+   error,
+   reset,
+@@ -37,6 +39,18 @@ export default function DashboardError({
+   error: Error & { digest?: string }
+   reset: () => void
+ }) {
++  // `reset()` re-renders this route segment with the *same* client-side
++  // router state — it does not force a fresh network request the way a
++  // full navigation does. For the exact class of bug this boundary exists
++  // to catch (a materialized view still missing its GRANT, a migration
++  // that hasn't run yet, a stale PostgREST schema cache), clicking
++  // "Try again" can fail identically every time with zero feedback that
++  // anything is different, leaving the person stuck. After a couple of
++  // failed attempts, switch to a genuine hard reload — it re-runs the
++  // Server Component fetch from scratch and clears any stale client
++  // router cache, and is honest about no longer being a soft retry.
++  const [attempts, setAttempts] = useState(0)
++
+   useEffect(() => {
+     // Server-side/console logging hook. Swap for Sentry.captureException
+     // (or similar) once an error-tracking service is wired in — see the
+@@ -44,13 +58,30 @@ export default function DashboardError({
+     console.error('[DashboardError]', error.digest ? `(${error.digest}) ` : '', error)
+   }, [error])
+ 
++  const stuck = attempts >= HARD_REFRESH_AFTER
++
+   return (
+     <AccountIssueScreen
+       title="This page didn't load"
+-      message="Something went wrong loading this part of your dashboard. Your farm records are safe — this is almost always temporary and a retry fixes it. If you were offline when this happened, reconnecting first usually helps."
++      message={
++        stuck
++          ? "Still not loading after a few tries — this usually means the earlier retries weren't enough to refresh things. A full page reload almost always clears it. Your farm records are safe either way."
++          : "Something went wrong loading this part of your dashboard. Your farm records are safe — this is almost always temporary and a retry fixes it. If you were offline when this happened, reconnecting first usually helps."
++      }
+       tone="error"
+       actions={[
+-        { label: 'Try again', onClick: reset, variant: 'primary' },
++        {
++          label: stuck ? 'Reload page' : 'Try again',
++          onClick: () => {
++            if (stuck) {
++              window.location.reload()
++            } else {
++              setAttempts((a) => a + 1)
++              reset()
++            }
++          },
++          variant: 'primary',
++        },
+         { label: 'Back to dashboard', href: '/dashboard', variant: 'secondary' },
+       ]}
+       diagnostic={error.digest ? `Error ref: ${error.digest}` : error.message}
+diff --git a/app/dashboard/layout.tsx b/app/dashboard/layout.tsx
+index 74ec0eb..66f8ba6 100644
+--- a/app/dashboard/layout.tsx
++++ b/app/dashboard/layout.tsx
+@@ -54,10 +54,33 @@ export default async function DashboardLayout({ children }: { children: React.Re
+   }
+ 
+   if (coopOfficer) {
+-    const { data: coop } = await ((supabase as any).from('cooperatives')
++    // Was `.single()`, which throws (not returns null) on zero rows. A
++    // cooperative_officers row pointing at a cooperative_id that no longer
++    // resolves — a deleted/merged cooperative, a bad seed row — used to
++    // crash this root layout for every single /dashboard/cooperative/**
++    // route with no recovery path, since app/dashboard/error.tsx's "Try
++    // again" can't fix a row that's genuinely gone. `.maybeSingle()` plus
++    // an explicit fallback name keeps the shell (and the rest of the app)
++    // usable instead of hard-erroring the entire cooperative surface.
++    const { data: coop, error: coopError } = await ((supabase as any).from('cooperatives')
+             .select('cooperative_name')
+             .eq('id', coopOfficer.cooperative_id))
+-      .single()
++      .maybeSingle()
++
++    if (coopError) {
++      console.error('[DashboardLayout] Could not load cooperative record:', coopError.message, '| coop_id:', coopOfficer.cooperative_id)
++      return (
++        <AccountIssueScreen
++          title="Couldn't verify your account"
++          message="Something went wrong loading your cooperative. This is usually temporary — retrying resolves it in most cases. If it keeps happening, reach out and we'll sort it out from our side."
++          actions={[
++            { label: 'Retry', href: '/dashboard', variant: 'primary' },
++            { label: 'Contact support', href: '/contact', variant: 'secondary' },
++          ]}
++          diagnostic={coopError.message}
++        />
++      )
++    }
+ 
+     return (
+       <CoopDashboardShell coopName={coop?.cooperative_name || 'My Cooperative'}>
+diff --git a/app/dashboard/smallRuminants/animal/[id]/edit/EditAnimalClient.tsx b/app/dashboard/smallRuminants/animal/[id]/edit/EditAnimalClient.tsx
+index 5f06aba..7b2fe49 100644
+--- a/app/dashboard/smallRuminants/animal/[id]/edit/EditAnimalClient.tsx
++++ b/app/dashboard/smallRuminants/animal/[id]/edit/EditAnimalClient.tsx
+@@ -140,7 +140,7 @@ export default function EditAnimalClient(props: Props) {
+ 
+     setSaving(true)
+     try {
+-      await updateAnimal(animal.id, {
++      const result = await updateAnimal(animal.id, {
+         animal_tag:           form.animal_tag.trim().toUpperCase(),
+         name:                 form.name.trim() || null,
+         species:              form.species,
+@@ -166,6 +166,10 @@ export default function EditAnimalClient(props: Props) {
+         exit_value:           form.exit_value ? parseFloat(form.exit_value) : null,
+         notes:                form.notes.trim() || null,
+       })
++      if (!result.success) {
++        setError(result.error || 'Failed to save changes')
++        return
++      }
+       setSuccess(true)
+       setTimeout(() => router.push(`/dashboard/smallRuminants/animal/${animal.id}`), 700)
+     } catch (e: unknown) {
+diff --git a/app/dashboard/smallRuminants/animal/action.ts b/app/dashboard/smallRuminants/animal/action.ts
+index f762282..933024b 100644
+--- a/app/dashboard/smallRuminants/animal/action.ts
++++ b/app/dashboard/smallRuminants/animal/action.ts
+@@ -9,11 +9,13 @@ type AnimalUpdate = Database['public']['Tables']['small_ruminants']['Update']
+ export async function updateAnimal(
+   animalId: string,
+   updates: Omit<AnimalUpdate, 'farm_id' | 'id'>
+-) {
++): Promise<{ success: true } | { success: false; error: string }> {
+   const supabase = await createClient()
+ 
+   const { data: { user } } = await supabase.auth.getUser()
+-  if (!user) throw new Error('Not authenticated')
++  if (!user) {
++    return { success: false, error: 'Not authenticated' }
++  }
+ 
+   const { data: farmManager } = await supabase
+     .from('farm_managers')
+@@ -21,27 +23,40 @@ export async function updateAnimal(
+     .eq('user_id', user.id)
+     .maybeSingle()
+ 
+-  if (!farmManager) throw new Error('Farm profile not found')
++  if (!farmManager) {
++    return { success: false, error: 'Farm profile not found' }
++  }
+ 
+   // Ownership check: only update if this animal belongs to the user's farm
++  //
++  // Was `if (error) throw error` — see coffee/activities/actions.ts's
++  // recordActivity for why a thrown error here loses its message to
++  // Next.js's production redaction.
+   const { error } = await supabase
+     .from('small_ruminants')
+     .update({ ...updates, updated_at: new Date().toISOString() })
+     .eq('id', animalId)
+     .eq('farm_id', farmManager.farm_id)
+ 
+-  if (error) throw error
++  if (error) {
++    console.error('updateAnimal error:', error)
++    return { success: false, error: error.message }
++  }
+ 
+   revalidatePath('/dashboard/smallRuminants')
+   revalidatePath(`/dashboard/smallRuminants/animal/${animalId}`)
+   return { success: true }
+ }
+ 
+-export async function deleteAnimal(animalId: string) {
++export async function deleteAnimal(animalId: string): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient()
+ 
+   const { data: { user } } = await supabase.auth.getUser()
+-  if (!user) throw new Error('Not authenticated')
++  if (!user) {
++    return { success: false, error: 'Not authenticated' }
++  }
+ 
+   const { data: farmManager } = await supabase
+     .from('farm_managers')
+@@ -49,7 +64,9 @@ export async function deleteAnimal(animalId: string) {
+     .eq('user_id', user.id)
+     .maybeSingle()
+ 
+-  if (!farmManager) throw new Error('Farm profile not found')
++  if (!farmManager) {
++    return { success: false, error: 'Farm profile not found' }
++  }
+ 
+   const { error } = await supabase
+     .from('small_ruminants')
+@@ -57,7 +74,10 @@ export async function deleteAnimal(animalId: string) {
+     .eq('id', animalId)
+     .eq('farm_id', farmManager.farm_id)
+ 
+-  if (error) throw error
++  if (error) {
++    console.error('deleteAnimal error:', error)
++    return { success: false, error: error.message }
++  }
+ 
+   revalidatePath('/dashboard/smallRuminants')
+   return { success: true }
+diff --git a/app/dashboard/smallRuminants/breeding/actions.ts b/app/dashboard/smallRuminants/breeding/actions.ts
+index 0ff341c..de26d82 100644
+--- a/app/dashboard/smallRuminants/breeding/actions.ts
++++ b/app/dashboard/smallRuminants/breeding/actions.ts
+@@ -11,17 +11,27 @@ interface BreedingServiceData extends SmallRuminantBreedingInsert {
+   service_date: string;
+ }
+ 
+-export async function recordBreedingService(breedingData: BreedingServiceData) {
++export async function recordBreedingService(breedingData: BreedingServiceData): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
++  // Was `if (insertError) throw insertError` — see coffee/activities/
++  // actions.ts's recordActivity for why a thrown error here loses its
++  // message to Next.js's production redaction.
+   const { error: insertError } = await supabase
+     .from("small_ruminant_breeding")
+     .insert([breedingData]);
+ 
+-  if (insertError) throw insertError;
++  if (insertError) {
++    console.error('recordBreedingService error:', insertError);
++    return { success: false, error: insertError.message };
++  }
+ 
+   revalidatePath("/dashboard/smallRuminants/breeding");
+   return { success: true };
+diff --git a/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx b/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx
+index 7cb453b..1b62fec 100644
+--- a/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx
++++ b/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx
+@@ -40,7 +40,11 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
+       const selected = pregnantDams.find(d => d.id === breedingId);
+       if (!selected) throw new Error("Select a dam");
+       const kiddingData = { breeding_id: breedingId, dam_id: selected.dam_id, delivery_date: deliveryDate, number_of_offspring: numberOfOffspring };
+-      await recordKidding(kiddingData, offspring, breedingId);
++      const result = await recordKidding(kiddingData, offspring, breedingId);
++      if (!result.success) {
++        setError(result.error || 'Failed to record kidding');
++        return;
++      }
+       router.push("/dashboard/smallRuminants/breeding");
+     } catch (e: any) {
+       setError(e.message);
+diff --git a/app/dashboard/smallRuminants/breeding/kidding/actions.ts b/app/dashboard/smallRuminants/breeding/kidding/actions.ts
+index 0c25392..2864cd1 100644
+--- a/app/dashboard/smallRuminants/breeding/kidding/actions.ts
++++ b/app/dashboard/smallRuminants/breeding/kidding/actions.ts
+@@ -11,22 +11,30 @@ export async function recordKidding(
+   kiddingData: KiddingLambingRecordInsert,
+   offspring: any[],
+   breedingId: string
+-) {
++): Promise<{ success: true } | { success: false; error: string }> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
++  // Was `if (kiddingError/updateError) throw ...` — see coffee/activities/
++  // actions.ts's recordActivity for why a thrown error here loses its
++  // message to Next.js's production redaction.
+   // Create kidding record
+   const { error: kiddingError } = await supabase
+     .from("kidding_lambing_records")
+     .insert([kiddingData]);
+ 
+-  if (kiddingError) throw kiddingError;
++  if (kiddingError) {
++    console.error('recordKidding insert error:', kiddingError);
++    return { success: false, error: kiddingError.message };
++  }
+ 
+   // Create individual kid/lamb records (as per original logic, though original code seems to have a bug where it inserts multiple kidding records instead of offspring records)
+   // Let's stick to the intent: update breeding and record the event.
+-  
++
+   const updateData: SmallRuminantBreedingUpdate = {
+     actual_delivery_date: kiddingData.delivery_date,
+     number_of_offspring: offspring?.length || undefined,
+@@ -37,7 +45,10 @@ export async function recordKidding(
+     .update(updateData)
+     .eq("id", breedingId);
+ 
+-  if (updateError) throw updateError;
++  if (updateError) {
++    console.error('recordKidding breeding-update error:', updateError);
++    return { success: false, error: updateError.message };
++  }
+ 
+   revalidatePath("/dashboard/smallRuminants/breeding");
+   return { success: true };
+diff --git a/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx b/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx
+index 0ab2ba5..4d23c8c 100644
+--- a/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx
++++ b/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx
+@@ -52,7 +52,11 @@ export default function ServiceRecordClient({ females, males, farmId }: { female
+         pregnancy_result: "pending",
+         notes: notes || null,
+       };
+-      await recordBreedingService(breedingData);
++      const result = await recordBreedingService(breedingData);
++      if (!result.success) {
++        setError(result.error || 'Failed to record breeding service');
++        return;
++      }
+       router.push("/dashboard/smallRuminants/breeding");
+     } catch (e: any) {
+       setError(e.message);
+diff --git a/app/dashboard/smallRuminants/health/actions.ts b/app/dashboard/smallRuminants/health/actions.ts
+index 48b4da9..974d9a1 100644
+--- a/app/dashboard/smallRuminants/health/actions.ts
++++ b/app/dashboard/smallRuminants/health/actions.ts
+@@ -6,17 +6,28 @@ import { Database } from "@/lib/database.types";
+ 
+ type SmallRuminantHealthInsert = Database['public']['Tables']['small_ruminant_health']['Insert'];
+ 
+-export async function recordHealth(records: SmallRuminantHealthInsert[]) {
++export async function recordHealth(records: SmallRuminantHealthInsert[]): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
++  // Was `if (error) throw error` — see coffee/activities/actions.ts's
++  // recordActivity for why a thrown error here loses its message to
++  // Next.js's production redaction. Returning it instead lets the real
++  // reason reach AddHealthClient's error banner.
+   const { error } = await supabase
+     .from("small_ruminant_health")
+     .insert(records);
+ 
+-  if (error) throw error;
++  if (error) {
++    console.error('recordHealth error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/smallRuminants/health");
+   return { success: true };
+diff --git a/app/dashboard/smallRuminants/health/add/AddHealthClient.tsx b/app/dashboard/smallRuminants/health/add/AddHealthClient.tsx
+index d86ee99..ba1c2ea 100644
+--- a/app/dashboard/smallRuminants/health/add/AddHealthClient.tsx
++++ b/app/dashboard/smallRuminants/health/add/AddHealthClient.tsx
+@@ -194,7 +194,11 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
+         return;
+       }
+ 
+-      await recordHealth(records);
++      const result = await recordHealth(records);
++      if (!result.success) {
++        setError(result.error || 'Failed to save health record');
++        return;
++      }
+       setSuccess(true);
+       setTimeout(() => router.push("/dashboard/smallRuminants/health"), 1200);
+     } catch (e: any) {
+diff --git a/app/dashboard/smallRuminants/milk/page_temp.tsx b/app/dashboard/smallRuminants/milk/page_temp.tsx
+deleted file mode 100644
+index 5e34850..0000000
+--- a/app/dashboard/smallRuminants/milk/page_temp.tsx
++++ /dev/null
+@@ -1,74 +0,0 @@
+-import { createClient } from "@/lib/supabase/server";
+-import { redirect } from "next/navigation";
+-import MilkClient from "./MilkClient";
+-
+-export default async function SmallRuminantsMilkPage() {
+-  const supabase = await createClient();
+-  
+-  const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) redirect("/auth/login");
+-  
+-  const { data: fm } = await supabase
+-    .from("farm_managers")
+-    .select("farm_id")
+-    .eq("user_id", user.id)
+-    .maybeSingle();
+-  
+-  if (!fm) redirect("/onboarding");
+-  
+-  const { data: animalsData } = await supabase
+-    .from("small_ruminants")
+-    .select("id, animal_tag, name, breed, purpose")
+-    .eq("farm_id", fm.farm_id)
+-    .eq("status", "active")
+-    .in("purpose", ["dairy", "dual"])
+-    .order("animal_tag");
+-  
+-  const animals = animalsData || [];
+-  const animalIds = animals.map((a) => a.id);
+-  
+-  let rawRecords: any[] = [];
+-  if (animalIds.length > 0) {
+-    const thirtyDaysAgo = new Date();
+-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+-    const { data } = await supabase
+-      .from("goat_milk_records")
+-      .select(
+-        "id, animal_id, record_date, morning_milk, midday_milk, evening_milk, total_milk, lactation_number, days_in_milk, milk_quality, notes"
+-      )
+-      .in("animal_id", animalIds)
+-      .gte("record_date", thirtyDaysAgo.toISOString().split("T")[0])
+-      .order("record_date", { ascending: false });
+-    rawRecords = data || [];
+-  }
+-  
+-  const today = new Date().toISOString().split("T")[0];
+-  
+-  const initialGoats = animals.map((animal) => {
+-    const records = rawRecords.filter((r) => r.animal_id === animal.id);
+-    const todayRecord = records.find((r) => r.record_date === today) || null;
+-    const latestRecord = records[0] || null;
+-    
+-    const last7 = records
+-      .slice(0, 7)
+-      .map((r) => r.total_milk)
+-      .filter((v): v is number => v !== null);
+-    const avg7Day =
+-      last7.length > 0
+-        ? Math.round((last7.reduce((a, b) => a + b, 0) / last7.length) * 10) / 10
+-        : null;
+-    
+-    return {
+-      id: animal.id,
+-      animal_tag: animal.animal_tag,
+-      name: animal.name,
+-      breed: animal.breed,
+-      records,
+-      todayRecord,
+-      latestRecord,
+-      avg7Day,
+-    };
+-  });
+-  
+-  return <MilkClient initialGoats={initialGoats} />;
+-}
+\ No newline at end of file
+diff --git a/app/dashboard/smallRuminants/sales/actions.ts b/app/dashboard/smallRuminants/sales/actions.ts
+index 6be20b9..4bbd2bf 100644
+--- a/app/dashboard/smallRuminants/sales/actions.ts
++++ b/app/dashboard/smallRuminants/sales/actions.ts
+@@ -13,17 +13,27 @@ interface SaleData extends SmallRuminantSalesInsert {
+   total_price: number;
+ }
+ 
+-export async function recordSale(saleData: SaleData) {
++export async function recordSale(saleData: SaleData): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
++  // Was `if (insertError/updateError) throw ...` — see coffee/activities/
++  // actions.ts's recordActivity for why a thrown error here loses its
++  // message to Next.js's production redaction.
+   const { error: insertError } = await supabase
+     .from("small_ruminant_sales")
+     .insert([saleData]);
+ 
+-  if (insertError) throw insertError;
++  if (insertError) {
++    console.error('recordSale insert error:', insertError);
++    return { success: false, error: insertError.message };
++  }
+ 
+   // If animal was sold (not milk), update animal status
+   if (saleData.sale_type !== "milk" && saleData.animal_id) {
+@@ -31,8 +41,11 @@ export async function recordSale(saleData: SaleData) {
+       .from("small_ruminants")
+       .update({ status: "sold" })
+       .eq("id", saleData.animal_id);
+-    
+-    if (updateError) throw updateError;
++
++    if (updateError) {
++      console.error('recordSale status-update error:', updateError);
++      return { success: false, error: updateError.message };
++    }
+   }
+ 
+   revalidatePath("/dashboard/smallRuminants/sales");
+diff --git a/app/dashboard/smallRuminants/sales/add/AddSaleClient.tsx b/app/dashboard/smallRuminants/sales/add/AddSaleClient.tsx
+index 487ddf8..1522115 100644
+--- a/app/dashboard/smallRuminants/sales/add/AddSaleClient.tsx
++++ b/app/dashboard/smallRuminants/sales/add/AddSaleClient.tsx
+@@ -76,7 +76,11 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[],
+         notes: notes || null,
+       };
+ 
+-      await recordSale(saleData);
++      const result = await recordSale(saleData);
++      if (!result.success) {
++        setError(result.error || 'Failed to record sale');
++        return;
++      }
+       router.push("/dashboard/smallRuminants/sales");
+     } catch (e: any) {
+       setError(e.message);
+diff --git a/app/dashboard/smallRuminants/weights/actions.ts b/app/dashboard/smallRuminants/weights/actions.ts
+index f3a129c..299f3ff 100644
+--- a/app/dashboard/smallRuminants/weights/actions.ts
++++ b/app/dashboard/smallRuminants/weights/actions.ts
+@@ -7,20 +7,28 @@ import { Database } from "@/lib/database.types";
+ 
+ type WeightInsert = Database['public']['Tables']['weight_records']['Insert'];
+ 
+-export async function recordWeight(weightData: WeightInsert) {
++export async function recordWeight(weightData: WeightInsert): Promise<
++  { success: true } | { success: false; error: string }
++> {
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+-  if (!user) throw new Error("Not authenticated");
++  if (!user) {
++    return { success: false, error: 'Not authenticated' };
++  }
+ 
+-  // Fetch previous weight to calculate ADG (Average Daily Gain)
++  // Fetch previous weight to calculate ADG (Average Daily Gain).
++  // Was `.single()`, which throws when there's no prior row — the normal,
++  // expected case for an animal's very first weigh-in — instead of just
++  // returning null so ADG is skipped. `.maybeSingle()` makes "no previous
++  // weight yet" a non-error, same fix as applied elsewhere in the app.
+   const { data: prevWeight } = await supabase
+     .from("weight_records")
+     .select("weight_kg, record_date")
+     .eq("animal_id", weightData.animal_id)
+     .order("record_date", { ascending: false })
+     .limit(1)
+-    .single();
++    .maybeSingle();
+ 
+   let adg = null;
+   if (prevWeight) {
+@@ -30,6 +38,10 @@ export async function recordWeight(weightData: WeightInsert) {
+     }
+   }
+ 
++  // Was `if (error) throw error` — a thrown error inside a 'use server'
++  // action loses its message to Next.js's production redaction ("An error
++  // occurred in the Server Components render..."). Logging it server-side
++  // and returning it instead lets the real reason reach the UI.
+   const { error } = await supabase
+     .from("weight_records")
+     .insert([{
+@@ -37,7 +49,10 @@ export async function recordWeight(weightData: WeightInsert) {
+       average_daily_gain: adg
+     }]);
+ 
+-  if (error) throw error;
++  if (error) {
++    console.error('recordWeight error:', error);
++    return { success: false, error: error.message };
++  }
+ 
+   revalidatePath("/dashboard/smallRuminants/weights");
+   return { success: true };
+diff --git a/app/dashboard/smallRuminants/weights/add/WeightRecordClient.tsx b/app/dashboard/smallRuminants/weights/add/WeightRecordClient.tsx
+index bbe59e8..2571c67 100644
+--- a/app/dashboard/smallRuminants/weights/add/WeightRecordClient.tsx
++++ b/app/dashboard/smallRuminants/weights/add/WeightRecordClient.tsx
+@@ -30,11 +30,15 @@ export default function WeightRecordClient({ animals }: { animals: Animal[] }) {
+     setLoading(true)
+     setError('')
+     try {
+-      await recordWeight({
++      const result = await recordWeight({
+         ...formData,
+         weight_kg: parseFloat(formData.weight_kg),
+         body_condition_score: parseInt(formData.body_condition_score)
+       })
++      if (!result.success) {
++        setError(result.error || 'Failed to record weight')
++        return
++      }
+       router.push('/dashboard/smallRuminants/weights')
+     } catch (err: any) {
+       setError(err.message || 'Failed to record weight')
+diff --git a/app/trace/[passportCode]/page.tsx b/app/trace/[passportCode]/page.tsx
+index 9bd28f5..2179195 100644
+--- a/app/trace/[passportCode]/page.tsx
++++ b/app/trace/[passportCode]/page.tsx
+@@ -15,6 +15,7 @@
+ import { notFound } from 'next/navigation'
+ import type { Metadata } from 'next'
+ import { getPublicPassport, getPublicPassportLedger } from '@/lib/passport/passport.service'
++import { checkPublicPageRateLimit } from '@/lib/security'
+ import PassportClient from './PassportClient'
+ 
+ interface Props {
+@@ -38,8 +39,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
+   }
+ }
+ 
++function TooManyRequests() {
++  return (
++    <div className="min-h-screen bg-[#08090C] flex items-center justify-center p-6">
++      <div className="max-w-sm text-center">
++        <h1 className="text-lg font-bold text-white mb-2">Too many requests</h1>
++        <p className="text-sm text-zinc-400">
++          This link has been accessed too many times in a short period. Please wait a moment and try again.
++        </p>
++      </div>
++    </div>
++  )
++}
++
+ export default async function TracePage({ params }: Props) {
+   const { passportCode } = await params
++
++  // Public, guessable-adjacent path (QR-code scan) — rate-limit lookups by
++  // IP before hitting the DB. See lib/security.ts's checkPublicPageRateLimit.
++  const allowed = await checkPublicPageRateLimit(`trace-page:${passportCode}`)
++  if (!allowed) return <TooManyRequests />
++
+   const passport = await getPublicPassport(passportCode)
+   if (!passport) notFound()
+ 
+diff --git a/app/trace/error.tsx b/app/trace/error.tsx
+index b5f7084..a8131e3 100644
+--- a/app/trace/error.tsx
++++ b/app/trace/error.tsx
+@@ -1,7 +1,7 @@
+ // 📁 FILE PATH: app/trace/error.tsx
+ 'use client'
+ 
+-import { useEffect } from 'react'
++import { useEffect, useState } from 'react'
+ import { AlertTriangle, RefreshCcw } from 'lucide-react'
+ 
+ /**
+@@ -15,7 +15,13 @@ import { AlertTriangle, RefreshCcw } from 'lucide-react'
+  * brief this route is built around (see app/trace/[passportCode]/page.tsx's
+  * header comment) at the exact moment - a stranger scanning a bag in a shop
+  * or warehouse - where looking legitimate matters most.
++ *
++ * `reset()` re-renders the segment but doesn't force a fresh network fetch;
++ * after a couple of failed attempts this falls back to a genuine hard
++ * reload, same reasoning as app/dashboard/error.tsx and app/buyer/error.tsx.
+  */
++const HARD_REFRESH_AFTER = 2
++
+ export default function TraceError({
+   error,
+   reset,
+@@ -23,10 +29,14 @@ export default function TraceError({
+   error: Error & { digest?: string }
+   reset: () => void
+ }) {
++  const [attempts, setAttempts] = useState(0)
++
+   useEffect(() => {
+     console.error('[TraceError]', error.digest ? `(${error.digest}) ` : '', error)
+   }, [error])
+ 
++  const stuck = attempts >= HARD_REFRESH_AFTER
++
+   return (
+     <main className="min-h-screen flex items-center justify-center bg-[#0A0C10] text-white font-['Outfit'] px-4">
+       <div className="max-w-md w-full border border-[#2A2D35] bg-[#0D0F14] rounded-2xl p-8 text-center">
+@@ -35,8 +45,9 @@ export default function TraceError({
+         </div>
+         <h1 className="text-xl font-bold mb-2">This passport didn't load</h1>
+         <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
+-          Something went wrong loading this coffee's origin story. This is almost always
+-          temporary - a retry usually fixes it.
++          {stuck
++            ? "Still not loading after a few tries. A full page reload almost always clears it."
++            : "Something went wrong loading this coffee's origin story. This is almost always temporary - a retry usually fixes it."}
+         </p>
+ 
+         {error.digest && (
+@@ -44,11 +55,18 @@ export default function TraceError({
+         )}
+ 
+         <button
+-          onClick={reset}
++          onClick={() => {
++            if (stuck) {
++              window.location.reload()
++            } else {
++              setAttempts((a) => a + 1)
++              reset()
++            }
++          }}
+           className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#C9A96E] hover:bg-[#B8935C] text-black font-bold rounded-xl transition-colors"
+         >
+           <RefreshCcw className="w-4 h-4" />
+-          Try again
++          {stuck ? 'Reload page' : 'Try again'}
+         </button>
+       </div>
+     </main>
+diff --git a/lib/security.ts b/lib/security.ts
+index e119033..8d2d0f7 100644
+--- a/lib/security.ts
++++ b/lib/security.ts
+@@ -333,4 +333,43 @@ export function stripDangerousKeys<T extends Record<string, any>>(obj: T): T {
+   }
+   
+   return sanitized as T
++}
++
++// ============================================================================
++// PUBLIC PAGE RATE LIMITING (buyer data room, public trace lookup)
++// ============================================================================
++// app/buyer/[token]/** and app/trace/[passportCode]/** are unauthenticated
++// and reached by a guessable-adjacent path segment (a token or passport
++// code, not a login). RLS and the PII-scoping already done on those routes
++// stop a guessed/leaked value from returning anything sensitive, but
++// nothing previously stopped high-volume guessing or scraping of the
++// lookup path itself. This adds that missing layer, reusing the same
++// Redis-backed `checkRateLimit` used for OTP/login.
++
++import { headers } from 'next/headers'
++
++/**
++ * Rate-limits a public, unauthenticated page or route by client IP.
++ * Returns `true` if the request should proceed, `false` if it should be
++ * rejected. `scope` namespaces the limit per route (e.g. 'buyer-page',
++ * 'trace-geojson') so one endpoint being hammered doesn't lock out another.
++ */
++export async function checkPublicPageRateLimit(
++  scope: string,
++  maxRequests = 30,
++  windowMs = 60_000
++): Promise<boolean> {
++  try {
++    const h = await headers()
++    const ip =
++      h.get('x-forwarded-for')?.split(',')[0]?.trim() ||
++      h.get('x-real-ip') ||
++      'unknown'
++    return await checkRateLimit(`public:${scope}:${ip}`, maxRequests, windowMs)
++  } catch (err) {
++    // Fail open — a rate-limiter outage should never take down a public,
++    // trust-critical page (a buyer opening a shared link, a QR-code scan).
++    console.error(`checkPublicPageRateLimit(${scope}) error:`, err)
++    return true
++  }
+ }
+\ No newline at end of file

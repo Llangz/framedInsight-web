@@ -74,7 +74,11 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
         updates.area_hectares = boundary.areaHa
       }
 
-      await updateCoffeePlot(plot.id, updates)
+      const result = await updateCoffeePlot(plot.id, updates)
+      if (!result.success) {
+        setError(result.error || 'An error occurred')
+        return
+      }
       setSuccess('Plot updated successfully!')
       setTimeout(() => router.push(`/dashboard/coffee/plots/${plot.id}`), 1200)
     } catch (err: any) {

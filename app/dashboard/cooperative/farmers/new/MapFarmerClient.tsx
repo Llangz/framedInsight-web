@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ArrowLeft, Check, Copy, User, MapPinned } from 'lucide-react'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { OfflineActionNotice } from '@/components/ui/OfflineActionNotice'
 import { createCoopManagedFarm } from './actions'
 import { validateName, KENYAN_COUNTIES } from '@/lib/validation'
 import type { BoundaryResult } from '@/components/coffee/PlotBoundaryMapper'
@@ -27,6 +29,7 @@ interface FactoryOption { id: string; factory_name: string }
 
 export default function MapFarmerClient({ factories }: { factories: FactoryOption[] }) {
   const router = useRouter()
+  const isOnline = useOnlineStatus()
   const [step, setStep] = useState<Step>('details')
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -340,6 +343,8 @@ export default function MapFarmerClient({ factories }: { factories: FactoryOptio
               </div>
             )}
 
+            <OfflineActionNotice reason="registering a farmer generates a claim code and farmer record and needs a live connection" />
+
             <div className="flex gap-3">
               <button
                 onClick={() => setStep('details')}
@@ -349,7 +354,7 @@ export default function MapFarmerClient({ factories }: { factories: FactoryOptio
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={loading || (!skipMapping && (!boundary || !plotData.plotName))}
+                disabled={loading || !isOnline || (!skipMapping && (!boundary || !plotData.plotName))}
                 className="flex-1 bg-green-700 hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {loading ? 'Saving…' : 'Save farmer'}

@@ -35,11 +35,15 @@ interface ActivityFormData {
   weeding_method?: string | null;
 }
 
-export async function recordActivity(formData: ActivityFormData) {
+export async function recordActivity(formData: ActivityFormData): Promise<
+  { success: true } | { success: false; error: string }
+> {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
 
   const { data: manager } = await supabase
     .from("farm_managers")
@@ -47,7 +51,9 @@ export async function recordActivity(formData: ActivityFormData) {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!manager) throw new Error("Farm manager record not found");
+  if (!manager) {
+    return { success: false, error: 'Farm manager record not found' };
+  }
 
   const { plot_ids, ...rest } = formData;
 
@@ -59,9 +65,10 @@ export async function recordActivity(formData: ActivityFormData) {
     if (compliance) {
       const severity = getComplianceSeverity(compliance.entry, 'coffee')
       if (severity === 'critical') {
-        throw new Error(
-          `Compliance violation: ${compliance.entry.activeIngredient} is ${compliance.entry.kenyaStatus.replace('_', ' ')} and cannot be recorded. ${compliance.entry.reason}`
-        )
+        return {
+          success: false,
+          error: `Compliance violation: ${compliance.entry.activeIngredient} is ${compliance.entry.kenyaStatus.replace('_', ' ')} and cannot be recorded. ${compliance.entry.reason}`,
+        }
       }
     }
   }
@@ -95,8 +102,21 @@ export async function recordActivity(formData: ActivityFormData) {
     weeding_method: rest.weeding_method,
   }));
 
+  // Was `if (error) throw error` — a thrown error inside a 'use server'
+  // action gets its message stripped by Next.js in production ("An error
+  // occurred in the Server Components render...", digest only), which is
+  // exactly the unhelpful message this was surfacing to farmers with no way
+  // for either of us to tell what actually failed (RLS denial, a bad
+  // enum value, a NOT NULL violation, etc.). Logging the real error
+  // server-side (visible in Vercel logs) and *returning* a normal object
+  // instead of throwing lets the real message reach ActivityRecordClient's
+  // error banner, matching the pattern already used in every cooperative
+  // action (see createIntakeLot in app/dashboard/cooperative/intake/actions.ts).
   const { error } = await supabase.from("coffee_activities").insert(records);
-  if (error) throw error;
+  if (error) {
+    console.error('recordActivity error:', error);
+    return { success: false, error: error.message };
+  }
 
   revalidatePath("/dashboard/coffee/activities");
   return { success: true };

@@ -334,3 +334,42 @@ export function stripDangerousKeys<T extends Record<string, any>>(obj: T): T {
   
   return sanitized as T
 }
+
+// ============================================================================
+// PUBLIC PAGE RATE LIMITING (buyer data room, public trace lookup)
+// ============================================================================
+// app/buyer/[token]/** and app/trace/[passportCode]/** are unauthenticated
+// and reached by a guessable-adjacent path segment (a token or passport
+// code, not a login). RLS and the PII-scoping already done on those routes
+// stop a guessed/leaked value from returning anything sensitive, but
+// nothing previously stopped high-volume guessing or scraping of the
+// lookup path itself. This adds that missing layer, reusing the same
+// Redis-backed `checkRateLimit` used for OTP/login.
+
+import { headers } from 'next/headers'
+
+/**
+ * Rate-limits a public, unauthenticated page or route by client IP.
+ * Returns `true` if the request should proceed, `false` if it should be
+ * rejected. `scope` namespaces the limit per route (e.g. 'buyer-page',
+ * 'trace-geojson') so one endpoint being hammered doesn't lock out another.
+ */
+export async function checkPublicPageRateLimit(
+  scope: string,
+  maxRequests = 30,
+  windowMs = 60_000
+): Promise<boolean> {
+  try {
+    const h = await headers()
+    const ip =
+      h.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      h.get('x-real-ip') ||
+      'unknown'
+    return await checkRateLimit(`public:${scope}:${ip}`, maxRequests, windowMs)
+  } catch (err) {
+    // Fail open — a rate-limiter outage should never take down a public,
+    // trust-critical page (a buyer opening a shared link, a QR-code scan).
+    console.error(`checkPublicPageRateLimit(${scope}) error:`, err)
+    return true
+  }
+}

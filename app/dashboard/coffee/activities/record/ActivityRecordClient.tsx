@@ -368,7 +368,11 @@ export default function ActivityRecordClient({ farmId, plots }: Props) {
     }
 
     try {
-      await recordActivity(payload)
+      const result = await recordActivity(payload)
+      if (!result.success) {
+        setError(result.error || 'Failed to record activity')
+        return
+      }
       setSuccess('Activity recorded!')
       setForm(INITIAL)
       setStep(1)

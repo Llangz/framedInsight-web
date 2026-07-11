@@ -54,10 +54,33 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   if (coopOfficer) {
-    const { data: coop } = await ((supabase as any).from('cooperatives')
+    // Was `.single()`, which throws (not returns null) on zero rows. A
+    // cooperative_officers row pointing at a cooperative_id that no longer
+    // resolves — a deleted/merged cooperative, a bad seed row — used to
+    // crash this root layout for every single /dashboard/cooperative/**
+    // route with no recovery path, since app/dashboard/error.tsx's "Try
+    // again" can't fix a row that's genuinely gone. `.maybeSingle()` plus
+    // an explicit fallback name keeps the shell (and the rest of the app)
+    // usable instead of hard-erroring the entire cooperative surface.
+    const { data: coop, error: coopError } = await ((supabase as any).from('cooperatives')
             .select('cooperative_name')
             .eq('id', coopOfficer.cooperative_id))
-      .single()
+      .maybeSingle()
+
+    if (coopError) {
+      console.error('[DashboardLayout] Could not load cooperative record:', coopError.message, '| coop_id:', coopOfficer.cooperative_id)
+      return (
+        <AccountIssueScreen
+          title="Couldn't verify your account"
+          message="Something went wrong loading your cooperative. This is usually temporary — retrying resolves it in most cases. If it keeps happening, reach out and we'll sort it out from our side."
+          actions={[
+            { label: 'Retry', href: '/dashboard', variant: 'primary' },
+            { label: 'Contact support', href: '/contact', variant: 'secondary' },
+          ]}
+          diagnostic={coopError.message}
+        />
+      )
+    }
 
     return (
       <CoopDashboardShell coopName={coop?.cooperative_name || 'My Cooperative'}>

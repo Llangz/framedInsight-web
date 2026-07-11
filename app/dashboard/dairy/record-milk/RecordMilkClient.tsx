@@ -97,7 +97,11 @@ export default function RecordMilkClient({ farmId, initialCows }: Props) {
     }
 
     try {
-      await recordMilk(payload)
+      const result = await recordMilk(payload)
+      if (!result.success) {
+        setError(result.error || 'Failed to save milk record')
+        return
+      }
       setSuccess('Milk record saved!')
       setForm(f => ({
         ...f,
