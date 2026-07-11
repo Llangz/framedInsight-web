@@ -1,0 +1,114 @@
+diff --git a/app/dashboard/coffee/page.tsx b/app/dashboard/coffee/page.tsx
+index f5f0a9e..5287064 100644
+--- a/app/dashboard/coffee/page.tsx
++++ b/app/dashboard/coffee/page.tsx
+@@ -23,42 +23,78 @@ export default async function CoffeePage() {
+     redirect('/onboarding')
+   }
+ 
+-  // Get coffee stats from v_farm_summary. This is a MATERIALIZED view
+-  // refreshed on a 1-minute pg_cron tick (see
+-  // 20260708_fix_farm_summary_refresh_trigger.sql) — not a live view — so
+-  // there is a legitimate window, up to ~60s right after a farm is
+-  // created, where this farm genuinely has no row yet. That is not a
+-  // fetch failure, and treating it as one (the previous `.single()` +
+-  // unwrap() combination did exactly that) turned every brand-new farm's
+-  // first minute on the platform into a hard "This page didn't load"
+-  // crash — which is what the coffee dashboard screenshot was actually
+-  // showing.
++  // Coffee stats, queried directly from the source tables.
+   //
+-  // `.single()` throws PGRST116 on zero *or* multiple rows, and unwrap()
+-  // rethrows that unconditionally — it can't tell "missing row, refresh
+-  // hasn't ticked yet" apart from "something is actually broken."
+-  // `.maybeSingle()` doesn't error on zero rows, so we can make that
+-  // distinction explicitly below: a real Postgres/PostgREST error (RLS,
+-  // permissions, connection) still throws into app/dashboard/error.tsx;
+-  // "no row yet" falls through to an all-zero stats object, same as any
+-  // other legitimately-empty state on this dashboard.
+-  const { data: summary, error: summaryError } = await supabase
+-    .from('v_farm_summary')
+-    .select('*')
+-    .eq('id', farmManager.farm_id)
+-    .maybeSingle()
++  // This used to read total_coffee_plots / total_coffee_plants /
++  // season_cherry_kg / etc. from v_farm_summary. That view (see
++  // 20260612_materialize_farm_summary.sql) was rewritten at some point
++  // into a general cross-enterprise "quick stats" cache for a different
++  // consumer — its actual live columns are id, farm_name, owner_name,
++  // county, subscription_tier, has_dairy/has_coffee/has_small_ruminants/
++  // has_poultry, total_cows, today_milk_liters, total_coffee_acres,
++  // total_small_ruminants, total_poultry_birds, today_eggs,
++  // poultry_layers, poultry_broilers, created_at — none of which are the
++  // fields this page was reading. lib/database.types.ts still lists the
++  // old coffee-specific columns because it was generated against an
++  // earlier version of the view that no migration in this repo actually
++  // creates anymore (confirmed via a live information_schema query, not
++  // just reading the type file). No `.maybeSingle()`/`.single()` fix
++  // could have helped here — it was never a missing-row problem, it was
++  // asking a real view for columns it has never had.
++  //
++  // Querying coffee_plots / coffee_harvests / coffee_eudr_compliance
++  // directly sidesteps that cache entirely and matches what every other
++  // coffee page (plots, harvest, eudr-check) already reads from.
++  const currentYear = new Date().getFullYear()
++
++  const [
++    { data: plots, error: plotsError },
++    { data: harvests, error: harvestsError },
++    { data: compliance, error: complianceError },
++  ] = await Promise.all([
++    supabase
++      .from('coffee_plots')
++      .select('id, total_trees, productive_trees')
++      .eq('farm_id', farmManager.farm_id),
++    supabase
++      .from('coffee_harvests')
++      .select('cherry_kg, total_value')
++      .eq('farm_id', farmManager.farm_id)
++      .eq('harvest_year', currentYear),
++    supabase
++      .from('coffee_eudr_compliance')
++      .select('plot_id, compliance_status, assessment_date')
++      .eq('farm_id', farmManager.farm_id),
++  ])
+ 
+-  if (summaryError) {
+-    throw new Error(`[v_farm_summary] ${summaryError.message}`)
++  if (plotsError || harvestsError || complianceError) {
++    throw new Error(
++      `[coffee stats] ${plotsError?.message || harvestsError?.message || complianceError?.message}`
++    )
+   }
+ 
++  // A plot can have more than one EUDR assessment over time — keep only
++  // each plot's latest, same "latest wins" semantics as v_plot_status's
++  // LATERAL join (see 20260613_create_secondary_materialized_views.sql).
++  const latestAssessmentByPlot = new Map<string, { compliance_status: string | null }>()
++  for (const c of compliance ?? []) {
++    const existing = latestAssessmentByPlot.get(c.plot_id)
++    if (!existing || (c.assessment_date ?? '') > ((existing as any).assessment_date ?? '')) {
++      latestAssessmentByPlot.set(c.plot_id, c)
++    }
++  }
++
++  const eudrCompliantTrees = (plots ?? [])
++    .filter((p) => latestAssessmentByPlot.get(p.id)?.compliance_status === 'verified')
++    .reduce((sum, p) => sum + (p.total_trees || 0), 0)
++
+   const stats = {
+-    total_plots: summary?.total_coffee_plots || 0,
+-    total_trees: summary?.total_coffee_plants || 0,
+-    mature_trees: summary?.mature_coffee_plants || 0,
+-    season_harvest_kg: summary?.season_cherry_kg || 0,
+-    season_revenue: summary?.season_coffee_revenue_kes || 0,
+-    eudr_compliant: summary?.eudr_compliant_plants || 0,
++    total_plots: plots?.length || 0,
++    total_trees: (plots ?? []).reduce((sum, p) => sum + (p.total_trees || 0), 0),
++    mature_trees: (plots ?? []).reduce((sum, p) => sum + (p.productive_trees || 0), 0),
++    season_harvest_kg: (harvests ?? []).reduce((sum, h) => sum + (h.cherry_kg || 0), 0),
++    season_revenue: (harvests ?? []).reduce((sum, h) => sum + (h.total_value || 0), 0),
++    eudr_compliant: eudrCompliantTrees,
+     pending_payments: 0,
+   }
+ 
