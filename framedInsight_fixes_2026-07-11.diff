@@ -1,0 +1,397 @@
+diff --git a/app/dashboard/components/CoopDashboardShell.tsx b/app/dashboard/components/CoopDashboardShell.tsx
+index 58e0ab8..969b30f 100644
+--- a/app/dashboard/components/CoopDashboardShell.tsx
++++ b/app/dashboard/components/CoopDashboardShell.tsx
+@@ -132,7 +132,7 @@ export default function CoopDashboardShell({ children, coopName }: Props) {
+             {showUserMenu && (
+               <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-[#2A2D35] bg-[#0D0F14] py-1 shadow-2xl z-[100]">
+                 <Link
+-                  href="/dashboard/settings"
++                  href="/dashboard/cooperative/settings"
+                   className="flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                 >
+                   <Settings size={13} /> Account settings
+diff --git a/app/dashboard/cooperative/settings/SettingsClient.tsx b/app/dashboard/cooperative/settings/SettingsClient.tsx
+new file mode 100644
+index 0000000..ca498ef
+--- /dev/null
++++ b/app/dashboard/cooperative/settings/SettingsClient.tsx
+@@ -0,0 +1,195 @@
++// 📁 FILE PATH: app/dashboard/cooperative/settings/SettingsClient.tsx
++'use client'
++
++import { useState } from 'react'
++import Link from 'next/link'
++import { createClient } from '@/lib/supabase/client'
++import {
++  Building2, Landmark, ShieldCheck, Users, Mail, Phone,
++  LogOut, ArrowLeft, Copy, Check,
++} from 'lucide-react'
++
++interface Props {
++  coopName: string
++  county: string | null
++  subCounty: string | null
++  ward: string | null
++  primaryEnterprise: string | null
++  registrationNumber: string | null
++  registrationYear: number | null
++  registeredOffice: string | null
++  countyCode: string | null
++  currentUserEmail: string | null
++  currentUserPhone: string | null
++  role: string
++  officerCount: number
++}
++
++const CARD = 'rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5'
++const LABEL = 'text-[10px] font-semibold uppercase tracking-widest text-zinc-500'
++const VALUE = 'text-sm font-medium text-white mt-1'
++
++export default function SettingsClient({
++  coopName, county, subCounty, ward, primaryEnterprise,
++  registrationNumber, registrationYear, registeredOffice, countyCode,
++  currentUserEmail, currentUserPhone, role, officerCount,
++}: Props) {
++  const [copied, setCopied] = useState(false)
++  const [signingOut, setSigningOut] = useState(false)
++
++  const handleCopyId = async () => {
++    if (!registrationNumber) return
++    await navigator.clipboard.writeText(registrationNumber)
++    setCopied(true)
++    setTimeout(() => setCopied(false), 1500)
++  }
++
++  const handleLogout = async () => {
++    setSigningOut(true)
++    const supabase = createClient()
++    await supabase.auth.signOut()
++    // Hard navigation, matching CoopDashboardShell.tsx's own logout —
++    // avoids serving stale cached dashboard content on browser Back.
++    window.location.href = '/auth/login'
++  }
++
++  return (
++    <div className="min-h-full bg-[#0A0C10] px-6 py-8">
++      <div className="max-w-3xl mx-auto space-y-6">
++        <div>
++          <Link
++            href="/dashboard/cooperative"
++            className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-white transition-colors mb-4"
++          >
++            <ArrowLeft size={13} /> Back to overview
++          </Link>
++          <h1 className="text-xl font-bold text-white">Account settings</h1>
++          <p className="text-sm text-zinc-500 mt-1">Cooperative institutional account details.</p>
++        </div>
++
++        {/* Cooperative identity */}
++        <div className={CARD}>
++          <div className="flex items-center gap-2.5 mb-4">
++            <div className="h-8 w-8 rounded-lg bg-emerald-900/20 border border-emerald-800/40 flex items-center justify-center text-emerald-400">
++              <Building2 size={15} />
++            </div>
++            <h2 className="text-sm font-semibold text-white">Cooperative identity</h2>
++          </div>
++          <div className="grid grid-cols-2 gap-4">
++            <div>
++              <p className={LABEL}>Cooperative name</p>
++              <p className={VALUE}>{coopName}</p>
++            </div>
++            <div>
++              <p className={LABEL}>Primary enterprise</p>
++              <p className={`${VALUE} capitalize`}>{primaryEnterprise || '—'}</p>
++            </div>
++            <div>
++              <p className={LABEL}>Location</p>
++              <p className={VALUE}>
++                {[ward, subCounty, county].filter(Boolean).join(', ') || '—'}
++              </p>
++            </div>
++            <div>
++              <p className={LABEL}>County code</p>
++              <p className={VALUE}>{countyCode || '—'}</p>
++            </div>
++          </div>
++        </div>
++
++        {/* Registration & compliance */}
++        <div className={CARD}>
++          <div className="flex items-center gap-2.5 mb-4">
++            <div className="h-8 w-8 rounded-lg bg-amber-900/20 border border-amber-800/40 flex items-center justify-center text-amber-400">
++              <ShieldCheck size={15} />
++            </div>
++            <h2 className="text-sm font-semibold text-white">Registration</h2>
++          </div>
++          <div className="grid grid-cols-2 gap-4">
++            <div>
++              <p className={LABEL}>Registration number</p>
++              <div className="flex items-center gap-2 mt-1">
++                <p className="text-sm font-medium text-white font-mono">
++                  {registrationNumber || 'Not on file'}
++                </p>
++                {registrationNumber && (
++                  <button
++                    onClick={handleCopyId}
++                    className="text-zinc-500 hover:text-white transition-colors"
++                    title="Copy registration number"
++                  >
++                    {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
++                  </button>
++                )}
++              </div>
++            </div>
++            <div>
++              <p className={LABEL}>Year registered</p>
++              <p className={VALUE}>{registrationYear || '—'}</p>
++            </div>
++            <div className="col-span-2">
++              <p className={LABEL}>Registered office</p>
++              <p className={VALUE}>{registeredOffice || 'Not on file'}</p>
++            </div>
++          </div>
++          {!registrationNumber && (
++            <p className="text-xs text-amber-400/80 mt-4 flex items-start gap-1.5">
++              <Landmark size={13} className="mt-0.5 shrink-0" />
++              Missing registration details will show as gaps on EUDR and
++              buyer-facing legality documents. Contact support to update
++              these — they're not yet self-service.
++            </p>
++          )}
++        </div>
++
++        {/* Your access */}
++        <div className={CARD}>
++          <div className="flex items-center gap-2.5 mb-4">
++            <div className="h-8 w-8 rounded-lg bg-zinc-800 border border-[#2A2D35] flex items-center justify-center text-zinc-300">
++              <Users size={15} />
++            </div>
++            <h2 className="text-sm font-semibold text-white">Your access</h2>
++          </div>
++          <div className="grid grid-cols-2 gap-4">
++            <div>
++              <p className={LABEL}>Role</p>
++              <p className={`${VALUE} capitalize`}>{role}</p>
++            </div>
++            <div>
++              <p className={LABEL}>Officers on this account</p>
++              <p className={VALUE}>{officerCount}</p>
++            </div>
++            {currentUserEmail && (
++              <div>
++                <p className={LABEL}>Email</p>
++                <p className={`${VALUE} flex items-center gap-1.5`}>
++                  <Mail size={12} className="text-zinc-500" /> {currentUserEmail}
++                </p>
++              </div>
++            )}
++            {currentUserPhone && (
++              <div>
++                <p className={LABEL}>Phone</p>
++                <p className={`${VALUE} flex items-center gap-1.5`}>
++                  <Phone size={12} className="text-zinc-500" /> {currentUserPhone}
++                </p>
++              </div>
++            )}
++          </div>
++        </div>
++
++        {/* Sign out */}
++        <div className={CARD}>
++          <button
++            onClick={handleLogout}
++            disabled={signingOut}
++            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-950/20 border border-red-900/30 transition-colors disabled:opacity-60"
++          >
++            <LogOut size={14} /> {signingOut ? 'Signing out…' : 'Sign out'}
++          </button>
++        </div>
++
++      </div>
++    </div>
++  )
++}
+diff --git a/app/dashboard/cooperative/settings/page.tsx b/app/dashboard/cooperative/settings/page.tsx
+new file mode 100644
+index 0000000..bc0397f
+--- /dev/null
++++ b/app/dashboard/cooperative/settings/page.tsx
+@@ -0,0 +1,70 @@
++// 📁 FILE PATH: app/dashboard/cooperative/settings/page.tsx
++import { redirect } from 'next/navigation'
++import { validateCoopAccess } from '@/lib/validate-coop-access'
++import { createClient } from '@/lib/supabase/server'
++import SettingsClient from './SettingsClient'
++
++// "Account settings" in CoopDashboardShell.tsx used to point at
++// /dashboard/settings, which is a farm-only page: it calls GET /api/farms,
++// which returns `{ farms: [] }` for anyone without a farm_managers row —
++// which is every cooperative officer, by definition (they're routed to
++// CoopDashboardShell precisely *because* app/dashboard/layout.tsx found a
++// cooperative_officers row instead of a farm one). The page has no
++// "you're not a farmer" branch, so it just sits on its loading state
++// forever with nothing to show — a dead page reachable from the main nav
++// on every cooperative account. This page is the cooperative-side
++// equivalent, built from the same data cooperative/page.tsx and
++// cooperative/legality/page.tsx already fetch.
++export default async function CooperativeSettingsPage() {
++  const access = await validateCoopAccess()
++  if (!access.success || !access.coopId) {
++    redirect('/auth/login')
++  }
++
++  const supabase = await createClient()
++
++  const { data: { user } } = await supabase.auth.getUser()
++
++  // Was `.single()` in the sibling cooperative pages before their own
++  // fixes — `.maybeSingle()` here for the same reason: a cooperative row
++  // that's momentarily unreadable (or genuinely gone) should redirect to
++  // onboarding, not crash this page with an unhandled throw.
++  const { data: coop } = await supabase
++    .from('cooperatives')
++    .select('cooperative_name, county, sub_county, ward, primary_enterprise, registration_number, registration_year, registered_office, county_code')
++    .eq('id', access.coopId)
++    .maybeSingle()
++
++  if (!coop) {
++    redirect('/onboarding')
++  }
++
++  // Fellow officers, for a lightweight "who else has access" list — join
++  // table only, no auth.users access needed (RLS on cooperative_officers
++  // already allows an officer to see fellow officers' rows, per
++  // "Cooperative officers can view fellow officers" in
++  // 20260620_create_cooperatives.sql).
++  const { data: officers } = await supabase
++    .from('cooperative_officers')
++    .select('id, user_id, role, created_at')
++    .eq('cooperative_id', access.coopId)
++    .order('created_at', { ascending: true })
++
++  return (
++    <SettingsClient
++      coopName={coop.cooperative_name}
++      county={coop.county}
++      subCounty={coop.sub_county}
++      ward={coop.ward}
++      primaryEnterprise={coop.primary_enterprise}
++      registrationNumber={coop.registration_number}
++      registrationYear={coop.registration_year}
++      registeredOffice={coop.registered_office}
++      countyCode={coop.county_code}
++      currentUserEmail={user?.email ?? null}
++      currentUserPhone={user?.phone ?? user?.user_metadata?.phone ?? null}
++      role={access.role ?? 'officer'}
++      officerCount={officers?.length ?? (access.userId ? 1 : 0)}
++    />
++  )
++}
+diff --git a/supabase/migrations/20260711b_coffee_activities_enum_check_realignment.sql b/supabase/migrations/20260711b_coffee_activities_enum_check_realignment.sql
+new file mode 100644
+index 0000000..e5781cb
+--- /dev/null
++++ b/supabase/migrations/20260711b_coffee_activities_enum_check_realignment.sql
+@@ -0,0 +1,101 @@
++-- ============================================================================
++-- coffee_activities — realign application_method / activity_type CHECK
++-- constraints with what the app actually writes
++-- ============================================================================
++-- Confirmed error (2026-07-11, in production):
++--   new row for relation "coffee_activities" violates check constraint
++--   "coffee_activities_application_method_check"
++--
++-- Root cause: same bug class as the total_cost GENERATED column fixed in
++-- 20260625_coffee_activities_total_cost_check.sql's own commit and
++-- documented at length in actions.ts — coffee_activities has no
++-- `CREATE TABLE` anywhere in supabase/migrations/, because it was created
++-- directly in the Supabase dashboard UI. `application_method_check` (and,
++-- almost certainly, an `activity_type_check` sharing the same origin) is
++-- one more constraint that exists live but was never captured in git, so
++-- there is no source of truth to diff the app's form values against.
++--
++-- We don't have direct DB access from this session to introspect the
++-- *current* definition of coffee_activities_application_method_check, so
++-- rather than guess at what it currently allows, this migration DROPs and
++-- explicitly re-creates both constraints from the actual value sets
++-- ActivityRecordClient.tsx can send today. This is deliberately the same
++-- approach already used for farm_events in
++-- 20260612b_fix_farm_events_missing_columns.sql — match the constraint to
++-- the code's real values rather than the other way around, since the code
++-- (and the farmers using it) can't wait on reverse-engineering a
++-- dashboard-only constraint.
++--
++-- ── application_method ──────────────────────────────────────────────────
++-- Set in ActivityRecordClient.tsx (`applicationMethod`), one of three
++-- source fields depending on activity_type:
++--   • weeding         → form.weeding_method  (WEEDING_METHODS, line ~45)
++--        manual_jembe | slashing | herbicide | combined
++--   • nutrition        → form.nutrition_method (NUTRITION_METHODS, line ~57+)
++--        basal | top_dressing | foliar
++--   • crop_protection  → form.spray_equipment (SPRAY_EQUIPMENT, line ~125)
++--        knapsack | motorized | boom
++--   • pruning / mulching / other → application_method is left `null`
++--     (never set for these activity types — see ActivityRecordClient.tsx
++--     lines 304-307, only weeding/nutrition/crop_protection assign it)
++--
++-- ── activity_type ───────────────────────────────────────────────────────
++-- ActivityRecordClient.tsx maps its own UI-level ActivityType to a
++-- different set of DB values before insert (line ~315):
++--   weeding → 'weeding' | nutrition → 'fertilizer' |
++--   crop_protection → 'spraying' | pruning → 'pruning' |
++--   mulching → 'mulching' | other → 'other'
++-- If a dashboard-made activity_type_check still expects the pre-mapping
++-- names ('nutrition', 'crop_protection'), every fertilizer/spray record
++-- would fail the exact same way application_method just did. Realigning
++-- both in one migration rather than waiting for the next crash report.
++--
++-- Both are added NOT VALID (same reasoning as the total_cost check): this
++-- validates only new/updated rows immediately and does not scan or risk
++-- failing on existing history. Run the VALIDATE CONSTRAINT statements at
++-- the bottom once you've confirmed there's no historical drift (e.g. rows
++-- inserted directly via SQL/dashboard with different values).
++-- ============================================================================
++
++-- ── Diagnostics: run this first if you want to see what's live today ──────
++-- SELECT conname, pg_get_constraintdef(oid)
++-- FROM pg_constraint
++-- WHERE conrelid = 'public.coffee_activities'::regclass
++--   AND contype = 'c';
++--
++-- SELECT DISTINCT activity_type, application_method
++-- FROM public.coffee_activities
++-- ORDER BY 1, 2;
++
++ALTER TABLE public.coffee_activities
++  DROP CONSTRAINT IF EXISTS coffee_activities_application_method_check;
++
++ALTER TABLE public.coffee_activities
++  ADD CONSTRAINT coffee_activities_application_method_check
++  CHECK (
++    application_method IS NULL
++    OR application_method IN (
++      -- weeding
++      'manual_jembe', 'slashing', 'herbicide', 'combined',
++      -- nutrition
++      'basal', 'top_dressing', 'foliar',
++      -- crop protection
++      'knapsack', 'motorized', 'boom'
++    )
++  ) NOT VALID;
++
++ALTER TABLE public.coffee_activities
++  DROP CONSTRAINT IF EXISTS coffee_activities_activity_type_check;
++
++ALTER TABLE public.coffee_activities
++  ADD CONSTRAINT coffee_activities_activity_type_check
++  CHECK (
++    activity_type IN (
++      'weeding', 'fertilizer', 'spraying', 'pruning', 'mulching', 'other'
++    )
++  ) NOT VALID;
++
++-- ── Run once any pre-existing rows are confirmed clean (see diagnostics
++--    query above) ──────────────────────────────────────────────────────
++-- ALTER TABLE public.coffee_activities VALIDATE CONSTRAINT coffee_activities_application_method_check;
++-- ALTER TABLE public.coffee_activities VALIDATE CONSTRAINT coffee_activities_activity_type_check;

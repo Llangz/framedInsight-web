@@ -132,7 +132,7 @@ export default function CoopDashboardShell({ children, coopName }: Props) {
             {showUserMenu && (
               <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-[#2A2D35] bg-[#0D0F14] py-1 shadow-2xl z-[100]">
                 <Link
-                  href="/dashboard/settings"
+                  href="/dashboard/cooperative/settings"
                   className="flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
                 >
                   <Settings size={13} /> Account settings
