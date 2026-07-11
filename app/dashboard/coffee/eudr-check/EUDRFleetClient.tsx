@@ -178,7 +178,7 @@ export default function EUDRFleetClient({
               <div className="bg-slate-800 rounded-xl p-8 text-center">
                 <p className="text-4xl mb-3">🌿</p>
                 <p className="text-slate-400">No coffee plots found.</p>
-                <Link href="/dashboard/coffee/add-plot" className="mt-3 inline-block bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                <Link href="/dashboard/coffee/plots/add" className="mt-3 inline-block bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-lg">
                   Add Plot
                 </Link>
               </div>

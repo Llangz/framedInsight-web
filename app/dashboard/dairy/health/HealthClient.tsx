@@ -279,6 +279,12 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
                           {new Date(record.treatment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
                           {record.cost ? ` · KES ${Number(record.cost).toLocaleString()}` : ''}
                         </p>
+                        {record.withdrawal_days && (record.safe_meat_date || record.safe_milk_date) && (
+                          <p className="text-[11px] text-amber-500 mt-0.5">
+                            ⚠ Withdrawal {record.withdrawal_days}d — safe from{' '}
+                            {new Date(record.safe_meat_date || record.safe_milk_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                        )}
                       </div>
                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded border capitalize flex-shrink-0 ${RECORD_TYPE_CLASSES[rtype] ?? RECORD_TYPE_CLASSES.treatment}`}>
                         {rtype}

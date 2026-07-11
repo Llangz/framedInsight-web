@@ -2,7 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ServiceRecordClient from "./ServiceRecordClient";
 
-export default async function AddBreedingServicePage() {
+export default async function AddBreedingServicePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ animal?: string }>;
+}) {
+  const { animal: preselectedAnimalId } = await searchParams;
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -43,6 +48,7 @@ export default async function AddBreedingServicePage() {
       females={females || []} 
       males={males || []} 
       farmId={fm.farm_id} 
+      preselectedAnimalId={preselectedAnimalId}
     />
   );
 }

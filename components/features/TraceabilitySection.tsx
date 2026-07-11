@@ -89,7 +89,7 @@ export function TraceabilitySection() {
                 <ArrowRight size={14} />
               </Link>
               <Link
-                href="/about/traceability"
+                href="/about"
                 className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-zinc-300 hover:bg-zinc-900 transition-colors"
               >
                 How the ledger works

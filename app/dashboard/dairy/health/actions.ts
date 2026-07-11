@@ -65,6 +65,17 @@ export async function recordHealthEvent(formData: HealthEventFormData): Promise<
     };
   } else {
     const t = formData as TreatmentForm
+    const withdrawalDays = t.withdrawal_period_days ? parseInt(String(t.withdrawal_period_days)) : null;
+    // health_records has separate safe_meat_date / safe_milk_date columns
+    // (confirmed live schema) but this action never wrote to them, so the
+    // withdrawal period was collected and stored on withdrawal_days but
+    // never surfaced as an actual "safe to sell/consume" date anywhere.
+    // The form only collects one withdrawal number, so use it for both —
+    // a real per-drug meat/milk split would need two inputs, tracked
+    // separately as a form improvement.
+    const safeDate = withdrawalDays
+      ? new Date(new Date(formData.treatment_date).getTime() + withdrawalDays * 86_400_000).toISOString().split('T')[0]
+      : null;
     insertData = {
       cow_id: formData.animal_id,
       treatment_date: formData.treatment_date,
@@ -74,7 +85,9 @@ export async function recordHealthEvent(formData: HealthEventFormData): Promise<
       treatment: formData.record_type === 'diagnosis' ? 'Diagnosis' : formData.record_type === 'checkup' ? 'Checkup' : 'Treatment',
       vet_name: formData.veterinarian,
       cost: 'cost' in formData && formData.cost ? parseFloat(String(formData.cost)) : null,
-      withdrawal_days: t.withdrawal_period_days ? parseInt(String(t.withdrawal_period_days)) : null,
+      withdrawal_days: withdrawalDays,
+      safe_meat_date: safeDate,
+      safe_milk_date: safeDate,
       symptoms: formData.notes,
       notes: formData.notes,
     };

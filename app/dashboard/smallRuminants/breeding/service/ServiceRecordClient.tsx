@@ -13,12 +13,17 @@ interface Animal {
   breed: string | null;
 }
 
-export default function ServiceRecordClient({ females, males, farmId }: { females: Animal[], males: Animal[], farmId: string }) {
+export default function ServiceRecordClient({ females, males, farmId, preselectedAnimalId }: { females: Animal[], males: Animal[], farmId: string, preselectedAnimalId?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [damId, setDamId] = useState("");
+  // AnimalDetailClient links here with ?animal=<id> so "Record Breeding"
+  // from an animal's page doesn't force re-picking her from the dropdown.
+  // Only preselect if she's actually in the eligible females list.
+  const [damId, setDamId] = useState(
+    preselectedAnimalId && females.some(f => f.id === preselectedAnimalId) ? preselectedAnimalId : ""
+  );
   const [heatDate, setHeatDate] = useState("");
   const [serviceDate, setServiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [serviceType, setServiceType] = useState<"natural" | "AI">("natural");

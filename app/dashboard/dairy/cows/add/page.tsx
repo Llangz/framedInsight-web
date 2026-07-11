@@ -78,7 +78,7 @@ export default function AddCowPage() {
 
       if (!user) {
         alert('Please log in to add cows')
-        router.push('/auth/signin')
+        router.push('/auth/login')
         return
       }
 

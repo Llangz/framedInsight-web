@@ -122,7 +122,7 @@ export default function HerdClient({ initialAnimals, initialStats }: HerdClientP
                         {animal.purchase_price ? `KES ${animal.purchase_price.toLocaleString()}` : '-'}
                       </td>
                       <td className="px-6 py-4">
-                        <Link href={`/dashboard/dairy/herd/${animal.id}`} className="text-amber-600 hover:text-amber-800 font-medium">View</Link>
+                        <Link href={`/dashboard/dairy/cows/${animal.id}`} className="text-amber-600 hover:text-amber-800 font-medium">View</Link>
                       </td>
                     </tr>
                   ))}

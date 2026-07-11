@@ -270,7 +270,7 @@ export default function EUDRPlotDetailPage() {
   async function loadData() {
     try {
       const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
-      if (!session) { router.push('/login'); return }
+      if (!session) { router.push('/auth/login'); return }
 
       const [plotRes, eudrRes, satRes, auditRes] = await Promise.all([
         supabase.from('coffee_plots').select('id,plot_name,area_hectares,gps_polygon,gps_latitude,gps_longitude,region_name').eq('id', plotId).single(),

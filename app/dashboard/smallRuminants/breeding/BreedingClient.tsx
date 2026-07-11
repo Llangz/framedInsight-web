@@ -281,7 +281,7 @@ export default function BreedingClient({ initialBreedingEvents, initialKiddingRe
                 </p>
               </div>
             </div>
-            <Link href="/dashboard/smallRuminants/breeding/add" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record</Link>
+            <Link href="/dashboard/smallRuminants/breeding/service" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record</Link>
           </div>
           <SubNav active="/dashboard/smallRuminants/breeding" />
         </div>

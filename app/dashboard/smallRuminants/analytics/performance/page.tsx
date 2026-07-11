@@ -413,7 +413,7 @@ export default function FlockPerformancePage() {
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
+      if (!user) { router.push("/auth/login"); return; }
 
       // Was `.limit(1).single()` with no try/catch anywhere around init() —
       // `.single()` rejects (not returns null) on zero rows, which silently

@@ -88,6 +88,58 @@ body {
    on their inputs directly via Tailwind, so no global override needed.
    Dashboard inputs must inherit from component-level Tailwind classes. */
 
+/* ── Dark form-control chrome fix ──────────────────────────────
+   text-white on a <select> or <input type="date"> only recolors the
+   text WE render — the browser's own native chrome (the date text/
+   calendar icon inside a date input, the dropdown list of a select)
+   keeps rendering with its light-mode system colors unless the
+   element opts into dark UI via `color-scheme`. Net effect on every
+   dark-themed form in this app: date fields and dropdowns look empty
+   because the text is genuinely there, just black-on-near-black.
+
+   Scoped to the dark palette's bg-[#...] hex values (Tailwind keeps the
+   literal value in the class string) so light-themed pages — the
+   small ruminants module and a handful of coffee pages, tracked
+   separately — are left untouched. */
+input[type="date"][class*="bg-[#0A0C10]"],
+input[type="date"][class*="bg-[#0D0F14]"],
+input[type="date"][class*="bg-[#17191F]"],
+input[type="date"][class*="bg-[#1A1D24]"],
+input[type="date"][class*="bg-[#161921]"],
+input[type="time"][class*="bg-[#0A0C10]"],
+input[type="time"][class*="bg-[#0D0F14]"],
+input[type="time"][class*="bg-[#17191F]"],
+input[type="datetime-local"][class*="bg-[#0A0C10]"],
+input[type="datetime-local"][class*="bg-[#0D0F14]"],
+select[class*="bg-[#0A0C10]"],
+select[class*="bg-[#0D0F14]"],
+select[class*="bg-[#17191F]"],
+select[class*="bg-[#1A1D24]"],
+select[class*="bg-[#161921]"] {
+  color-scheme: dark;
+}
+
+input[type="date"][class*="bg-[#0A0C10]"]::-webkit-calendar-picker-indicator,
+input[type="date"][class*="bg-[#0D0F14]"]::-webkit-calendar-picker-indicator,
+input[type="date"][class*="bg-[#17191F]"]::-webkit-calendar-picker-indicator,
+input[type="time"][class*="bg-[#0A0C10]"]::-webkit-calendar-picker-indicator,
+input[type="time"][class*="bg-[#0D0F14]"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+/* Belt-and-braces for browsers/webviews that don't fully theme <option>
+   from color-scheme alone. */
+select[class*="bg-[#0A0C10]"] option,
+select[class*="bg-[#0D0F14]"] option,
+select[class*="bg-[#17191F]"] option,
+select[class*="bg-[#1A1D24]"] option,
+select[class*="bg-[#161921]"] option {
+  background-color: #17191F;
+  color: #FFFFFF;
+}
+
 /* ── Scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--background); }

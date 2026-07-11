@@ -124,7 +124,7 @@ export default function AddAnimalPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.push("/login"); return; }
+      if (!user) { router.push("/auth/login"); return; }
       // Was `.limit(1).single()` with no `.catch()` anywhere in the chain —
       // `.single()` rejects (not just returns null) on zero rows, which
       // silently failed this whole promise chain: farmId never got set,

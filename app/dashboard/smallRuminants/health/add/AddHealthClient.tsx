@@ -148,13 +148,38 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
     setLoading(true);
     setError(null);
     try {
+      // small_ruminant_health's real live columns are `cost` and a single
+      // `withdrawal_days` / `safe_consumption_date` pair (confirmed against
+      // lib/database.types.ts and the "could not find the 'cost_per_animal'
+      // column ... in the schema cache" error) — NOT the meat/milk-split,
+      // per-animal-cost fields this form used to send. HealthClient.tsx's
+      // display side already reads `cost`, `withdrawal_days` and
+      // `safe_consumption_date`, so we match that here instead of adding
+      // new columns.
+      //
+      // The form still collects meat and milk withdrawal separately (they
+      // legitimately differ per drug), so we store the longer of the two —
+      // the conservative, food-safety-correct choice when only one
+      // withdrawal window can be recorded — and derive the single
+      // safe-to-consume date from it.
+      const withdrawalMeatDays = withdrawalMeat ? parseInt(withdrawalMeat) : 0;
+      const withdrawalMilkDays = withdrawalMilk ? parseInt(withdrawalMilk) : 0;
+      const withdrawalDays = Math.max(withdrawalMeatDays, withdrawalMilkDays) || null;
+      const safeConsumptionDate = withdrawalDays
+        ? new Date(new Date(eventDate).getTime() + withdrawalDays * 86_400_000).toISOString().split("T")[0]
+        : null;
+
+      const withdrawalNote = withdrawalMeat && withdrawalMilk && withdrawalMeat !== withdrawalMilk
+        ? `Withdrawal — meat: ${withdrawalMeat}d, milk: ${withdrawalMilk}d.`
+        : null;
+
       const records = Array.from(selectedAnimals).map(animalId => ({
         animal_id:    animalId,
         event_date:   eventDate,
         event_type:   eventType,
         vet_name:     vetName || null,
-        cost_per_animal: cost ? parseFloat(cost) / selectedAnimals.size : null,
-        notes:        notes || null,
+        cost:         cost ? parseFloat(cost) / selectedAnimals.size : null,
+        notes:        [notes || null, withdrawalNote].filter(Boolean).join(" ") || null,
         vaccine_type: eventType === "vaccination" ? vaccineType : null,
         vaccine_name: eventType === "vaccination"
                         ? (vaccineType === "Other" ? customVaccineName : vaccineType)
@@ -168,8 +193,8 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
         dosage:       ["treatment","deworming"].includes(eventType)
                         ? (eventType === "treatment" ? dosage : dewormDosage) || null
                         : null,
-        withdrawal_period_meat_days: withdrawalMeat ? parseInt(withdrawalMeat) : null,
-        withdrawal_period_milk_days: withdrawalMilk ? parseInt(withdrawalMilk) : null,
+        withdrawal_days:       withdrawalDays,
+        safe_consumption_date: safeConsumptionDate,
       }));
 
       // OFFLINE FALLBACK: recordHealth() is a server action - a plain fetch

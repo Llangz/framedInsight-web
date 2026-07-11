@@ -1,0 +1,439 @@
+diff --git a/app/dashboard/coffee/eudr-check/EUDRFleetClient.tsx b/app/dashboard/coffee/eudr-check/EUDRFleetClient.tsx
+index ba79b41..ffe5708 100644
+--- a/app/dashboard/coffee/eudr-check/EUDRFleetClient.tsx
++++ b/app/dashboard/coffee/eudr-check/EUDRFleetClient.tsx
+@@ -178,7 +178,7 @@ export default function EUDRFleetClient({
+               <div className="bg-slate-800 rounded-xl p-8 text-center">
+                 <p className="text-4xl mb-3">🌿</p>
+                 <p className="text-slate-400">No coffee plots found.</p>
+-                <Link href="/dashboard/coffee/add-plot" className="mt-3 inline-block bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-lg">
++                <Link href="/dashboard/coffee/plots/add" className="mt-3 inline-block bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                   Add Plot
+                 </Link>
+               </div>
+diff --git a/app/dashboard/coffee/eudr-check/[plotId]/page.tsx b/app/dashboard/coffee/eudr-check/[plotId]/page.tsx
+index c5b3705..94a69fc 100644
+--- a/app/dashboard/coffee/eudr-check/[plotId]/page.tsx
++++ b/app/dashboard/coffee/eudr-check/[plotId]/page.tsx
+@@ -270,7 +270,7 @@ export default function EUDRPlotDetailPage() {
+   async function loadData() {
+     try {
+       const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
+-      if (!session) { router.push('/login'); return }
++      if (!session) { router.push('/auth/login'); return }
+ 
+       const [plotRes, eudrRes, satRes, auditRes] = await Promise.all([
+         supabase.from('coffee_plots').select('id,plot_name,area_hectares,gps_polygon,gps_latitude,gps_longitude,region_name').eq('id', plotId).single(),
+diff --git a/app/dashboard/coffee/plots/[plotId]/page.tsx b/app/dashboard/coffee/plots/[plotId]/page.tsx
+index 0d51b8e..8983910 100644
+--- a/app/dashboard/coffee/plots/[plotId]/page.tsx
++++ b/app/dashboard/coffee/plots/[plotId]/page.tsx
+@@ -270,7 +270,7 @@ export default function EUDRPlotDetailPage() {
+   async function loadData() {
+     try {
+       const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession()
+-      if (!session) { router.push('/login'); return }
++      if (!session) { router.push('/auth/login'); return }
+ 
+       const [plotRes, eudrRes, satRes, auditRes] = await Promise.all([
+         supabase.from('coffee_plots').select('id,plot_name,area_hectares,gps_polygon,gps_latitude,gps_longitude,region_name').eq('id', plotId).single(),
+diff --git a/app/dashboard/dairy/cows/[id]/CowDetailClient.tsx b/app/dashboard/dairy/cows/[id]/CowDetailClient.tsx
+index 378c1e9..bffbc15 100644
+--- a/app/dashboard/dairy/cows/[id]/CowDetailClient.tsx
++++ b/app/dashboard/dairy/cows/[id]/CowDetailClient.tsx
+@@ -207,13 +207,13 @@ export default function CowDetailClient({ initialCow }: CowDetailClientProps) {
+                 🥛 Record Milk
+               </Link>
+               <Link
+-                href={`/dashboard/dairy/health/add?cow=${cow.id}`}
++                href="/dashboard/dairy/health"
+                 className="block w-full px-4 py-2 bg-red-600 text-white text-center rounded-lg hover:bg-red-700"
+               >
+                 💉 Add Health Record
+               </Link>
+               <Link
+-                href={`/dashboard/dairy/breeding/add?cow=${cow.id}`}
++                href="/dashboard/dairy/breeding"
+                 className="block w-full px-4 py-2 bg-pink-600 text-white text-center rounded-lg hover:bg-pink-700"
+               >
+                 🐂 Record Breeding
+diff --git a/app/dashboard/dairy/cows/add/page.tsx b/app/dashboard/dairy/cows/add/page.tsx
+index 01fa834..326a3d1 100644
+--- a/app/dashboard/dairy/cows/add/page.tsx
++++ b/app/dashboard/dairy/cows/add/page.tsx
+@@ -78,7 +78,7 @@ export default function AddCowPage() {
+ 
+       if (!user) {
+         alert('Please log in to add cows')
+-        router.push('/auth/signin')
++        router.push('/auth/login')
+         return
+       }
+ 
+diff --git a/app/dashboard/dairy/health/HealthClient.tsx b/app/dashboard/dairy/health/HealthClient.tsx
+index 50c07e2..45bc4bb 100644
+--- a/app/dashboard/dairy/health/HealthClient.tsx
++++ b/app/dashboard/dairy/health/HealthClient.tsx
+@@ -279,6 +279,12 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
+                           {new Date(record.treatment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                           {record.cost ? ` · KES ${Number(record.cost).toLocaleString()}` : ''}
+                         </p>
++                        {record.withdrawal_days && (record.safe_meat_date || record.safe_milk_date) && (
++                          <p className="text-[11px] text-amber-500 mt-0.5">
++                            ⚠ Withdrawal {record.withdrawal_days}d — safe from{' '}
++                            {new Date(record.safe_meat_date || record.safe_milk_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
++                          </p>
++                        )}
+                       </div>
+                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded border capitalize flex-shrink-0 ${RECORD_TYPE_CLASSES[rtype] ?? RECORD_TYPE_CLASSES.treatment}`}>
+                         {rtype}
+diff --git a/app/dashboard/dairy/health/actions.ts b/app/dashboard/dairy/health/actions.ts
+index 8b3ffac..d777951 100644
+--- a/app/dashboard/dairy/health/actions.ts
++++ b/app/dashboard/dairy/health/actions.ts
+@@ -65,6 +65,17 @@ export async function recordHealthEvent(formData: HealthEventFormData): Promise<
+     };
+   } else {
+     const t = formData as TreatmentForm
++    const withdrawalDays = t.withdrawal_period_days ? parseInt(String(t.withdrawal_period_days)) : null;
++    // health_records has separate safe_meat_date / safe_milk_date columns
++    // (confirmed live schema) but this action never wrote to them, so the
++    // withdrawal period was collected and stored on withdrawal_days but
++    // never surfaced as an actual "safe to sell/consume" date anywhere.
++    // The form only collects one withdrawal number, so use it for both —
++    // a real per-drug meat/milk split would need two inputs, tracked
++    // separately as a form improvement.
++    const safeDate = withdrawalDays
++      ? new Date(new Date(formData.treatment_date).getTime() + withdrawalDays * 86_400_000).toISOString().split('T')[0]
++      : null;
+     insertData = {
+       cow_id: formData.animal_id,
+       treatment_date: formData.treatment_date,
+@@ -74,7 +85,9 @@ export async function recordHealthEvent(formData: HealthEventFormData): Promise<
+       treatment: formData.record_type === 'diagnosis' ? 'Diagnosis' : formData.record_type === 'checkup' ? 'Checkup' : 'Treatment',
+       vet_name: formData.veterinarian,
+       cost: 'cost' in formData && formData.cost ? parseFloat(String(formData.cost)) : null,
+-      withdrawal_days: t.withdrawal_period_days ? parseInt(String(t.withdrawal_period_days)) : null,
++      withdrawal_days: withdrawalDays,
++      safe_meat_date: safeDate,
++      safe_milk_date: safeDate,
+       symptoms: formData.notes,
+       notes: formData.notes,
+     };
+diff --git a/app/dashboard/dairy/herd/HerdClient.tsx b/app/dashboard/dairy/herd/HerdClient.tsx
+index 092bfe7..ca73b6c 100644
+--- a/app/dashboard/dairy/herd/HerdClient.tsx
++++ b/app/dashboard/dairy/herd/HerdClient.tsx
+@@ -122,7 +122,7 @@ export default function HerdClient({ initialAnimals, initialStats }: HerdClientP
+                         {animal.purchase_price ? `KES ${animal.purchase_price.toLocaleString()}` : '-'}
+                       </td>
+                       <td className="px-6 py-4">
+-                        <Link href={`/dashboard/dairy/herd/${animal.id}`} className="text-amber-600 hover:text-amber-800 font-medium">View</Link>
++                        <Link href={`/dashboard/dairy/cows/${animal.id}`} className="text-amber-600 hover:text-amber-800 font-medium">View</Link>
+                       </td>
+                     </tr>
+                   ))}
+diff --git a/app/dashboard/dairy/milk/record/page.tsx b/app/dashboard/dairy/milk/record/page.tsx
+index 0b0ab81..8e83a3a 100644
+--- a/app/dashboard/dairy/milk/record/page.tsx
++++ b/app/dashboard/dairy/milk/record/page.tsx
+@@ -162,7 +162,7 @@ function RecordMilkContent() {
+ 
+       if (!user) {
+         alert('Please log in to record milk')
+-        router.push('/auth/signin')
++        router.push('/auth/login')
+         return
+       }
+ 
+diff --git a/app/dashboard/smallRuminants/add/page.tsx b/app/dashboard/smallRuminants/add/page.tsx
+index 24ed185..e71fc61 100644
+--- a/app/dashboard/smallRuminants/add/page.tsx
++++ b/app/dashboard/smallRuminants/add/page.tsx
+@@ -124,7 +124,7 @@ export default function AddAnimalPage() {
+ 
+   useEffect(() => {
+     supabase.auth.getUser().then(({ data: { user } }) => {
+-      if (!user) { router.push("/login"); return; }
++      if (!user) { router.push("/auth/login"); return; }
+       // Was `.limit(1).single()` with no `.catch()` anywhere in the chain —
+       // `.single()` rejects (not just returns null) on zero rows, which
+       // silently failed this whole promise chain: farmId never got set,
+diff --git a/app/dashboard/smallRuminants/analytics/breeding/page.tsx b/app/dashboard/smallRuminants/analytics/breeding/page.tsx
+index b8dcc7a..fdc1166 100644
+--- a/app/dashboard/smallRuminants/analytics/breeding/page.tsx
++++ b/app/dashboard/smallRuminants/analytics/breeding/page.tsx
+@@ -407,7 +407,7 @@ export default function BreedingAnalyticsPage() {
+   useEffect(() => {
+     async function init() {
+       const { data: { user } } = await supabase.auth.getUser();
+-      if (!user) { router.push("/login"); return; }
++      if (!user) { router.push("/auth/login"); return; }
+ 
+       // Was `.limit(1).single()` with no try/catch anywhere around init() —
+       // `.single()` rejects (not returns null) on zero rows, which silently
+diff --git a/app/dashboard/smallRuminants/analytics/financial/page.tsx b/app/dashboard/smallRuminants/analytics/financial/page.tsx
+index ad608c2..8189d05 100644
+--- a/app/dashboard/smallRuminants/analytics/financial/page.tsx
++++ b/app/dashboard/smallRuminants/analytics/financial/page.tsx
+@@ -312,7 +312,7 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
+   useEffect(() => {
+     async function init() {
+       const { data: { user } } = await supabase.auth.getUser();
+-      if (!user) { router.push("/login"); return; }
++      if (!user) { router.push("/auth/login"); return; }
+ 
+       // Was `.limit(1).single()` with no try/catch anywhere around init() —
+       // `.single()` rejects (not returns null) on zero rows, which silently
+diff --git a/app/dashboard/smallRuminants/analytics/performance/page.tsx b/app/dashboard/smallRuminants/analytics/performance/page.tsx
+index 3787432..08e20e3 100644
+--- a/app/dashboard/smallRuminants/analytics/performance/page.tsx
++++ b/app/dashboard/smallRuminants/analytics/performance/page.tsx
+@@ -413,7 +413,7 @@ export default function FlockPerformancePage() {
+   useEffect(() => {
+     async function init() {
+       const { data: { user } } = await supabase.auth.getUser();
+-      if (!user) { router.push("/login"); return; }
++      if (!user) { router.push("/auth/login"); return; }
+ 
+       // Was `.limit(1).single()` with no try/catch anywhere around init() —
+       // `.single()` rejects (not returns null) on zero rows, which silently
+diff --git a/app/dashboard/smallRuminants/breeding/BreedingClient.tsx b/app/dashboard/smallRuminants/breeding/BreedingClient.tsx
+index f27bfb5..239b687 100644
+--- a/app/dashboard/smallRuminants/breeding/BreedingClient.tsx
++++ b/app/dashboard/smallRuminants/breeding/BreedingClient.tsx
+@@ -281,7 +281,7 @@ export default function BreedingClient({ initialBreedingEvents, initialKiddingRe
+                 </p>
+               </div>
+             </div>
+-            <Link href="/dashboard/smallRuminants/breeding/add" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record</Link>
++            <Link href="/dashboard/smallRuminants/breeding/service" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record</Link>
+           </div>
+           <SubNav active="/dashboard/smallRuminants/breeding" />
+         </div>
+diff --git a/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx b/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx
+index 4d23c8c..d8b998b 100644
+--- a/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx
++++ b/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx
+@@ -13,12 +13,17 @@ interface Animal {
+   breed: string | null;
+ }
+ 
+-export default function ServiceRecordClient({ females, males, farmId }: { females: Animal[], males: Animal[], farmId: string }) {
++export default function ServiceRecordClient({ females, males, farmId, preselectedAnimalId }: { females: Animal[], males: Animal[], farmId: string, preselectedAnimalId?: string }) {
+   const router = useRouter();
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+ 
+-  const [damId, setDamId] = useState("");
++  // AnimalDetailClient links here with ?animal=<id> so "Record Breeding"
++  // from an animal's page doesn't force re-picking her from the dropdown.
++  // Only preselect if she's actually in the eligible females list.
++  const [damId, setDamId] = useState(
++    preselectedAnimalId && females.some(f => f.id === preselectedAnimalId) ? preselectedAnimalId : ""
++  );
+   const [heatDate, setHeatDate] = useState("");
+   const [serviceDate, setServiceDate] = useState(new Date().toISOString().split("T")[0]);
+   const [serviceType, setServiceType] = useState<"natural" | "AI">("natural");
+diff --git a/app/dashboard/smallRuminants/breeding/service/page.tsx b/app/dashboard/smallRuminants/breeding/service/page.tsx
+index b8792da..3c3a168 100644
+--- a/app/dashboard/smallRuminants/breeding/service/page.tsx
++++ b/app/dashboard/smallRuminants/breeding/service/page.tsx
+@@ -2,7 +2,12 @@ import { createClient } from "@/lib/supabase/server";
+ import { redirect } from "next/navigation";
+ import ServiceRecordClient from "./ServiceRecordClient";
+ 
+-export default async function AddBreedingServicePage() {
++export default async function AddBreedingServicePage({
++  searchParams,
++}: {
++  searchParams: Promise<{ animal?: string }>;
++}) {
++  const { animal: preselectedAnimalId } = await searchParams;
+   const supabase = await createClient();
+ 
+   const { data: { user } } = await supabase.auth.getUser();
+@@ -43,6 +48,7 @@ export default async function AddBreedingServicePage() {
+       females={females || []} 
+       males={males || []} 
+       farmId={fm.farm_id} 
++      preselectedAnimalId={preselectedAnimalId}
+     />
+   );
+ }
+\ No newline at end of file
+diff --git a/app/dashboard/smallRuminants/health/add/AddHealthClient.tsx b/app/dashboard/smallRuminants/health/add/AddHealthClient.tsx
+index ba1c2ea..5e23e72 100644
+--- a/app/dashboard/smallRuminants/health/add/AddHealthClient.tsx
++++ b/app/dashboard/smallRuminants/health/add/AddHealthClient.tsx
+@@ -148,13 +148,38 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
+     setLoading(true);
+     setError(null);
+     try {
++      // small_ruminant_health's real live columns are `cost` and a single
++      // `withdrawal_days` / `safe_consumption_date` pair (confirmed against
++      // lib/database.types.ts and the "could not find the 'cost_per_animal'
++      // column ... in the schema cache" error) — NOT the meat/milk-split,
++      // per-animal-cost fields this form used to send. HealthClient.tsx's
++      // display side already reads `cost`, `withdrawal_days` and
++      // `safe_consumption_date`, so we match that here instead of adding
++      // new columns.
++      //
++      // The form still collects meat and milk withdrawal separately (they
++      // legitimately differ per drug), so we store the longer of the two —
++      // the conservative, food-safety-correct choice when only one
++      // withdrawal window can be recorded — and derive the single
++      // safe-to-consume date from it.
++      const withdrawalMeatDays = withdrawalMeat ? parseInt(withdrawalMeat) : 0;
++      const withdrawalMilkDays = withdrawalMilk ? parseInt(withdrawalMilk) : 0;
++      const withdrawalDays = Math.max(withdrawalMeatDays, withdrawalMilkDays) || null;
++      const safeConsumptionDate = withdrawalDays
++        ? new Date(new Date(eventDate).getTime() + withdrawalDays * 86_400_000).toISOString().split("T")[0]
++        : null;
++
++      const withdrawalNote = withdrawalMeat && withdrawalMilk && withdrawalMeat !== withdrawalMilk
++        ? `Withdrawal — meat: ${withdrawalMeat}d, milk: ${withdrawalMilk}d.`
++        : null;
++
+       const records = Array.from(selectedAnimals).map(animalId => ({
+         animal_id:    animalId,
+         event_date:   eventDate,
+         event_type:   eventType,
+         vet_name:     vetName || null,
+-        cost_per_animal: cost ? parseFloat(cost) / selectedAnimals.size : null,
+-        notes:        notes || null,
++        cost:         cost ? parseFloat(cost) / selectedAnimals.size : null,
++        notes:        [notes || null, withdrawalNote].filter(Boolean).join(" ") || null,
+         vaccine_type: eventType === "vaccination" ? vaccineType : null,
+         vaccine_name: eventType === "vaccination"
+                         ? (vaccineType === "Other" ? customVaccineName : vaccineType)
+@@ -168,8 +193,8 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
+         dosage:       ["treatment","deworming"].includes(eventType)
+                         ? (eventType === "treatment" ? dosage : dewormDosage) || null
+                         : null,
+-        withdrawal_period_meat_days: withdrawalMeat ? parseInt(withdrawalMeat) : null,
+-        withdrawal_period_milk_days: withdrawalMilk ? parseInt(withdrawalMilk) : null,
++        withdrawal_days:       withdrawalDays,
++        safe_consumption_date: safeConsumptionDate,
+       }));
+ 
+       // OFFLINE FALLBACK: recordHealth() is a server action - a plain fetch
+diff --git a/app/globals.css b/app/globals.css
+index 3005e2b..8fb649e 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -88,6 +88,58 @@ body {
+    on their inputs directly via Tailwind, so no global override needed.
+    Dashboard inputs must inherit from component-level Tailwind classes. */
+ 
++/* ── Dark form-control chrome fix ──────────────────────────────
++   text-white on a <select> or <input type="date"> only recolors the
++   text WE render — the browser's own native chrome (the date text/
++   calendar icon inside a date input, the dropdown list of a select)
++   keeps rendering with its light-mode system colors unless the
++   element opts into dark UI via `color-scheme`. Net effect on every
++   dark-themed form in this app: date fields and dropdowns look empty
++   because the text is genuinely there, just black-on-near-black.
++
++   Scoped to the dark palette's bg-[#...] hex values (Tailwind keeps the
++   literal value in the class string) so light-themed pages — the
++   small ruminants module and a handful of coffee pages, tracked
++   separately — are left untouched. */
++input[type="date"][class*="bg-[#0A0C10]"],
++input[type="date"][class*="bg-[#0D0F14]"],
++input[type="date"][class*="bg-[#17191F]"],
++input[type="date"][class*="bg-[#1A1D24]"],
++input[type="date"][class*="bg-[#161921]"],
++input[type="time"][class*="bg-[#0A0C10]"],
++input[type="time"][class*="bg-[#0D0F14]"],
++input[type="time"][class*="bg-[#17191F]"],
++input[type="datetime-local"][class*="bg-[#0A0C10]"],
++input[type="datetime-local"][class*="bg-[#0D0F14]"],
++select[class*="bg-[#0A0C10]"],
++select[class*="bg-[#0D0F14]"],
++select[class*="bg-[#17191F]"],
++select[class*="bg-[#1A1D24]"],
++select[class*="bg-[#161921]"] {
++  color-scheme: dark;
++}
++
++input[type="date"][class*="bg-[#0A0C10]"]::-webkit-calendar-picker-indicator,
++input[type="date"][class*="bg-[#0D0F14]"]::-webkit-calendar-picker-indicator,
++input[type="date"][class*="bg-[#17191F]"]::-webkit-calendar-picker-indicator,
++input[type="time"][class*="bg-[#0A0C10]"]::-webkit-calendar-picker-indicator,
++input[type="time"][class*="bg-[#0D0F14]"]::-webkit-calendar-picker-indicator {
++  filter: invert(0.8);
++  opacity: 0.8;
++  cursor: pointer;
++}
++
++/* Belt-and-braces for browsers/webviews that don't fully theme <option>
++   from color-scheme alone. */
++select[class*="bg-[#0A0C10]"] option,
++select[class*="bg-[#0D0F14]"] option,
++select[class*="bg-[#17191F]"] option,
++select[class*="bg-[#1A1D24]"] option,
++select[class*="bg-[#161921]"] option {
++  background-color: #17191F;
++  color: #FFFFFF;
++}
++
+ /* ── Scrollbar ──────────────────────────────────────────────── */
+ ::-webkit-scrollbar       { width: 6px; }
+ ::-webkit-scrollbar-track { background: var(--background); }
+diff --git a/components/features/TraceabilitySection.tsx b/components/features/TraceabilitySection.tsx
+index 63dda32..e5206fe 100644
+--- a/components/features/TraceabilitySection.tsx
++++ b/components/features/TraceabilitySection.tsx
+@@ -89,7 +89,7 @@ export function TraceabilitySection() {
+                 <ArrowRight size={14} />
+               </Link>
+               <Link
+-                href="/about/traceability"
++                href="/about"
+                 className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-zinc-300 hover:bg-zinc-900 transition-colors"
+               >
+                 How the ledger works
+diff --git a/supabase/migrations/20260712_fix_coffee_activities_application_method_check.sql b/supabase/migrations/20260712_fix_coffee_activities_application_method_check.sql
+new file mode 100644
+index 0000000..97a055c
+--- /dev/null
++++ b/supabase/migrations/20260712_fix_coffee_activities_application_method_check.sql
+@@ -0,0 +1,37 @@
++-- coffee_activities.application_method CHECK constraint mismatch
++--
++-- coffee_activities was created directly in the Supabase dashboard (no
++-- CREATE TABLE migration in this repo — see handover doc §3), so its
++-- constraints drifted from what the app actually writes.
++--
++-- ActivityRecordClient.tsx stores THREE different vocabularies in this one
++-- column depending on activity_type:
++--   nutrition       -> nutrition_method:  basal | top_dressing | foliar
++--   crop_protection -> spray_equipment:   knapsack | motorized | boom
++--   weeding         -> weeding_method:    manual_jembe | slashing | herbicide | combined
++--
++-- The live constraint only allowed a subset of these (most likely just the
++-- spray-equipment values from when this column was originally scoped to
++-- crop_protection only), which is why "Save activity" now fails with:
++--   new row for relation "coffee_activities" violates check constraint
++--   "coffee_activities_application_method_check"
++--
++-- Fix: drop and recreate the constraint to allow every value the app can
++-- actually send, or NULL (other activity types like harvest/pruning/mulching
++-- never set this field).
++
++ALTER TABLE coffee_activities
++  DROP CONSTRAINT IF EXISTS coffee_activities_application_method_check;
++
++ALTER TABLE coffee_activities
++  ADD CONSTRAINT coffee_activities_application_method_check
++  CHECK (
++    application_method IS NULL OR application_method IN (
++      -- nutrition (NUTRITION_METHODS)
++      'basal', 'top_dressing', 'foliar',
++      -- crop_protection (SPRAY_EQUIPMENT)
++      'knapsack', 'motorized', 'boom',
++      -- weeding (WEEDING_METHODS)
++      'manual_jembe', 'slashing', 'herbicide', 'combined'
++    )
++  );

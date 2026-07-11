@@ -162,7 +162,7 @@ function RecordMilkContent() {
 
       if (!user) {
         alert('Please log in to record milk')
-        router.push('/auth/signin')
+        router.push('/auth/login')
         return
       }
 

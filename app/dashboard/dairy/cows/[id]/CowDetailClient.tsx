@@ -207,13 +207,13 @@ export default function CowDetailClient({ initialCow }: CowDetailClientProps) {
                 🥛 Record Milk
               </Link>
               <Link
-                href={`/dashboard/dairy/health/add?cow=${cow.id}`}
+                href="/dashboard/dairy/health"
                 className="block w-full px-4 py-2 bg-red-600 text-white text-center rounded-lg hover:bg-red-700"
               >
                 💉 Add Health Record
               </Link>
               <Link
-                href={`/dashboard/dairy/breeding/add?cow=${cow.id}`}
+                href="/dashboard/dairy/breeding"
                 className="block w-full px-4 py-2 bg-pink-600 text-white text-center rounded-lg hover:bg-pink-700"
               >
                 🐂 Record Breeding
