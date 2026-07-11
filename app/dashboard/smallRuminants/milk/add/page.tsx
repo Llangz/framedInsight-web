@@ -84,7 +84,13 @@ export default function AddMilkRecordPage() {
                     record_date: formData.record_date,
                     morning_milk: parseFloat(formData.morning_milk) || null,
                     evening_milk: parseFloat(formData.evening_milk) || null,
-                    total_milk: parseFloat(formData.total_milk) || null,
+                    // total_milk intentionally omitted — it's a GENERATED
+                    // ALWAYS column on the live goat_milk_records table
+                    // (confirmed via a live information_schema query),
+                    // same bug class as coffee_activities.total_cost and
+                    // milk_records.total_milk elsewhere in this app.
+                    // formData.total_milk above stays purely as the
+                    // read-only live preview shown in the form.
                     lactation_number: formData.lactation_number ? parseInt(formData.lactation_number) : null,
                     days_in_milk: formData.days_in_milk ? parseInt(formData.days_in_milk) : null,
                     notes: formData.notes || null,

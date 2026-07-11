@@ -27,11 +27,16 @@ export default async function BillingPage() {
 
   if (!fm?.farm_id) redirect('/onboarding')
 
+  // Was `.single()` followed by `if (!farm) redirect('/onboarding')` — the
+  // redirect was dead code, since `.single()` throws before it can run.
+  // Same pattern fixed across the rest of the app (see
+  // app/dashboard/page.tsx and app/dashboard/cooperative/page.tsx for the
+  // fuller explanation). `.maybeSingle()` makes it actually execute.
   const { data: farm } = await supabase
     .from('farms')
     .select('id, farm_name, subscription_tier, subscription_end_date, created_at, phone')
     .eq('id', fm.farm_id)
-    .single()
+    .maybeSingle()
 
   if (!farm) redirect('/onboarding')
 

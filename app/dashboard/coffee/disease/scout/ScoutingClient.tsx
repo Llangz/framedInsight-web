@@ -254,7 +254,13 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
       severity_level:             form.severity_level || null,
       trees_sampled:              form.trees_sampled              ? parseInt(form.trees_sampled)               : null,
       pest_count_total:           form.pest_count_total           ? parseInt(form.pest_count_total)            : null,
-      pest_count_per_tree:        bugsPerTree,
+      // pest_count_per_tree intentionally omitted — it's a GENERATED ALWAYS
+      // column on the live coffee_scouting_records table (confirmed via a
+      // live information_schema query), same bug class as
+      // coffee_activities.total_cost and milk_records.total_milk
+      // elsewhere in this app. bugsPerTree itself is still used above for
+      // computeAlertLevel() and the live "Pests per tree" preview further
+      // down — only the DB write is affected.
       cbd_green_berries_affected: form.cbd_green_berries_affected ? parseInt(form.cbd_green_berries_affected)  : null,
       cbd_yellow_berries_affected:form.cbd_yellow_berries_affected? parseInt(form.cbd_yellow_berries_affected) : null,
       cbd_red_berries_affected:   form.cbd_red_berries_affected   ? parseInt(form.cbd_red_berries_affected)    : null,

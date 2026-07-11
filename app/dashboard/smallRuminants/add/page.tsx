@@ -125,7 +125,13 @@ export default function AddAnimalPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push("/login"); return; }
-      supabase.from("farm_managers").select("farm_id").eq("user_id", user.id).limit(1).single()
+      // Was `.limit(1).single()` with no `.catch()` anywhere in the chain —
+      // `.single()` rejects (not just returns null) on zero rows, which
+      // silently failed this whole promise chain: farmId never got set,
+      // the form just sat there broken with no error shown. `.maybeSingle()`
+      // resolves normally either way; `.limit(1)` was already redundant
+      // with `.single()`/`.maybeSingle()`, which both already expect one row.
+      supabase.from("farm_managers").select("farm_id").eq("user_id", user.id).maybeSingle()
         .then(({ data: fm }) => {
           if (fm?.farm_id) {
             setFarmId(fm.farm_id);

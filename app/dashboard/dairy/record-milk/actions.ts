@@ -28,14 +28,20 @@ export async function recordMilk(formData: MilkRecordFormData): Promise<
 
   const morningMilk = parseFloat(String(formData.morning_milk || 0)) || 0;
   const eveningMilk = parseFloat(String(formData.evening_milk || 0)) || 0;
-  const totalMilk = morningMilk + eveningMilk;
 
   const milkRecord: MilkRecordInsert = {
     cow_id: formData.cow_id,
     record_date: formData.record_date,
     morning_milk: morningMilk || null,
     evening_milk: eveningMilk || null,
-    total_milk: totalMilk,
+    // total_milk intentionally omitted — it's a GENERATED ALWAYS column on
+    // the live table (confirmed via a live information_schema query, same
+    // bug class as coffee_activities.total_cost — see
+    // recordActivity in app/dashboard/coffee/activities/actions.ts for the
+    // fuller explanation). Its generation expression is
+    // `COALESCE(morning_milk,0) + COALESCE(evening_milk,0)`, i.e. exactly
+    // what was being computed here — Postgres produces the identical
+    // value automatically, so nothing about the stored data changes.
     milk_quality: formData.milk_quality,
     lactation_number: formData.lactation_number ? parseInt(String(formData.lactation_number)) : null,
     notes: formData.notes,

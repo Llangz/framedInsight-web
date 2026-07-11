@@ -97,7 +97,16 @@ export async function recordActivity(formData: ActivityFormData): Promise<
     rate_per_day: rest.rate_per_day,
     spray_reason: rest.spray_reason,
     spray_type: rest.spray_type,
-    total_cost: rest.total_cost,
+    // total_cost intentionally omitted — it's a GENERATED ALWAYS column on
+    // the live table ("cannot insert a non-DEFAULT value into column
+    // 'total_cost'" is Postgres' exact error for exactly this). There's no
+    // CREATE TABLE for coffee_activities anywhere in supabase/migrations/
+    // — this table was created directly in the Supabase dashboard, outside
+    // git, which is how a generated column went unnoticed here. Postgres
+    // computes it itself from cost_labour + cost_inputs, matching
+    // 20260625_coffee_activities_total_cost_check.sql's CHECK constraint,
+    // which — now that this is understood — is actually redundant with the
+    // generated expression, but harmless to leave in place.
     weather_conditions: rest.weather_conditions,
     weeding_method: rest.weeding_method,
   }));

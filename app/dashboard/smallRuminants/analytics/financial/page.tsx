@@ -314,9 +314,16 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
 
+      // Was `.limit(1).single()` with no try/catch anywhere around init() —
+      // `.single()` rejects (not returns null) on zero rows, which silently
+      // failed this whole async function: setLoading(false) never ran, so
+      // a user with no farm_managers row saw an infinite loading spinner
+      // instead of the "No farm found" message right below, which was
+      // clearly meant to handle exactly this case. `.maybeSingle()`
+      // resolves normally either way.
       const { data: fm } = await supabase
         .from("farm_managers").select("farm_id")
-        .eq("user_id", user.id).limit(1).single();
+        .eq("user_id", user.id).maybeSingle();
 
       if (fm?.farm_id) {
         setFarmId(fm.farm_id);
