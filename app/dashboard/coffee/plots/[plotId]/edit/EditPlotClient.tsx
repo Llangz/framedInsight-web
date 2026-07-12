@@ -6,6 +6,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { Database } from '@/lib/database.types'
 import { updateCoffeePlot } from '../../actions'
+import { queueCoffeeEvent } from '@/lib/offline-db'
 import type { BoundaryResult } from '@/components/coffee/PlotBoundaryMapper'
 
 const PlotBoundaryMapper = dynamic(
@@ -31,6 +32,7 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [savedOffline, setSavedOffline] = useState(false)
   const [showMapper, setShowMapper] = useState(false)
   const [boundary, setBoundary] = useState<BoundaryResult | null>(null)
   const hasExistingGps = !!(plot.gps_polygon || (plot.gps_latitude && plot.gps_longitude))
@@ -72,6 +74,19 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
         updates.gps_latitude = boundary.centroid.lat
         updates.gps_longitude = boundary.centroid.lng
         updates.area_hectares = boundary.areaHa
+      }
+
+      if (!navigator.onLine) {
+        await queueCoffeeEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'coffee_plot_update',
+          farmId: plot.farm_id,
+          referenceId: plot.id,
+          payload: updates,
+        })
+        setSavedOffline(true)
+        setTimeout(() => router.push(`/dashboard/coffee/plots/${plot.id}`), 1200)
+        return
       }
 
       const result = await updateCoffeePlot(plot.id, updates)
@@ -133,6 +148,11 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
           {success && (
             <div className="p-4 bg-green-900/40 text-green-300 rounded-xl border border-green-700 text-sm">
               {success}
+            </div>
+          )}
+          {savedOffline && (
+            <div className="p-4 bg-amber-900/40 text-amber-300 rounded-xl border border-amber-700 text-sm">
+              Saved offline — will sync when you're back online.
             </div>
           )}
 

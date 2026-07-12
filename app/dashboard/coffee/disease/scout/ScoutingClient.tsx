@@ -5,6 +5,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { recordScouting } from "../actions";
+import { queueCoffeeEvent } from "@/lib/offline-db";
 import { createClient } from "@/lib/supabase/client";
 
 type ObservationType =
@@ -167,6 +168,7 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
   const [step, setStep]           = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState<string | null>(null);
+  const [savedOffline, setSavedOffline] = useState(false);
   const [threshold, setThreshold] = useState<RegionalThreshold | null>(null);
   const [pestInfo, setPestInfo]   = useState<PestLibraryEntry | null>(null);
 
@@ -274,6 +276,24 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
       threshold_breached:         breached,
       notes:                      form.notes                      || null,
     };
+    if (!navigator.onLine) {
+      try {
+        await queueCoffeeEvent({
+          eventId: crypto.randomUUID(),
+          entityType: "coffee_scouting",
+          farmId: form.farm_id,
+          referenceId: form.plot_id,
+          payload,
+        });
+        setSavedOffline(true);
+        setTimeout(() => router.push("/dashboard/coffee/disease?saved=1"), 1200);
+      } catch (e: any) {
+        setError(e.message || 'Could not save offline');
+        setSubmitting(false);
+      }
+      return;
+    }
+
     try {
       const result = await recordScouting(payload as any);
       if (!result.success) {
@@ -283,6 +303,27 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
       }
       router.push("/dashboard/coffee/disease?saved=1");
     } catch (e: any) {
+      // A network failure (as opposed to a validation/RLS error the server
+      // action itself returned) reads the same as an offline save to the
+      // farmer — queue it rather than losing the entry to a raw fetch error.
+      if (!navigator.onLine) {
+        try {
+          await queueCoffeeEvent({
+            eventId: crypto.randomUUID(),
+            entityType: "coffee_scouting",
+            farmId: form.farm_id,
+            referenceId: form.plot_id,
+            payload,
+          });
+          setSavedOffline(true);
+          setTimeout(() => router.push("/dashboard/coffee/disease?saved=1"), 1200);
+          return;
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Could not save offline');
+          setSubmitting(false);
+          return;
+        }
+      }
       setError(e.message);
       setSubmitting(false);
     }
@@ -654,6 +695,12 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                 </div>
               ))}
             </div>
+
+            {savedOffline && (
+              <div className="bg-amber-900/30 border border-amber-700 rounded-xl p-3 text-sm text-amber-300">
+                Saved offline — will sync when you're back online.
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-900/30 border border-red-700 rounded-xl p-3 text-sm text-red-400">

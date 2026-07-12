@@ -10,5 +10,15 @@ export default async function AddPlotPage() {
     redirect("/auth/login");
   }
 
-  return <AddPlotClient />;
+  const { data: farmManager } = await supabase
+    .from("farm_managers")
+    .select("farm_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!farmManager) {
+    redirect("/onboarding");
+  }
+
+  return <AddPlotClient farmId={farmManager.farm_id} />;
 }

@@ -8,6 +8,7 @@ import {
 } from 'recharts'
 import { TrendingUp, TrendingDown, Banknote, BarChart3, Plus, X } from 'lucide-react'
 import { addTransaction } from './actions'
+import { queueCoffeeEvent } from '@/lib/offline-db'
 
 interface YearSummary {
   year: string; total_revenue: number; total_costs: number; net_profit: number
@@ -40,8 +41,9 @@ const COST_COLOURS: Record<string, string> = {
 }
 
 export default function FinanceClient({
-  years, initialPlotFinancials, initialMonthlyCosts, transactions, selectedYear: initialSelectedYear,
+  farmId, years, initialPlotFinancials, initialMonthlyCosts, transactions, selectedYear: initialSelectedYear,
 }: {
+  farmId: string
   years: YearSummary[]; initialPlotFinancials: PlotFinancials[]; initialMonthlyCosts: MonthlyCost[]
   transactions: FinancialTransaction[]; selectedYear: string
 }) {
@@ -51,6 +53,7 @@ export default function FinanceClient({
   const [loading, setLoading] = useState(false)
   const [txForm, setTxForm] = useState({ category: 'expense', description: '', amount: '', payment_method: 'mpesa', transaction_date: new Date().toISOString().split('T')[0] })
   const [txError, setTxError] = useState('')
+  const [savedOffline, setSavedOffline] = useState(false)
 
   const s = useMemo(() => years.find(y => y.year === selectedYear), [years, selectedYear])
 
@@ -65,8 +68,30 @@ export default function FinanceClient({
     if (!txForm.description || !txForm.amount) return
     setLoading(true)
     setTxError('')
+    const payload = { ...txForm, amount: parseFloat(txForm.amount) }
+
+    if (!navigator.onLine) {
+      try {
+        await queueCoffeeEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'coffee_finance_transaction',
+          farmId,
+          payload,
+        })
+        setShowAdd(false)
+        setSavedOffline(true)
+        setTxForm({ category: 'expense', description: '', amount: '', payment_method: 'mpesa', transaction_date: new Date().toISOString().split('T')[0] })
+        setTimeout(() => setSavedOffline(false), 4000)
+      } catch (err: any) {
+        setTxError(err.message || 'Could not save offline')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     try {
-      const result = await addTransaction({ ...txForm, amount: parseFloat(txForm.amount) })
+      const result = await addTransaction(payload)
       if (!result.success) {
         setTxError(result.error || 'Failed to save record')
         return
@@ -87,6 +112,11 @@ export default function FinanceClient({
     <div className="min-h-screen bg-obsidian">
 
       <div className="max-w-6xl mx-auto px-4 lg:px-6 py-8 space-y-6">
+        {savedOffline && (
+          <div className="bg-amber-900/30 border border-amber-700 rounded-xl p-3 text-sm text-amber-300">
+            Saved offline — will sync when you're back online.
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">

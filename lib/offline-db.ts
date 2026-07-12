@@ -48,6 +48,10 @@ export type CoffeeEntityType =
   | 'coffee_harvest'
   | 'coffee_spray_event'
   | 'coffee_pruning'
+  | 'coffee_scouting'
+  | 'coffee_finance_transaction'
+  | 'coffee_plot_create'
+  | 'coffee_plot_update'
 
 export type SmallRuminantEntityType =
   | 'small_ruminant_health'

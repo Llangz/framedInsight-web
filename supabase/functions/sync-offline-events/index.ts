@@ -31,7 +31,15 @@ interface DairyOfflineEvent {
 
 interface CoffeeOfflineEvent {
   eventId: string
-  entityType: "coffee_activity" | "coffee_harvest" | "coffee_spray_event" | "coffee_pruning"
+  entityType:
+    | "coffee_activity"
+    | "coffee_harvest"
+    | "coffee_spray_event"
+    | "coffee_pruning"
+    | "coffee_scouting"
+    | "coffee_finance_transaction"
+    | "coffee_plot_create"
+    | "coffee_plot_update"
   farmId: string
   referenceId?: string // plot id
   payload: Record<string, any>
@@ -434,7 +442,8 @@ async function processCoffeeEvent(
   farmId: string,
   event: CoffeeOfflineEvent
 ): Promise<boolean> {
-  const { entityType, referenceId, payload, eventId } = event
+  const { entityType, referenceId, payload, eventId, isoTimestamp } = event
+  const ts = new Date(isoTimestamp).getTime()
 
   try {
     switch (entityType) {
@@ -454,14 +463,87 @@ async function processCoffeeEvent(
         return true
       }
 
-      /* ───────────── HARVEST (append-only) ───────────── */
+      /* ───────────── HARVEST (append-only) ─────────────
+       * Mirrors app/dashboard/coffee/harvest/actions.ts's recordHarvest:
+       * coffee_harvests.plot_name is NOT NULL but isn't sent by the client
+       * (client only has plot_id) — must resolve it here before insert, same
+       * as the online path does. This case existed before any client ever
+       * queued a coffee_harvest event; without this fix it would have
+       * failed the constraint on the very first real offline harvest sync. */
       case "coffee_harvest": {
         const { data: exists } = await supabase
           .from("coffee_harvests").select("id").eq("id", eventId).maybeSingle()
         if (!exists) {
+          const { data: plot } = await supabase
+            .from("coffee_plots").select("plot_name").eq("id", referenceId).maybeSingle()
+          if (!plot) return false // plot not found — don't insert with a null plot_name
+
           await supabase.from("coffee_harvests").insert({
-            id: eventId, farm_id: farmId, plot_id: referenceId, ...payload,
+            id: eventId,
+            farm_id: farmId,
+            plot_name: plot.plot_name,
+            harvest_year: new Date(payload.harvest_date).getFullYear(),
+            ...payload,
           })
+        }
+        return true
+      }
+
+      /* ───────────── SCOUTING (append-only) ─────────────
+       * Mirrors disease/actions.ts's recordScouting — a straight insert,
+       * client already sends farm_id and plot_id inside payload. */
+      case "coffee_scouting": {
+        const { data: exists } = await supabase
+          .from("coffee_scouting_records").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("coffee_scouting_records").insert({
+            id: eventId, ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── FINANCE TRANSACTION (append-only) ─────────────
+       * Mirrors finance/actions.ts's addTransaction — farm_id comes from
+       * the verified farm context resolved above, not the client payload. */
+      case "coffee_finance_transaction": {
+        const { data: exists } = await supabase
+          .from("coffee_financials").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("coffee_financials").insert({
+            id: eventId, farm_id: farmId, ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── PLOT CREATE (append-only) ─────────────
+       * Mirrors plots/actions.ts's addCoffeePlot. The client generates the
+       * id offline (eventId) so it can navigate/reference the plot before
+       * sync ever runs. */
+      case "coffee_plot_create": {
+        const { data: exists } = await supabase
+          .from("coffee_plots").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("coffee_plots").insert({
+            id: eventId, farm_id: farmId, ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── PLOT UPDATE (LWW) ─────────────
+       * Mirrors plots/actions.ts's updateCoffeePlot. referenceId is the
+       * existing plot id being edited. */
+      case "coffee_plot_update": {
+        const { data: plot } = await supabase
+          .from("coffee_plots").select("updated_at").eq("id", referenceId).maybeSingle()
+        if (!plot) return false
+
+        if (ts > new Date(plot.updated_at).getTime()) {
+          await supabase.from("coffee_plots")
+            .update({ ...payload, updated_at: isoTimestamp })
+            .eq("id", referenceId)
         }
         return true
       }

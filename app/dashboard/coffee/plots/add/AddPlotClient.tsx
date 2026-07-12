@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { addCoffeePlot } from '../actions'
+import { queueCoffeeEvent } from '@/lib/offline-db'
 import type { BoundaryResult } from '@/components/coffee/PlotBoundaryMapper'
 
 // Leaflet uses `window` — must be loaded client-side only
@@ -29,11 +30,12 @@ const PlotBoundaryMapper = dynamic(
 // ── Steps ──────────────────────────────────────────────────────────────────────
 type Step = 'details' | 'map' | 'review'
 
-export default function AddPlotClient() {
+export default function AddPlotClient({ farmId }: { farmId: string }) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('details')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [savedOffline, setSavedOffline] = useState(false)
   const [skipMap, setSkipMap] = useState(false)
 
   // Plot details
@@ -65,22 +67,47 @@ export default function AddPlotClient() {
   async function handleSubmit() {
     setLoading(true)
     setError('')
+
+    const payload = {
+      plot_name: formData.plot_name,
+      variety: formData.variety,
+      total_trees: parseInt(formData.total_trees) || 0,
+      productive_trees: parseInt(formData.productive_trees) || 0,
+      land_size_acres: parseFloat(formData.land_size_acres) || 0,
+      establishment_year: parseInt(formData.establishment_year) || new Date().getFullYear(),
+      // Map data — stored as GeoJSON in gps_polygon, centroid in gps_latitude/gps_longitude.
+      // Note: boundary will only be set if the satellite mapper actually loaded (it needs
+      // tile imagery from the network) — a plot added fully offline will have no GPS data
+      // yet and can be mapped later from the plot's own edit page.
+      ...(boundary && {
+        gps_polygon: boundary.polygon,
+        gps_latitude: boundary.centroid.lat,
+        gps_longitude: boundary.centroid.lng,
+        area_hectares: boundary.areaHa,
+      }),
+    }
+
+    if (!navigator.onLine) {
+      try {
+        await queueCoffeeEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'coffee_plot_create',
+          farmId,
+          payload,
+        })
+        setSavedOffline(true)
+        setTimeout(() => router.push('/dashboard/coffee/plots'), 1200)
+      } catch (err: any) {
+        setError(err.message || 'Could not save offline')
+        setStep('review')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     try {
-      const result = await addCoffeePlot({
-        plot_name: formData.plot_name,
-        variety: formData.variety,
-        total_trees: parseInt(formData.total_trees) || 0,
-        productive_trees: parseInt(formData.productive_trees) || 0,
-        land_size_acres: parseFloat(formData.land_size_acres) || 0,
-        establishment_year: parseInt(formData.establishment_year) || new Date().getFullYear(),
-        // Map data — stored as GeoJSON in gps_polygon, centroid in gps_latitude/gps_longitude
-        ...(boundary && {
-          gps_polygon: boundary.polygon,
-          gps_latitude: boundary.centroid.lat,
-          gps_longitude: boundary.centroid.lng,
-          area_hectares: boundary.areaHa,
-        }),
-      })
+      const result = await addCoffeePlot(payload)
       if (!result.success) {
         setError(result.error || 'Failed to add plot')
         setStep('review') // stay on review to show error
@@ -261,6 +288,11 @@ export default function AddPlotClient() {
 
     return (
       <div className="space-y-6">
+        {savedOffline && (
+          <div className="p-4 bg-amber-900/20 text-amber-300 border border-amber-500/20 rounded-xl text-sm">
+            Saved offline — will sync when you're back online.
+          </div>
+        )}
         {error && (
           <div className="p-4 bg-red-900/20 text-red-400 border border-red-500/20 rounded-xl text-sm">
             {error}

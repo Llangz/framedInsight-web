@@ -129,6 +129,7 @@ export default async function CoffeeFinanceDashboard() {
 
   return (
     <FinanceClient
+      farmId={farmId}
       years={yearSummaries}
       initialPlotFinancials={plotFinancials}
       initialMonthlyCosts={monthlyCosts}

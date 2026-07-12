@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { recordHarvest } from '../actions'
+import { queueCoffeeEvent } from '@/lib/offline-db'
 import { CheckCircle2, AlertCircle, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 
@@ -136,6 +137,7 @@ function HarvestModal({ plots, farmId, onClose, onSuccess }: {
 }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [savedOffline, setSavedOffline] = useState(false)
   const [form, setForm] = useState({
     plot_id: plots[0]?.id || '',
     harvest_date: new Date().toISOString().split('T')[0],
@@ -162,13 +164,38 @@ function HarvestModal({ plots, farmId, onClose, onSuccess }: {
     if (!form.plot_id) { setError('Select a plot'); return }
     if (!form.cherry_kg || parseFloat(form.cherry_kg) <= 0) { setError('Enter a valid weight'); return }
     setLoading(true); setError('')
+
+    const payload = {
+      farm_id: farmId, plot_id: form.plot_id, harvest_date: form.harvest_date,
+      cherry_kg: parseFloat(form.cherry_kg), produce_kg: parseFloat(form.cherry_kg),
+      quality_grade: form.quality_grade, price_per_kg: parseFloat(form.price_per_kg),
+      total_value: parseFloat(form.total_value || '0'), notes: form.notes || null,
+    }
+
+    if (!navigator.onLine) {
+      try {
+        // plot_id also becomes referenceId — the sync function needs it to
+        // resolve plot_name server-side, the same lookup recordHarvest does
+        // online (coffee_harvests.plot_name is NOT NULL and isn't in this payload).
+        await queueCoffeeEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'coffee_harvest',
+          farmId,
+          referenceId: form.plot_id,
+          payload,
+        })
+        setSavedOffline(true)
+        setTimeout(onSuccess, 1200)
+      } catch (err: any) {
+        setError(err.message || 'Could not save offline')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     try {
-      const result = await recordHarvest({
-        farm_id: farmId, plot_id: form.plot_id, harvest_date: form.harvest_date,
-        cherry_kg: parseFloat(form.cherry_kg), produce_kg: parseFloat(form.cherry_kg),
-        quality_grade: form.quality_grade, price_per_kg: parseFloat(form.price_per_kg),
-        total_value: parseFloat(form.total_value || '0'), notes: form.notes || null,
-      })
+      const result = await recordHarvest(payload)
       if (!result.success) {
         setError(result.error || 'Failed to record harvest')
         return
@@ -190,6 +217,12 @@ function HarvestModal({ plots, farmId, onClose, onSuccess }: {
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {savedOffline && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-amber-900/40 bg-amber-950/30">
+              <CheckCircle2 size={13} className="text-amber-400 flex-shrink-0" />
+              <span className="text-sm text-amber-300">Saved offline — will sync when you're back online.</span>
+            </div>
+          )}
           {error && (
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-red-900/40 bg-red-950/30">
               <AlertCircle size={13} className="text-red-400 flex-shrink-0" />
