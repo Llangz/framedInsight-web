@@ -15,7 +15,16 @@ export function Header() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
+    <header
+      className="sticky z-50 bg-white/95 backdrop-blur border-b border-gray-100 transition-[margin-top] duration-200"
+      // See components/ui/ConnectivityBanner.tsx: it's `position: fixed`
+      // and was floating directly over this header (and, on short mobile
+      // viewports, over the login button just below it) whenever the
+      // offline/reconnected banner was showing, since nothing reserved
+      // space for it. `--connectivity-banner-h` is 0px when the banner is
+      // hidden, so this is a no-op the vast majority of the time.
+      style={{ marginTop: 'var(--connectivity-banner-h, 0px)', top: 'var(--connectivity-banner-h, 0px)' }}
+    >
       <nav className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">

@@ -37,6 +37,9 @@ export function ConnectivityBanner() {
   const isOnline = useOnlineStatus()
   const [showReconnected, setShowReconnected] = useState(false)
   const wasOffline = useRef(false)
+  const bannerRef = useRef<HTMLDivElement>(null)
+
+  const visible = !isOnline || showReconnected
 
   useEffect(() => {
     if (!isOnline) {
@@ -53,10 +56,52 @@ export function ConnectivityBanner() {
     }
   }, [isOnline])
 
-  if (isOnline && !showReconnected) return null
+  // This banner is `position: fixed`, not part of normal document flow —
+  // deliberately, since it needs to stay visible over every layout in the
+  // app, including the dashboard shells' independently-scrolling <main>
+  // regions where a simple `sticky` wouldn't reliably stick to anything.
+  // But "fixed" also means nothing naturally reserves space for it, so it
+  // was floating directly on top of whatever sits at the very top of the
+  // page underneath — on the login page specifically, that's Header.tsx's
+  // own `sticky top-0` bar and the submit button just below it on short
+  // mobile viewports.
+  //
+  // Rather than hardcoding an offset (the banner's height isn't constant —
+  // it wraps to two lines on narrow screens), this measures its own
+  // rendered height and publishes it as a CSS custom property on the root
+  // element. Header.tsx (and the dashboard shells' top bars) read
+  // `--connectivity-banner-h` to push themselves down by exactly that much
+  // while the banner is showing, and snap back to 0 the instant it isn't —
+  // one source of truth instead of every consumer guessing a pixel value.
+  useEffect(() => {
+    const root = document.documentElement
+    if (!visible || !bannerRef.current) {
+      root.style.setProperty('--connectivity-banner-h', '0px')
+      return
+    }
+
+    const el = bannerRef.current
+    const publish = () => root.style.setProperty('--connectivity-banner-h', `${el.offsetHeight}px`)
+    publish()
+
+    const observer = new ResizeObserver(publish)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [visible])
+
+  // Belt-and-suspenders: if this component unmounts entirely (shouldn't
+  // happen — it's mounted once in app/layout.tsx — but a stuck "0px"
+  // never being reset would otherwise leave every header on the site
+  // permanently offset), clear the var on unmount too.
+  useEffect(() => {
+    return () => document.documentElement.style.setProperty('--connectivity-banner-h', '0px')
+  }, [])
+
+  if (!visible) return null
 
   return (
     <div
+      ref={bannerRef}
       role="status"
       aria-live="polite"
       className={`fixed top-0 inset-x-0 z-[60] flex items-center justify-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium transition-colors ${

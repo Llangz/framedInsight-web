@@ -16,7 +16,7 @@ export default async function CooperativeFarmersPage() {
   // 1. Fetch member farms
   const { data: farmsData } = await supabase
     .from('farms')
-    .select('id, farm_name, owner_name, phone, county, sub_county, ward, is_coop_managed, claim_token, coop_factory_id')
+    .select('id, farm_name, owner_name, phone, county, sub_county, ward, is_coop_managed, claim_token, coop_factory_id, subscription_tier, is_active')
     .eq('managed_by_coop_id', access.coopId)
     .order('owner_name')
 
@@ -82,6 +82,7 @@ export default async function CooperativeFarmersPage() {
                   <th className="px-6 py-4">Station</th>
                   <th className="px-6 py-4 text-center">Coffee Trees</th>
                   <th className="px-6 py-4 text-center">EUDR Mapping</th>
+                  <th className="px-6 py-4">Subscription</th>
                   <th className="px-6 py-4">Claim Token</th>
                 </tr>
               </thead>
@@ -137,6 +138,19 @@ export default async function CooperativeFarmersPage() {
                             </span>
                           )}
                         </div>
+                      </td>
+
+                      {/* Subscription status */}
+                      <td className="px-6 py-4">
+                        {f.is_active ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-400 capitalize">
+                            <CheckCircle2 size={11} /> {f.subscription_tier || 'active'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-red-400">
+                            <AlertTriangle size={11} /> Suspended
+                          </span>
+                        )}
                       </td>
 
                       {/* Claim token */}

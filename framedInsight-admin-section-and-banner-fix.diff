@@ -1,0 +1,1659 @@
+diff --git a/app/admin/components/AdminShell.tsx b/app/admin/components/AdminShell.tsx
+new file mode 100644
+index 0000000..d44fc96
+--- /dev/null
++++ b/app/admin/components/AdminShell.tsx
+@@ -0,0 +1,147 @@
++'use client'
++
++import React, { useState } from 'react'
++import Link from 'next/link'
++import { usePathname } from 'next/navigation'
++import { createClient } from '@/lib/supabase/client'
++import {
++  LayoutDashboard, Building2, CreditCard, Users2,
++  ActivitySquare, Shield, Menu, X, LogOut, Leaf,
++} from 'lucide-react'
++
++interface Props {
++  children: React.ReactNode
++  role: 'superadmin' | 'support'
++}
++
++const NAV_ITEMS = [
++  { label: 'Overview',       href: '/admin',               icon: LayoutDashboard },
++  { label: 'Farms',          href: '/admin/farms',          icon: Users2         },
++  { label: 'Cooperatives',   href: '/admin/cooperatives',   icon: Building2      },
++  { label: 'Subscriptions',  href: '/admin/subscriptions',  icon: CreditCard     },
++  { label: 'System Health',  href: '/admin/system',         icon: ActivitySquare },
++]
++
++// Visual language matches app/dashboard/components/CoopDashboardShell.tsx
++// (same #0A0C10 / #0D0F14 / #2A2D35 palette, Outfit font, Lucide icons, same
++// sidebar/topbar structure) so admins moving between /dashboard/cooperative
++// and /admin don't hit a jarring style seam. This is its own shell rather
++// than a mode of DashboardShell/CoopDashboardShell because those two are
++// gated by app/dashboard/layout.tsx's coop-officer/farm-status resolver —
++// a platform admin is neither, and routing them through that resolver
++// would either dead-end at /onboarding or require weakening that layout's
++// logic. Living at /admin (not /dashboard/admin) sidesteps that gate
++// entirely rather than fighting it.
++export default function AdminShell({ children, role }: Props) {
++  const pathname = usePathname()
++  const [sidebarOpen, setSidebarOpen] = useState(false)
++
++  const supabase = createClient()
++  const handleLogout = async () => {
++    await supabase.auth.signOut()
++    window.location.href = '/auth/login'
++  }
++
++  const isActive = (href: string) =>
++    href === '/admin' ? pathname === href : pathname.startsWith(href)
++
++  return (
++    <div className="flex h-screen bg-[#0A0C10] overflow-hidden font-['Outfit'] text-white">
++      {sidebarOpen && (
++        <div className="fixed inset-0 bg-black/70 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
++      )}
++
++      <aside className={`
++        fixed inset-y-0 left-0 z-50 w-64 border-r border-[#2A2D35] bg-[#0D0F14] flex flex-col
++        transform transition-transform duration-300 ease-in-out
++        lg:relative lg:translate-x-0
++        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
++      `}>
++        <div className="flex items-center justify-between h-14 px-5 border-b border-[#2A2D35]">
++          <Link href="/admin" className="flex items-center gap-2">
++            <div className="flex h-6 w-6 items-center justify-center rounded border border-emerald-800 bg-emerald-950/30">
++              <Leaf size={13} className="text-emerald-500" />
++            </div>
++            <span className="text-sm font-semibold text-white tracking-tight">
++              framed<span className="text-emerald-500">Insight</span>
++            </span>
++          </Link>
++          <button className="lg:hidden text-zinc-500 hover:text-white" onClick={() => setSidebarOpen(false)}>
++            <X size={16} />
++          </button>
++        </div>
++
++        <div className="px-5 py-3.5 border-b border-[#2A2D35] bg-[#0A0C10]/40 flex items-center gap-2.5">
++          <div className="h-8 w-8 rounded-lg bg-amber-900/20 border border-amber-800/40 flex items-center justify-center text-amber-400 shrink-0">
++            <Shield size={16} />
++          </div>
++          <div className="min-w-0">
++            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider leading-none">Platform Admin</h4>
++            <p className="text-sm font-semibold text-white truncate mt-1 capitalize">{role}</p>
++          </div>
++        </div>
++
++        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
++          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Platform-wide</p>
++          {NAV_ITEMS.map((item) => {
++            const Icon = item.icon
++            const active = isActive(item.href)
++            return (
++              <Link
++                key={item.href}
++                href={item.href}
++                onClick={() => setSidebarOpen(false)}
++                className={`
++                  flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
++                  ${active ? 'bg-zinc-800/70 text-white border-l-2 border-amber-500' : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50'}
++                `}
++              >
++                <Icon size={16} className={active ? 'text-amber-500' : 'text-zinc-500'} />
++                {item.label}
++                {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-500" />}
++              </Link>
++            )
++          })}
++        </nav>
++
++        <div className="border-t border-[#2A2D35] p-3 bg-[#0A0C10]/40">
++          <div className="flex items-center gap-3 px-3 py-2">
++            <div className="h-8 w-8 shrink-0 rounded-full border border-[#2A2D35] bg-zinc-800 flex items-center justify-center">
++              <Shield size={14} className="text-zinc-300" />
++            </div>
++            <div className="flex-1 min-w-0">
++              <p className="text-xs font-semibold text-white truncate">Admin session</p>
++              <p className="text-[10px] font-medium text-amber-400 capitalize">{role}</p>
++            </div>
++            <button
++              onClick={handleLogout}
++              className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-zinc-900"
++              title="Sign out"
++            >
++              <LogOut size={14} />
++            </button>
++          </div>
++        </div>
++      </aside>
++
++      <div className="flex-1 flex flex-col overflow-hidden bg-[#0A0C10]">
++        <header
++          className="h-14 flex items-center justify-between px-6 border-b border-[#2A2D35] bg-[#0D0F14] shrink-0 transition-[margin-top] duration-200"
++          style={{ marginTop: 'var(--connectivity-banner-h, 0px)' }}
++        >
++          <button className="lg:hidden text-zinc-400 hover:text-white transition-colors" onClick={() => setSidebarOpen(true)}>
++            <Menu size={18} />
++          </button>
++          <div className="flex-1" />
++          <div className="text-xs text-zinc-400 bg-zinc-900 border border-[#2A2D35] px-2.5 py-1 rounded-full font-semibold">
++            Internal use only
++          </div>
++        </header>
++
++        <main className="flex-1 overflow-y-auto bg-[#0A0C10]">
++          {children}
++        </main>
++      </div>
++    </div>
++  )
++}
+diff --git a/app/admin/cooperatives/[coopId]/CoopDetailClient.tsx b/app/admin/cooperatives/[coopId]/CoopDetailClient.tsx
+new file mode 100644
+index 0000000..21e792e
+--- /dev/null
++++ b/app/admin/cooperatives/[coopId]/CoopDetailClient.tsx
+@@ -0,0 +1,79 @@
++'use client'
++
++import { useState, useTransition } from 'react'
++import { Trash2, UserCog } from 'lucide-react'
++import { removeOfficer, changeOfficerRole } from './actions'
++
++const ROLES = ['chairman', 'secretary', 'treasurer', 'officer']
++
++export default function CoopDetailClient({ coopId, officers }: { coopId: string; officers: any[] }) {
++  const [isPending, startTransition] = useTransition()
++  const [notice, setNotice] = useState<string | null>(null)
++
++  const handleRoleChange = (officerId: string, role: string) => {
++    startTransition(async () => {
++      try {
++        await changeOfficerRole(coopId, officerId, role)
++        setNotice('Role updated.')
++      } catch (e: any) {
++        setNotice(`Error: ${e.message}`)
++      }
++    })
++  }
++
++  const handleRemove = (officerId: string) => {
++    if (!confirm('Remove this officer from the cooperative? They will lose access to the cooperative dashboard.')) return
++    startTransition(async () => {
++      try {
++        await removeOfficer(coopId, officerId)
++        setNotice('Officer removed.')
++      } catch (e: any) {
++        setNotice(`Error: ${e.message}`)
++      }
++    })
++  }
++
++  return (
++    <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5 space-y-3">
++      <h2 className="text-sm font-semibold text-white flex items-center gap-1.5"><UserCog size={14} /> Officers</h2>
++      {notice && <p className="text-xs text-zinc-400">{notice}</p>}
++
++      {officers.length === 0 && <p className="text-sm text-zinc-600">No officers on record.</p>}
++
++      <div className="space-y-2">
++        {officers.map((o) => (
++          <div key={o.id} className="flex items-center justify-between gap-3 text-sm border-b border-[#2A2D35] last:border-0 pb-2 last:pb-0">
++            <div className="min-w-0">
++              <p className="text-white truncate">{o.email || o.user_id}</p>
++              <p className="text-xs text-zinc-500">Since {new Date(o.created_at).toLocaleDateString('en-KE')}</p>
++            </div>
++            <div className="flex items-center gap-2 shrink-0">
++              <select
++                defaultValue={o.role || 'officer'}
++                onChange={(e) => handleRoleChange(o.id, e.target.value)}
++                disabled={isPending}
++                className="bg-zinc-900 border border-[#2A2D35] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-700 capitalize"
++              >
++                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
++              </select>
++              <button
++                onClick={() => handleRemove(o.id)}
++                disabled={isPending}
++                className="text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-red-900/20 transition-colors disabled:opacity-50"
++                title="Remove officer"
++              >
++                <Trash2 size={14} />
++              </button>
++            </div>
++          </div>
++        ))}
++      </div>
++
++      <p className="text-xs text-zinc-600 pt-1">
++        Adding a new officer isn't wired up here yet — officers currently only get created through
++        the cooperative signup flow (app/auth/verify/coop-actions.ts). Worth a follow-up: a claim-link
++        invite for existing cooperatives, the same shape as the farmer claim flow at /claim/[token].
++      </p>
++    </div>
++  )
++}
+diff --git a/app/admin/cooperatives/[coopId]/actions.ts b/app/admin/cooperatives/[coopId]/actions.ts
+new file mode 100644
+index 0000000..3038aeb
+--- /dev/null
++++ b/app/admin/cooperatives/[coopId]/actions.ts
+@@ -0,0 +1,46 @@
++'use server'
++
++import { revalidatePath } from 'next/cache'
++import { requireAdminAccess } from '@/lib/validate-admin-access'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { auditLog } from '@/lib/security'
++
++export async function removeOfficer(coopId: string, officerId: string) {
++  const { userId } = await requireAdminAccess('superadmin')
++  const sb = await createAdminServiceClient()
++
++  const { error } = await sb.from('cooperative_officers').delete().eq('id', officerId)
++  if (error) throw new Error(error.message)
++
++  await auditLog({
++    action: 'ADMIN_COOP_OFFICER_REMOVED',
++    actorId: userId,
++    farmId: null,
++    resource: 'cooperative_officers',
++    resourceId: officerId,
++    details: { cooperativeId: coopId },
++    ip: null,
++  })
++
++  revalidatePath(`/admin/cooperatives/${coopId}`)
++}
++
++export async function changeOfficerRole(coopId: string, officerId: string, role: string) {
++  const { userId } = await requireAdminAccess('superadmin')
++  const sb = await createAdminServiceClient()
++
++  const { error } = await sb.from('cooperative_officers').update({ role }).eq('id', officerId)
++  if (error) throw new Error(error.message)
++
++  await auditLog({
++    action: 'ADMIN_COOP_OFFICER_ROLE_CHANGED',
++    actorId: userId,
++    farmId: null,
++    resource: 'cooperative_officers',
++    resourceId: officerId,
++    details: { cooperativeId: coopId, newRole: role },
++    ip: null,
++  })
++
++  revalidatePath(`/admin/cooperatives/${coopId}`)
++}
+diff --git a/app/admin/cooperatives/[coopId]/page.tsx b/app/admin/cooperatives/[coopId]/page.tsx
+new file mode 100644
+index 0000000..ee0a324
+--- /dev/null
++++ b/app/admin/cooperatives/[coopId]/page.tsx
+@@ -0,0 +1,55 @@
++import { notFound } from 'next/navigation'
++import Link from 'next/link'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { ArrowLeft } from 'lucide-react'
++import CoopDetailClient from './CoopDetailClient'
++
++export const dynamic = 'force-dynamic'
++
++export default async function AdminCoopDetailPage({
++  params,
++}: {
++  params: Promise<{ coopId: string }>
++}) {
++  const { coopId } = await params
++  const sb = await createAdminServiceClient()
++
++  const { data: coop } = await sb.from('cooperatives').select('*').eq('id', coopId).maybeSingle()
++  if (!coop) notFound()
++
++  const [{ data: officers }, { data: farms }] = await Promise.all([
++    sb.from('cooperative_officers').select('id, role, email, created_at, user_id').eq('cooperative_id', coopId),
++    sb.from('farms').select('id, farm_name, owner_name, phone').eq('managed_by_coop_id', coopId).limit(20),
++  ])
++
++  return (
++    <div className="p-6 max-w-4xl mx-auto space-y-6">
++      <Link href="/admin/cooperatives" className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-white">
++        <ArrowLeft size={13} /> All cooperatives
++      </Link>
++
++      <div>
++        <h1 className="text-xl font-bold text-white">{coop.cooperative_name}</h1>
++        <p className="text-sm text-zinc-500 mt-1">
++          {[coop.sub_county, coop.county].filter(Boolean).join(', ') || 'No location set'}
++          {coop.registration_number ? ` · Reg. ${coop.registration_number}` : ''}
++        </p>
++      </div>
++
++      <CoopDetailClient coopId={coopId} officers={officers || []} />
++
++      <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++        <h2 className="text-sm font-semibold text-white mb-3">Member farms {farms && farms.length === 20 ? '(first 20)' : ''}</h2>
++        <div className="space-y-2 text-sm">
++          {(farms || []).map((f) => (
++            <Link key={f.id} href={`/admin/farms/${f.id}`} className="flex items-center justify-between text-zinc-400 hover:text-white">
++              <span>{f.farm_name} · {f.owner_name}</span>
++              <span className="text-xs">{f.phone}</span>
++            </Link>
++          ))}
++          {(farms || []).length === 0 && <p className="text-zinc-600">No member farms yet.</p>}
++        </div>
++      </div>
++    </div>
++  )
++}
+diff --git a/app/admin/cooperatives/page.tsx b/app/admin/cooperatives/page.tsx
+new file mode 100644
+index 0000000..7f7ffe3
+--- /dev/null
++++ b/app/admin/cooperatives/page.tsx
+@@ -0,0 +1,64 @@
++import Link from 'next/link'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { Building2, MapPin, Users2 } from 'lucide-react'
++
++export const dynamic = 'force-dynamic'
++
++export default async function AdminCooperativesPage() {
++  const sb = await createAdminServiceClient()
++
++  const { data: coops } = await sb
++    .from('cooperatives')
++    .select('id, cooperative_name, county, sub_county, registration_number, created_at')
++    .order('cooperative_name')
++
++  // Two extra counts per cooperative (officers, member farms). Small N of
++  // cooperatives platform-wide makes N+1-shaped parallel counts fine here;
++  // this isn't a hot path like the farms list, which is why that one uses
++  // a single filtered query instead.
++  const withCounts = await Promise.all(
++    (coops || []).map(async (c) => {
++      const [{ count: officerCount }, { count: farmCount }] = await Promise.all([
++        sb.from('cooperative_officers').select('id', { count: 'exact', head: true }).eq('cooperative_id', c.id),
++        sb.from('farms').select('id', { count: 'exact', head: true }).eq('managed_by_coop_id', c.id),
++      ])
++      return { ...c, officerCount: officerCount || 0, farmCount: farmCount || 0 }
++    })
++  )
++
++  return (
++    <div className="p-6 max-w-5xl mx-auto space-y-6">
++      <div>
++        <h1 className="text-xl font-bold text-white">Cooperatives</h1>
++        <p className="text-sm text-zinc-500 mt-1">Every registered cooperative society on the platform.</p>
++      </div>
++
++      <div className="grid sm:grid-cols-2 gap-4">
++        {withCounts.map((c) => (
++          <Link
++            key={c.id}
++            href={`/admin/cooperatives/${c.id}`}
++            className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5 hover:border-zinc-700 transition-colors"
++          >
++            <div className="flex items-start gap-3">
++              <div className="h-9 w-9 rounded-lg bg-emerald-900/20 border border-emerald-800/40 flex items-center justify-center text-emerald-500 shrink-0">
++                <Building2 size={16} />
++              </div>
++              <div className="min-w-0">
++                <p className="text-white font-medium truncate">{c.cooperative_name}</p>
++                <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
++                  <MapPin size={11} /> {[c.sub_county, c.county].filter(Boolean).join(', ') || 'No location set'}
++                </p>
++              </div>
++            </div>
++            <div className="mt-4 flex items-center gap-4 text-xs text-zinc-400">
++              <span className="flex items-center gap-1"><Users2 size={12} /> {c.officerCount} officer{c.officerCount === 1 ? '' : 's'}</span>
++              <span>{c.farmCount} member farm{c.farmCount === 1 ? '' : 's'}</span>
++            </div>
++          </Link>
++        ))}
++      </div>
++      {withCounts.length === 0 && <p className="text-sm text-zinc-600">No cooperatives registered yet.</p>}
++    </div>
++  )
++}
+diff --git a/app/admin/farms/[farmId]/FarmDetailClient.tsx b/app/admin/farms/[farmId]/FarmDetailClient.tsx
+new file mode 100644
+index 0000000..65a15d8
+--- /dev/null
++++ b/app/admin/farms/[farmId]/FarmDetailClient.tsx
+@@ -0,0 +1,150 @@
++'use client'
++
++import { useState, useTransition } from 'react'
++import { AlertTriangle, CheckCircle2, Phone, MapPin, Trees, CreditCard } from 'lucide-react'
++import { setFarmActive, updateFarmSubscription } from './actions'
++
++const TIERS = ['smallholder', 'commercial', 'enterprise', 'enterprise_plus'] as const
++
++export default function FarmDetailClient({ farm, plots, transactions, recentAudit }: {
++  farm: any; plots: any[]; transactions: any[]; recentAudit: any[]
++}) {
++  const [isPending, startTransition] = useTransition()
++  const [tier, setTier] = useState(farm.subscription_tier || 'smallholder')
++  const [endDate, setEndDate] = useState(farm.subscription_end_date?.slice(0, 10) || '')
++  const [notice, setNotice] = useState<string | null>(null)
++
++  const toggleActive = () => {
++    startTransition(async () => {
++      try {
++        await setFarmActive(farm.id, !farm.is_active)
++        setNotice(farm.is_active ? 'Farm suspended.' : 'Farm reactivated.')
++      } catch (e: any) {
++        setNotice(`Error: ${e.message}`)
++      }
++    })
++  }
++
++  const saveSubscription = () => {
++    startTransition(async () => {
++      try {
++        await updateFarmSubscription(farm.id, tier, endDate || null)
++        setNotice('Subscription updated.')
++      } catch (e: any) {
++        setNotice(`Error: ${e.message}`)
++      }
++    })
++  }
++
++  return (
++    <div className="space-y-6">
++      <div className="flex items-start justify-between">
++        <div>
++          <h1 className="text-xl font-bold text-white">{farm.farm_name}</h1>
++          <p className="text-sm text-zinc-500 mt-1">{farm.owner_name}</p>
++        </div>
++        {farm.is_active ? (
++          <span className="inline-flex items-center gap-1 text-emerald-500 text-xs font-medium bg-emerald-900/20 border border-emerald-800/40 px-2.5 py-1 rounded-full">
++            <CheckCircle2 size={12} /> Active
++          </span>
++        ) : (
++          <span className="inline-flex items-center gap-1 text-red-400 text-xs font-medium bg-red-900/20 border border-red-800/40 px-2.5 py-1 rounded-full">
++            <AlertTriangle size={12} /> Suspended
++          </span>
++        )}
++      </div>
++
++      {notice && (
++        <div className="text-sm rounded-lg border border-[#2A2D35] bg-zinc-900 px-3 py-2 text-zinc-300">{notice}</div>
++      )}
++
++      <div className="grid sm:grid-cols-3 gap-4 text-sm">
++        <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-4">
++          <p className="flex items-center gap-1.5 text-zinc-500 text-xs mb-1"><Phone size={12} /> Phone</p>
++          <p className="text-white font-medium">{farm.phone}</p>
++        </div>
++        <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-4">
++          <p className="flex items-center gap-1.5 text-zinc-500 text-xs mb-1"><MapPin size={12} /> Location</p>
++          <p className="text-white font-medium">{[farm.sub_county, farm.county].filter(Boolean).join(', ') || '—'}</p>
++        </div>
++        <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-4">
++          <p className="flex items-center gap-1.5 text-zinc-500 text-xs mb-1"><Trees size={12} /> Coffee plots</p>
++          <p className="text-white font-medium">{plots.length}</p>
++        </div>
++      </div>
++
++      <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5 space-y-4">
++        <h2 className="text-sm font-semibold text-white flex items-center gap-1.5"><CreditCard size={14} /> Subscription</h2>
++        <div className="grid sm:grid-cols-2 gap-3">
++          <div>
++            <label className="text-xs text-zinc-500">Tier</label>
++            <select
++              value={tier}
++              onChange={(e) => setTier(e.target.value)}
++              className="mt-1 w-full bg-zinc-900 border border-[#2A2D35] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-700"
++            >
++              {TIERS.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
++            </select>
++          </div>
++          <div>
++            <label className="text-xs text-zinc-500">Valid until</label>
++            <input
++              type="date"
++              value={endDate}
++              onChange={(e) => setEndDate(e.target.value)}
++              className="mt-1 w-full bg-zinc-900 border border-[#2A2D35] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-700"
++            />
++          </div>
++        </div>
++        <div className="flex items-center gap-3">
++          <button
++            onClick={saveSubscription}
++            disabled={isPending}
++            className="text-sm font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors"
++          >
++            Save subscription
++          </button>
++          <button
++            onClick={toggleActive}
++            disabled={isPending}
++            className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 ${
++              farm.is_active
++                ? 'bg-red-900/20 border border-red-800/40 text-red-300 hover:bg-red-900/30'
++                : 'bg-emerald-900/20 border border-emerald-800/40 text-emerald-300 hover:bg-emerald-900/30'
++            }`}
++          >
++            {farm.is_active ? 'Suspend farm' : 'Reactivate farm'}
++          </button>
++        </div>
++      </div>
++
++      {transactions.length > 0 && (
++        <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++          <h2 className="text-sm font-semibold text-white mb-3">Recent M-Pesa transactions</h2>
++          <div className="space-y-2 text-sm">
++            {transactions.map((t) => (
++              <div key={t.id} className="flex items-center justify-between text-zinc-400">
++                <span>{t.mpesa_receipt_number || t.status} · {t.months_added}mo</span>
++                <span className="text-white">KES {t.amount}</span>
++              </div>
++            ))}
++          </div>
++        </div>
++      )}
++
++      {recentAudit.length > 0 && (
++        <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++          <h2 className="text-sm font-semibold text-white mb-3">Recent activity</h2>
++          <div className="space-y-2 text-xs text-zinc-500">
++            {recentAudit.map((a, i) => (
++              <div key={i} className="flex items-center justify-between">
++                <span className="text-zinc-300">{a.action}</span>
++                <span>{new Date(a.created_at).toLocaleString('en-KE')}</span>
++              </div>
++            ))}
++          </div>
++        </div>
++      )}
++    </div>
++  )
++}
+diff --git a/app/admin/farms/[farmId]/actions.ts b/app/admin/farms/[farmId]/actions.ts
+new file mode 100644
+index 0000000..9829033
+--- /dev/null
++++ b/app/admin/farms/[farmId]/actions.ts
+@@ -0,0 +1,65 @@
++'use server'
++
++import { revalidatePath } from 'next/cache'
++import { requireAdminAccess } from '@/lib/validate-admin-access'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { auditLog } from '@/lib/security'
++
++export async function setFarmActive(farmId: string, isActive: boolean) {
++  const { userId } = await requireAdminAccess()
++  const sb = await createAdminServiceClient()
++
++  const { error } = await sb.from('farms').update({ is_active: isActive }).eq('id', farmId)
++  if (error) throw new Error(error.message)
++
++  // Reuses the same persistent audit_log table every other sensitive
++  // action in the app already writes to (see lib/security.ts) — one place
++  // to look up "who suspended this farm and when", not a separate
++  // admin-only log a support ticket would have to know to ask about.
++  await auditLog({
++    action: isActive ? 'ADMIN_FARM_REACTIVATED' : 'ADMIN_FARM_SUSPENDED',
++    actorId: userId,
++    farmId,
++    resource: 'farms',
++    resourceId: farmId,
++    details: {},
++    ip: null,
++  })
++
++  revalidatePath(`/admin/farms/${farmId}`)
++  revalidatePath('/admin/farms')
++}
++
++export async function updateFarmSubscription(
++  farmId: string,
++  tier: string,
++  endDate: string | null
++) {
++  const { userId } = await requireAdminAccess('superadmin')
++  const sb = await createAdminServiceClient()
++
++  const { data: before } = await sb
++    .from('farms')
++    .select('subscription_tier, subscription_end_date')
++    .eq('id', farmId)
++    .maybeSingle()
++
++  const { error } = await sb
++    .from('farms')
++    .update({ subscription_tier: tier, subscription_end_date: endDate })
++    .eq('id', farmId)
++  if (error) throw new Error(error.message)
++
++  await auditLog({
++    action: 'ADMIN_SUBSCRIPTION_EDITED',
++    actorId: userId,
++    farmId,
++    resource: 'farms',
++    resourceId: farmId,
++    details: { before, after: { subscription_tier: tier, subscription_end_date: endDate } },
++    ip: null,
++  })
++
++  revalidatePath(`/admin/farms/${farmId}`)
++  revalidatePath('/admin/subscriptions')
++}
+diff --git a/app/admin/farms/[farmId]/page.tsx b/app/admin/farms/[farmId]/page.tsx
+new file mode 100644
+index 0000000..4ee697c
+--- /dev/null
++++ b/app/admin/farms/[farmId]/page.tsx
+@@ -0,0 +1,42 @@
++import { notFound } from 'next/navigation'
++import Link from 'next/link'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { ArrowLeft } from 'lucide-react'
++import FarmDetailClient from './FarmDetailClient'
++
++export const dynamic = 'force-dynamic'
++
++export default async function AdminFarmDetailPage({
++  params,
++}: {
++  params: Promise<{ farmId: string }>
++}) {
++  const { farmId } = await params
++  const sb = await createAdminServiceClient()
++
++  const { data: farm } = await sb.from('farms').select('*').eq('id', farmId).maybeSingle()
++  if (!farm) notFound()
++
++  const [{ data: plots }, { data: transactions }, { data: recentAudit }] = await Promise.all([
++    sb.from('coffee_plots').select('id, plot_name, total_trees').eq('farm_id', farmId),
++    sb.from('transactions').select('id, amount, status, mpesa_receipt_number, months_added, created_at')
++      .eq('farm_id', farmId).order('created_at', { ascending: false }).limit(10),
++    (sb as any).from('audit_log').select('action, created_at, details')
++      .eq('farm_id', farmId).order('created_at', { ascending: false }).limit(15),
++  ])
++
++  return (
++    <div className="p-6 max-w-4xl mx-auto space-y-6">
++      <Link href="/admin/farms" className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-white">
++        <ArrowLeft size={13} /> All farms
++      </Link>
++
++      <FarmDetailClient
++        farm={farm}
++        plots={plots || []}
++        transactions={transactions || []}
++        recentAudit={recentAudit || []}
++      />
++    </div>
++  )
++}
+diff --git a/app/admin/farms/page.tsx b/app/admin/farms/page.tsx
+new file mode 100644
+index 0000000..8bc58d7
+--- /dev/null
++++ b/app/admin/farms/page.tsx
+@@ -0,0 +1,109 @@
++import Link from 'next/link'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { Search, MapPin, CheckCircle2, XCircle } from 'lucide-react'
++
++export const dynamic = 'force-dynamic'
++
++export default async function AdminFarmsPage({
++  searchParams,
++}: {
++  searchParams: Promise<{ q?: string }>
++}) {
++  const { q = '' } = await searchParams
++  const sb = await createAdminServiceClient()
++
++  let query = sb
++    .from('farms')
++    .select('id, farm_name, owner_name, phone, county, sub_county, is_active, subscription_tier, is_coop_managed, created_at')
++    .order('created_at', { ascending: false })
++    .limit(100)
++
++  // A single text box searching four different columns is friendlier for
++  // support/ops triage than separate filter fields — most lookups here
++  // are "someone called about farm/phone X", not structured browsing.
++  if (q.trim()) {
++    const term = q.trim()
++    query = query.or(
++      `farm_name.ilike.%${term}%,owner_name.ilike.%${term}%,phone.ilike.%${term}%,county.ilike.%${term}%`
++    )
++  }
++
++  const { data: farms, error } = await query
++
++  return (
++    <div className="p-6 max-w-6xl mx-auto space-y-6">
++      <div>
++        <h1 className="text-xl font-bold text-white">Farms</h1>
++        <p className="text-sm text-zinc-500 mt-1">Search across every farm on the platform, cooperative-managed or independent.</p>
++      </div>
++
++      <form className="relative max-w-md" action="/admin/farms" method="get">
++        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
++        <input
++          type="text"
++          name="q"
++          defaultValue={q}
++          placeholder="Search by name, owner, phone, or county..."
++          className="w-full bg-[#0D0F14] border border-[#2A2D35] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-700"
++        />
++      </form>
++
++      {error && (
++        <p className="text-sm text-red-400">Couldn't load farms: {error.message}</p>
++      )}
++
++      <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] overflow-hidden">
++        <table className="w-full text-sm">
++          <thead>
++            <tr className="border-b border-[#2A2D35] text-left text-xs text-zinc-500 uppercase tracking-wide">
++              <th className="px-4 py-3 font-medium">Farm</th>
++              <th className="px-4 py-3 font-medium">Phone</th>
++              <th className="px-4 py-3 font-medium">Location</th>
++              <th className="px-4 py-3 font-medium">Tier</th>
++              <th className="px-4 py-3 font-medium">Status</th>
++            </tr>
++          </thead>
++          <tbody>
++            {(farms || []).map((f) => (
++              <tr key={f.id} className="border-b border-[#2A2D35] last:border-0 hover:bg-zinc-900/40">
++                <td className="px-4 py-3">
++                  <Link href={`/admin/farms/${f.id}`} className="text-white font-medium hover:text-emerald-400">
++                    {f.farm_name}
++                  </Link>
++                  <p className="text-xs text-zinc-500 mt-0.5">{f.owner_name}{f.is_coop_managed ? ' · Coop-managed' : ''}</p>
++                </td>
++                <td className="px-4 py-3 text-zinc-400">{f.phone}</td>
++                <td className="px-4 py-3 text-zinc-400">
++                  <span className="inline-flex items-center gap-1">
++                    <MapPin size={12} className="text-zinc-600" />
++                    {[f.sub_county, f.county].filter(Boolean).join(', ') || '—'}
++                  </span>
++                </td>
++                <td className="px-4 py-3 text-zinc-400 capitalize">{f.subscription_tier || 'none'}</td>
++                <td className="px-4 py-3">
++                  {f.is_active ? (
++                    <span className="inline-flex items-center gap-1 text-emerald-500 text-xs font-medium">
++                      <CheckCircle2 size={12} /> Active
++                    </span>
++                  ) : (
++                    <span className="inline-flex items-center gap-1 text-red-400 text-xs font-medium">
++                      <XCircle size={12} /> Suspended
++                    </span>
++                  )}
++                </td>
++              </tr>
++            ))}
++          </tbody>
++        </table>
++        {(farms || []).length === 0 && !error && (
++          <p className="text-sm text-zinc-600 px-4 py-8 text-center">
++            {q ? `No farms match "${q}".` : 'No farms yet.'}
++          </p>
++        )}
++      </div>
++      {(farms || []).length === 100 && (
++        <p className="text-xs text-zinc-600">Showing the first 100 results — narrow your search for more specific matches.</p>
++      )}
++    </div>
++  )
++}
+diff --git a/app/admin/layout.tsx b/app/admin/layout.tsx
+new file mode 100644
+index 0000000..4167e98
+--- /dev/null
++++ b/app/admin/layout.tsx
+@@ -0,0 +1,44 @@
++import { redirect } from 'next/navigation'
++import { validateAdminAccess } from '@/lib/validate-admin-access'
++import AdminShell from './components/AdminShell'
++import { AccountIssueScreen } from '@/components/ui/AccountIssueScreen'
++
++// Same reasoning as app/dashboard/layout.tsx: this touches cookies() via
++// the Supabase server client, which already forces dynamic rendering, but
++// declaring it explicitly avoids relying on that inference holding.
++export const dynamic = 'force-dynamic'
++
++export default async function AdminLayout({ children }: { children: React.ReactNode }) {
++  let access
++  try {
++    access = await validateAdminAccess()
++  } catch (e: any) {
++    // A genuine DB error checking platform_admins (not "logged in but not
++    // an admin") — same AccountIssueScreen pattern app/dashboard/layout.tsx
++    // uses for the equivalent cooperative_officers check, rather than
++    // treating a transient hiccup as "access denied" and redirecting away.
++    console.error('[AdminLayout] Could not verify admin access:', e?.message)
++    return (
++      <AccountIssueScreen
++        title="Couldn't verify admin access"
++        message="Something went wrong checking your admin permissions. This is usually temporary."
++        actions={[
++          { label: 'Retry', href: '/admin', variant: 'primary' },
++          { label: 'Contact support', href: '/contact', variant: 'secondary' },
++        ]}
++        diagnostic={e?.message}
++      />
++    )
++  }
++
++  // Not an authenticated user at all → send through the normal login flow.
++  // Authenticated but not in platform_admins → this is a farmer/officer
++  // account that has no business here; send them to their own dashboard
++  // rather than a bare 404, and don't leak which reason it was.
++  if (!access.success) {
++    if (access.error === 'Unauthorized') redirect('/auth/login')
++    redirect('/dashboard')
++  }
++
++  return <AdminShell role={access.role!}>{children}</AdminShell>
++}
+diff --git a/app/admin/page.tsx b/app/admin/page.tsx
+new file mode 100644
+index 0000000..a22683a
+--- /dev/null
++++ b/app/admin/page.tsx
+@@ -0,0 +1,131 @@
++import Link from 'next/link'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { Users2, Building2, CreditCard, AlertTriangle, Satellite, ArrowUpRight } from 'lucide-react'
++
++export const dynamic = 'force-dynamic'
++
++async function getOverviewData() {
++  const sb = await createAdminServiceClient()
++
++  const [
++    farmsTotal, farmsActive, coopsTotal,
++    pendingAlerts, satelliteFailures24h, recentFarms,
++  ] = await Promise.all([
++    sb.from('farms').select('id', { count: 'exact', head: true }),
++    sb.from('farms').select('id', { count: 'exact', head: true }).eq('is_active', true),
++    sb.from('cooperatives').select('id', { count: 'exact', head: true }),
++    sb.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
++    sb.from('coffee_satellite_fetch_log').select('id', { count: 'exact', head: true })
++      .eq('status', 'error')
++      .gte('fetch_attempted_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
++    sb.from('farms').select('id, farm_name, owner_name, phone, county, subscription_tier, created_at')
++      .order('created_at', { ascending: false }).limit(6),
++  ])
++
++  const tierCounts: Record<string, number> = {}
++  const { data: tierRows } = await sb.from('farms').select('subscription_tier')
++  for (const row of tierRows || []) {
++    const tier = row.subscription_tier || 'none'
++    tierCounts[tier] = (tierCounts[tier] || 0) + 1
++  }
++
++  return {
++    farmsTotal: farmsTotal.count || 0,
++    farmsActive: farmsActive.count || 0,
++    coopsTotal: coopsTotal.count || 0,
++    pendingAlerts: pendingAlerts.count || 0,
++    satelliteFailures24h: satelliteFailures24h.count || 0,
++    recentFarms: recentFarms.data || [],
++    tierCounts,
++  }
++}
++
++function StatCard({ label, value, icon: Icon, tone = 'default', href }: {
++  label: string; value: number | string; icon: any; tone?: 'default' | 'warning'; href?: string
++}) {
++  const inner = (
++    <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5 hover:border-zinc-700 transition-colors">
++      <div className="flex items-center justify-between">
++        <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${tone === 'warning' ? 'bg-red-900/20 text-red-400 border border-red-800/40' : 'bg-emerald-900/20 text-emerald-500 border border-emerald-800/40'}`}>
++          <Icon size={16} />
++        </div>
++        {href && <ArrowUpRight size={14} className="text-zinc-600" />}
++      </div>
++      <p className="mt-4 text-2xl font-bold text-white">{value}</p>
++      <p className="text-xs text-zinc-500 mt-1">{label}</p>
++    </div>
++  )
++  return href ? <Link href={href}>{inner}</Link> : inner
++}
++
++export default async function AdminOverviewPage() {
++  const data = await getOverviewData()
++
++  return (
++    <div className="p-6 max-w-6xl mx-auto space-y-6">
++      <div>
++        <h1 className="text-xl font-bold text-white">Overview</h1>
++        <p className="text-sm text-zinc-500 mt-1">Platform-wide snapshot across every farm and cooperative.</p>
++      </div>
++
++      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
++        <StatCard label="Total farms" value={data.farmsTotal} icon={Users2} href="/admin/farms" />
++        <StatCard label="Active farms" value={data.farmsActive} icon={Users2} href="/admin/farms" />
++        <StatCard label="Cooperatives" value={data.coopsTotal} icon={Building2} href="/admin/cooperatives" />
++        <StatCard
++          label="Pending alerts"
++          value={data.pendingAlerts}
++          icon={AlertTriangle}
++          tone={data.pendingAlerts > 0 ? 'warning' : 'default'}
++          href="/admin/system"
++        />
++        <StatCard
++          label="Satellite failures (24h)"
++          value={data.satelliteFailures24h}
++          icon={Satellite}
++          tone={data.satelliteFailures24h > 0 ? 'warning' : 'default'}
++          href="/admin/system"
++        />
++      </div>
++
++      <div className="grid lg:grid-cols-2 gap-6">
++        <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++          <h2 className="text-sm font-semibold text-white mb-4">Subscription tiers</h2>
++          <div className="space-y-2.5">
++            {Object.entries(data.tierCounts).sort((a, b) => b[1] - a[1]).map(([tier, count]) => (
++              <div key={tier} className="flex items-center justify-between text-sm">
++                <span className="text-zinc-400 capitalize">{tier}</span>
++                <span className="text-white font-semibold">{count}</span>
++              </div>
++            ))}
++          </div>
++          <Link href="/admin/subscriptions" className="mt-4 inline-flex items-center gap-1 text-xs text-emerald-500 hover:text-emerald-400">
++            View billing detail <ArrowUpRight size={12} />
++          </Link>
++        </div>
++
++        <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++          <h2 className="text-sm font-semibold text-white mb-4">Recently signed up</h2>
++          <div className="space-y-3">
++            {data.recentFarms.map((f) => (
++              <Link
++                key={f.id}
++                href={`/admin/farms/${f.id}`}
++                className="flex items-center justify-between text-sm hover:bg-zinc-900/50 -mx-2 px-2 py-1.5 rounded-lg transition-colors"
++              >
++                <div className="min-w-0">
++                  <p className="text-white font-medium truncate">{f.farm_name}</p>
++                  <p className="text-xs text-zinc-500 truncate">{f.owner_name} · {f.county || 'No county set'}</p>
++                </div>
++                <span className="text-[10px] uppercase tracking-wide text-zinc-500 capitalize shrink-0 ml-2">
++                  {f.subscription_tier || 'none'}
++                </span>
++              </Link>
++            ))}
++            {data.recentFarms.length === 0 && <p className="text-sm text-zinc-600">No farms yet.</p>}
++          </div>
++        </div>
++      </div>
++    </div>
++  )
++}
+diff --git a/app/admin/subscriptions/page.tsx b/app/admin/subscriptions/page.tsx
+new file mode 100644
+index 0000000..f716c46
+--- /dev/null
++++ b/app/admin/subscriptions/page.tsx
+@@ -0,0 +1,113 @@
++import Link from 'next/link'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { AlertTriangle, CreditCard } from 'lucide-react'
++
++export const dynamic = 'force-dynamic'
++
++export default async function AdminSubscriptionsPage() {
++  const sb = await createAdminServiceClient()
++
++  const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
++  const now = new Date().toISOString()
++
++  const [{ data: expiringSoon }, { data: expired }, { data: transactions }, { data: tierRows }] = await Promise.all([
++    sb.from('farms').select('id, farm_name, phone, subscription_tier, subscription_end_date')
++      .eq('is_active', true).not('subscription_end_date', 'is', null)
++      .gte('subscription_end_date', now).lte('subscription_end_date', in7Days)
++      .order('subscription_end_date'),
++    sb.from('farms').select('id, farm_name, phone, subscription_tier, subscription_end_date')
++      .eq('is_active', true).not('subscription_end_date', 'is', null)
++      .lt('subscription_end_date', now)
++      .order('subscription_end_date', { ascending: false }).limit(20),
++    sb.from('transactions').select('id, farm_id, amount, status, mpesa_receipt_number, phone_number, created_at')
++      .order('created_at', { ascending: false }).limit(20),
++    sb.from('farms').select('subscription_tier'),
++  ])
++
++  const tierCounts: Record<string, number> = {}
++  for (const row of tierRows || []) {
++    const tier = row.subscription_tier || 'none'
++    tierCounts[tier] = (tierCounts[tier] || 0) + 1
++  }
++
++  return (
++    <div className="p-6 max-w-5xl mx-auto space-y-6">
++      <div>
++        <h1 className="text-xl font-bold text-white">Subscriptions &amp; billing</h1>
++        <p className="text-sm text-zinc-500 mt-1">Tier breakdown, renewals coming due, and recent M-Pesa activity.</p>
++      </div>
++
++      <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++        <h2 className="text-sm font-semibold text-white mb-4">By tier</h2>
++        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
++          {Object.entries(tierCounts).sort((a, b) => b[1] - a[1]).map(([tier, count]) => (
++            <div key={tier} className="rounded-lg border border-[#2A2D35] bg-zinc-900/50 p-3">
++              <p className="text-lg font-bold text-white">{count}</p>
++              <p className="text-xs text-zinc-500 capitalize">{tier}</p>
++            </div>
++          ))}
++        </div>
++      </div>
++
++      {(expired && expired.length > 0) && (
++        <div className="rounded-xl border border-red-800/40 bg-red-950/10 p-5">
++          <h2 className="text-sm font-semibold text-red-300 mb-3 flex items-center gap-1.5">
++            <AlertTriangle size={14} /> Expired but still marked active ({expired.length})
++          </h2>
++          <div className="space-y-2 text-sm">
++            {expired.map((f) => (
++              <Link key={f.id} href={`/admin/farms/${f.id}`} className="flex items-center justify-between text-zinc-300 hover:text-white">
++                <span>{f.farm_name} · {f.phone}</span>
++                <span className="text-xs text-red-400">{new Date(f.subscription_end_date!).toLocaleDateString('en-KE')}</span>
++              </Link>
++            ))}
++          </div>
++        </div>
++      )}
++
++      <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++        <h2 className="text-sm font-semibold text-white mb-3">Renewing within 7 days</h2>
++        <div className="space-y-2 text-sm">
++          {(expiringSoon || []).map((f) => (
++            <Link key={f.id} href={`/admin/farms/${f.id}`} className="flex items-center justify-between text-zinc-400 hover:text-white">
++              <span>{f.farm_name} · {f.phone} <span className="capitalize text-zinc-600">({f.subscription_tier})</span></span>
++              <span className="text-xs">{new Date(f.subscription_end_date!).toLocaleDateString('en-KE')}</span>
++            </Link>
++          ))}
++          {(expiringSoon || []).length === 0 && <p className="text-zinc-600">Nothing renewing in the next 7 days.</p>}
++        </div>
++      </div>
++
++      <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-1.5"><CreditCard size={14} /> Recent M-Pesa transactions</h2>
++        <table className="w-full text-sm">
++          <thead>
++            <tr className="text-left text-xs text-zinc-500 uppercase tracking-wide border-b border-[#2A2D35]">
++              <th className="py-2 font-medium">Phone</th>
++              <th className="py-2 font-medium">Amount</th>
++              <th className="py-2 font-medium">Status</th>
++              <th className="py-2 font-medium">Receipt</th>
++              <th className="py-2 font-medium">Date</th>
++            </tr>
++          </thead>
++          <tbody>
++            {(transactions || []).map((t) => (
++              <tr key={t.id} className="border-b border-[#2A2D35] last:border-0 text-zinc-400">
++                <td className="py-2">{t.phone_number}</td>
++                <td className="py-2 text-white">KES {t.amount}</td>
++                <td className="py-2 capitalize">
++                  <span className={t.status === 'completed' || t.status === 'success' ? 'text-emerald-500' : t.status === 'failed' ? 'text-red-400' : 'text-amber-400'}>
++                    {t.status}
++                  </span>
++                </td>
++                <td className="py-2">{t.mpesa_receipt_number || '—'}</td>
++                <td className="py-2">{new Date(t.created_at!).toLocaleString('en-KE')}</td>
++              </tr>
++            ))}
++          </tbody>
++        </table>
++        {(transactions || []).length === 0 && <p className="text-zinc-600 text-sm pt-2">No transactions yet.</p>}
++      </div>
++    </div>
++  )
++}
+diff --git a/app/admin/system/page.tsx b/app/admin/system/page.tsx
+new file mode 100644
+index 0000000..9efc743
+--- /dev/null
++++ b/app/admin/system/page.tsx
+@@ -0,0 +1,92 @@
++import Link from 'next/link'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { Satellite, AlertTriangle, ScrollText } from 'lucide-react'
++
++export const dynamic = 'force-dynamic'
++
++export default async function AdminSystemPage() {
++  const sb = await createAdminServiceClient()
++
++  const [{ data: satFailures }, { data: pendingAlerts }, { data: auditRows }] = await Promise.all([
++    sb.from('coffee_satellite_fetch_log')
++      .select('id, plot_id, status, error_message, fetch_attempted_at, cloud_cover_pct')
++      .eq('status', 'error')
++      .order('fetch_attempted_at', { ascending: false })
++      .limit(25),
++    sb.from('alerts')
++      .select('id, farm_id, plot_id, alert_type, alert_priority, message, alert_date, sent_at')
++      .eq('status', 'pending')
++      .order('alert_date', { ascending: false })
++      .limit(30),
++    (sb as any).from('audit_log')
++      .select('action, resource, farm_id, created_at')
++      .order('created_at', { ascending: false })
++      .limit(25),
++  ])
++
++  return (
++    <div className="p-6 max-w-5xl mx-auto space-y-6">
++      <div>
++        <h1 className="text-xl font-bold text-white">System health</h1>
++        <p className="text-sm text-zinc-500 mt-1">Satellite pipeline failures, unsent alerts, and the platform activity log.</p>
++      </div>
++
++      <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-1.5">
++          <Satellite size={14} /> Satellite fetch failures ({(satFailures || []).length})
++        </h2>
++        <div className="space-y-2 text-sm max-h-80 overflow-y-auto">
++          {(satFailures || []).map((s) => (
++            <div key={s.id} className="border-b border-[#2A2D35] last:border-0 pb-2 last:pb-0">
++              <div className="flex items-center justify-between text-zinc-400">
++                <Link href={`/admin/farms`} className="text-zinc-300 hover:text-white">Plot {s.plot_id.slice(0, 8)}</Link>
++                <span className="text-xs">{new Date(s.fetch_attempted_at!).toLocaleString('en-KE')}</span>
++              </div>
++              <p className="text-xs text-red-400 mt-0.5">{s.error_message || 'Unknown error'}</p>
++            </div>
++          ))}
++          {(satFailures || []).length === 0 && <p className="text-zinc-600">No recent satellite fetch failures.</p>}
++        </div>
++      </div>
++
++      <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-1.5">
++          <AlertTriangle size={14} /> Pending alerts ({(pendingAlerts || []).length})
++        </h2>
++        <div className="space-y-2 text-sm max-h-80 overflow-y-auto">
++          {(pendingAlerts || []).map((a) => (
++            <div key={a.id} className="flex items-center justify-between border-b border-[#2A2D35] last:border-0 pb-2 last:pb-0">
++              <div className="min-w-0">
++                <p className="text-zinc-300 truncate">{a.message}</p>
++                <p className="text-xs text-zinc-600">
++                  {a.alert_type} · {a.sent_at ? 'Delivered' : 'Not yet delivered — will retry in next digest'}
++                </p>
++              </div>
++              <span className={`text-xs shrink-0 ml-2 capitalize ${
++                a.alert_priority === 'critical' ? 'text-red-400' : a.alert_priority === 'high' ? 'text-amber-400' : 'text-zinc-500'
++              }`}>
++                {a.alert_priority}
++              </span>
++            </div>
++          ))}
++          {(pendingAlerts || []).length === 0 && <p className="text-zinc-600">No pending alerts.</p>}
++        </div>
++      </div>
++
++      <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
++        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-1.5">
++          <ScrollText size={14} /> Recent platform activity
++        </h2>
++        <div className="space-y-2 text-xs text-zinc-500 max-h-96 overflow-y-auto">
++          {(auditRows || []).map((a: any, i: number) => (
++            <div key={i} className="flex items-center justify-between">
++              <span className="text-zinc-300">{a.action} <span className="text-zinc-600">· {a.resource}</span></span>
++              <span>{new Date(a.created_at).toLocaleString('en-KE')}</span>
++            </div>
++          ))}
++          {(auditRows || []).length === 0 && <p className="text-zinc-600">No activity logged yet.</p>}
++        </div>
++      </div>
++    </div>
++  )
++}
+diff --git a/app/dashboard/components/CoopDashboardShell.tsx b/app/dashboard/components/CoopDashboardShell.tsx
+index 969b30f..1570625 100644
+--- a/app/dashboard/components/CoopDashboardShell.tsx
++++ b/app/dashboard/components/CoopDashboardShell.tsx
+@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
+ import {
+   LayoutDashboard, Users, MapPin, Warehouse, FileCheck,
+   Settings, User, Bell, Menu, X, LogOut, Leaf, Building2,
+-  Coffee, ClipboardList, Scale
++  Coffee, ClipboardList, Scale, ActivitySquare
+ } from 'lucide-react'
+ 
+ interface Props {
+@@ -24,6 +24,7 @@ const NAV_ITEMS = [
+   { label: 'EUDR Compliance',  href: '/dashboard/cooperative/eudr',           icon: FileCheck       },
+   { label: 'Legal Compliance', href: '/dashboard/cooperative/legality',       icon: Scale           },
+   { label: 'Coffee Passports', href: '/dashboard/cooperative/passports',      icon: Coffee          },
++  { label: 'System Health',    href: '/dashboard/cooperative/system',        icon: ActivitySquare  },
+ ]
+ 
+ export default function CoopDashboardShell({ children, coopName }: Props) {
+@@ -152,7 +153,10 @@ export default function CoopDashboardShell({ children, coopName }: Props) {
+       {/* ── Main content ─────────────────────────────────────────────────── */}
+       <div className="flex-1 flex flex-col overflow-hidden bg-[#0A0C10]">
+         {/* Top bar */}
+-        <header className="h-14 flex items-center justify-between px-6 border-b border-[#2A2D35] bg-[#0D0F14] shrink-0">
++        <header
++          className="h-14 flex items-center justify-between px-6 border-b border-[#2A2D35] bg-[#0D0F14] shrink-0 transition-[margin-top] duration-200"
++          style={{ marginTop: 'var(--connectivity-banner-h, 0px)' }}
++        >
+           <button className="lg:hidden text-zinc-400 hover:text-white transition-colors" onClick={() => setSidebarOpen(true)}>
+             <Menu size={18} />
+           </button>
+diff --git a/app/dashboard/components/DashboardShell.tsx b/app/dashboard/components/DashboardShell.tsx
+index 85830da..029c153 100644
+--- a/app/dashboard/components/DashboardShell.tsx
++++ b/app/dashboard/components/DashboardShell.tsx
+@@ -183,7 +183,10 @@ export default function DashboardShell({ children, farmName, farmId, subInfo }:
+       {/* ── Main content ─────────────────────────────────────────────────── */}
+       <div className="flex-1 flex flex-col overflow-hidden">
+         {/* Top bar */}
+-        <header className="h-14 flex items-center justify-between px-6 border-b border-zinc-800 bg-zinc-950 shrink-0">
++        <header
++          className="h-14 flex items-center justify-between px-6 border-b border-zinc-800 bg-zinc-950 shrink-0 transition-[margin-top] duration-200"
++          style={{ marginTop: 'var(--connectivity-banner-h, 0px)' }}
++        >
+           <button className="lg:hidden text-zinc-500 hover:text-white transition-colors" onClick={() => setSidebarOpen(true)}>
+             <Menu size={18} />
+           </button>
+diff --git a/app/dashboard/cooperative/farmers/page.tsx b/app/dashboard/cooperative/farmers/page.tsx
+index c46fa58..28a6085 100644
+--- a/app/dashboard/cooperative/farmers/page.tsx
++++ b/app/dashboard/cooperative/farmers/page.tsx
+@@ -16,7 +16,7 @@ export default async function CooperativeFarmersPage() {
+   // 1. Fetch member farms
+   const { data: farmsData } = await supabase
+     .from('farms')
+-    .select('id, farm_name, owner_name, phone, county, sub_county, ward, is_coop_managed, claim_token, coop_factory_id')
++    .select('id, farm_name, owner_name, phone, county, sub_county, ward, is_coop_managed, claim_token, coop_factory_id, subscription_tier, is_active')
+     .eq('managed_by_coop_id', access.coopId)
+     .order('owner_name')
+ 
+@@ -82,6 +82,7 @@ export default async function CooperativeFarmersPage() {
+                   <th className="px-6 py-4">Station</th>
+                   <th className="px-6 py-4 text-center">Coffee Trees</th>
+                   <th className="px-6 py-4 text-center">EUDR Mapping</th>
++                  <th className="px-6 py-4">Subscription</th>
+                   <th className="px-6 py-4">Claim Token</th>
+                 </tr>
+               </thead>
+@@ -139,6 +140,19 @@ export default async function CooperativeFarmersPage() {
+                         </div>
+                       </td>
+ 
++                      {/* Subscription status */}
++                      <td className="px-6 py-4">
++                        {f.is_active ? (
++                          <span className="inline-flex items-center gap-1 text-xs text-emerald-400 capitalize">
++                            <CheckCircle2 size={11} /> {f.subscription_tier || 'active'}
++                          </span>
++                        ) : (
++                          <span className="inline-flex items-center gap-1 text-xs text-red-400">
++                            <AlertTriangle size={11} /> Suspended
++                          </span>
++                        )}
++                      </td>
++
+                       {/* Claim token */}
+                       <td className="px-6 py-4">
+                         {f.is_coop_managed ? (
+diff --git a/app/dashboard/cooperative/system/page.tsx b/app/dashboard/cooperative/system/page.tsx
+new file mode 100644
+index 0000000..e89dba9
+--- /dev/null
++++ b/app/dashboard/cooperative/system/page.tsx
+@@ -0,0 +1,104 @@
++import { redirect } from 'next/navigation'
++import { validateCoopAccess } from '@/lib/validate-coop-access'
++import { createClient } from '@/lib/supabase/server'
++import { createAdminServiceClient } from '@/lib/supabase/admin-client'
++import { Satellite, AlertTriangle } from 'lucide-react'
++
++// This is the cooperative-officer counterpart to app/admin/system — same
++// idea, scoped to just this cooperative's own farms rather than the whole
++// platform. It reads coffee_satellite_fetch_log and alerts through the
++// service-role client rather than the officer's own RLS-scoped session:
++// as of this page, neither table has an RLS policy granting cooperative
++// officers read access (unlike farms/coffee_plots, which already do — see
++// app/dashboard/cooperative/farmers/page.tsx), and getting that scoping
++// right for two more tables felt like the wrong place to introduce new
++// RLS policy risk. Access is still fully gated: validateCoopAccess() runs
++// first, and every query below is explicitly filtered to this coop's own
++// farm ids in application code — the same pattern app/admin/** uses for
++// platform-wide reads, just narrowed to one cooperative.
++export const dynamic = 'force-dynamic'
++
++export default async function CooperativeSystemPage() {
++  const access = await validateCoopAccess()
++  if (!access.success || !access.coopId) {
++    redirect('/auth/login')
++  }
++
++  const supabase = await createClient()
++  const { data: farms } = await supabase.from('farms').select('id, farm_name').eq('managed_by_coop_id', access.coopId)
++  const farmIds = (farms || []).map((f) => f.id)
++  const farmNameMap = new Map((farms || []).map((f) => [f.id, f.farm_name]))
++
++  let satFailures: any[] = []
++  let pendingAlerts: any[] = []
++
++  if (farmIds.length > 0) {
++    const sb = await createAdminServiceClient()
++    const [{ data: plots }, { data: alertRows }] = await Promise.all([
++      sb.from('coffee_plots').select('id, farm_id').in('farm_id', farmIds),
++      sb.from('alerts').select('id, farm_id, plot_id, alert_type, alert_priority, message, alert_date, sent_at')
++        .in('farm_id', farmIds).eq('status', 'pending')
++        .order('alert_date', { ascending: false }).limit(30),
++    ])
++    pendingAlerts = alertRows || []
++
++    const plotIds = (plots || []).map((p) => p.id)
++    if (plotIds.length > 0) {
++      const { data: fetchLog } = await sb
++        .from('coffee_satellite_fetch_log')
++        .select('id, plot_id, error_message, fetch_attempted_at')
++        .in('plot_id', plotIds).eq('status', 'error')
++        .order('fetch_attempted_at', { ascending: false }).limit(25)
++      satFailures = fetchLog || []
++    }
++  }
++
++  return (
++    <div className="p-6 space-y-6 max-w-5xl mx-auto font-['Outfit'] bg-[#0A0C10] min-h-screen text-white">
++      <div className="border-b border-[#2A2D35] pb-6">
++        <h1 className="text-3xl font-bold tracking-tight text-white">System Health</h1>
++        <p className="text-zinc-400 text-sm mt-1">Satellite monitoring and alerts across your cooperative's member farms.</p>
++      </div>
++
++      <div className="bg-[#0D0F14] border border-[#2A2D35] rounded-2xl p-5">
++        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-1.5">
++          <Satellite size={14} /> Satellite fetch failures ({satFailures.length})
++        </h2>
++        <div className="space-y-2 text-sm">
++          {satFailures.map((s) => (
++            <div key={s.id} className="border-b border-[#2A2D35] last:border-0 pb-2 last:pb-0">
++              <div className="flex items-center justify-between text-zinc-400">
++                <span>Plot {s.plot_id.slice(0, 8)}</span>
++                <span className="text-xs">{new Date(s.fetch_attempted_at).toLocaleString('en-KE')}</span>
++              </div>
++              <p className="text-xs text-red-400 mt-0.5">{s.error_message || 'Unknown error'}</p>
++            </div>
++          ))}
++          {satFailures.length === 0 && <p className="text-zinc-600">No recent satellite fetch failures for your farms.</p>}
++        </div>
++      </div>
++
++      <div className="bg-[#0D0F14] border border-[#2A2D35] rounded-2xl p-5">
++        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-1.5">
++          <AlertTriangle size={14} /> Pending alerts ({pendingAlerts.length})
++        </h2>
++        <div className="space-y-2 text-sm">
++          {pendingAlerts.map((a) => (
++            <div key={a.id} className="flex items-center justify-between border-b border-[#2A2D35] last:border-0 pb-2 last:pb-0">
++              <div className="min-w-0">
++                <p className="text-zinc-300 truncate">{farmNameMap.get(a.farm_id) || 'Unknown farm'}: {a.message}</p>
++                <p className="text-xs text-zinc-600">{a.sent_at ? 'WhatsApp sent' : 'Not yet delivered'}</p>
++              </div>
++              <span className={`text-xs shrink-0 ml-2 capitalize ${
++                a.alert_priority === 'critical' ? 'text-red-400' : a.alert_priority === 'high' ? 'text-amber-400' : 'text-zinc-500'
++              }`}>
++                {a.alert_priority}
++              </span>
++            </div>
++          ))}
++          {pendingAlerts.length === 0 && <p className="text-zinc-600">No pending alerts for your member farms.</p>}
++        </div>
++      </div>
++    </div>
++  )
++}
+diff --git a/components/ui/ConnectivityBanner.tsx b/components/ui/ConnectivityBanner.tsx
+index 8bd5aa1..d99f667 100644
+--- a/components/ui/ConnectivityBanner.tsx
++++ b/components/ui/ConnectivityBanner.tsx
+@@ -37,6 +37,9 @@ export function ConnectivityBanner() {
+   const isOnline = useOnlineStatus()
+   const [showReconnected, setShowReconnected] = useState(false)
+   const wasOffline = useRef(false)
++  const bannerRef = useRef<HTMLDivElement>(null)
++
++  const visible = !isOnline || showReconnected
+ 
+   useEffect(() => {
+     if (!isOnline) {
+@@ -53,10 +56,52 @@ export function ConnectivityBanner() {
+     }
+   }, [isOnline])
+ 
+-  if (isOnline && !showReconnected) return null
++  // This banner is `position: fixed`, not part of normal document flow —
++  // deliberately, since it needs to stay visible over every layout in the
++  // app, including the dashboard shells' independently-scrolling <main>
++  // regions where a simple `sticky` wouldn't reliably stick to anything.
++  // But "fixed" also means nothing naturally reserves space for it, so it
++  // was floating directly on top of whatever sits at the very top of the
++  // page underneath — on the login page specifically, that's Header.tsx's
++  // own `sticky top-0` bar and the submit button just below it on short
++  // mobile viewports.
++  //
++  // Rather than hardcoding an offset (the banner's height isn't constant —
++  // it wraps to two lines on narrow screens), this measures its own
++  // rendered height and publishes it as a CSS custom property on the root
++  // element. Header.tsx (and the dashboard shells' top bars) read
++  // `--connectivity-banner-h` to push themselves down by exactly that much
++  // while the banner is showing, and snap back to 0 the instant it isn't —
++  // one source of truth instead of every consumer guessing a pixel value.
++  useEffect(() => {
++    const root = document.documentElement
++    if (!visible || !bannerRef.current) {
++      root.style.setProperty('--connectivity-banner-h', '0px')
++      return
++    }
++
++    const el = bannerRef.current
++    const publish = () => root.style.setProperty('--connectivity-banner-h', `${el.offsetHeight}px`)
++    publish()
++
++    const observer = new ResizeObserver(publish)
++    observer.observe(el)
++    return () => observer.disconnect()
++  }, [visible])
++
++  // Belt-and-suspenders: if this component unmounts entirely (shouldn't
++  // happen — it's mounted once in app/layout.tsx — but a stuck "0px"
++  // never being reset would otherwise leave every header on the site
++  // permanently offset), clear the var on unmount too.
++  useEffect(() => {
++    return () => document.documentElement.style.setProperty('--connectivity-banner-h', '0px')
++  }, [])
++
++  if (!visible) return null
+ 
+   return (
+     <div
++      ref={bannerRef}
+       role="status"
+       aria-live="polite"
+       className={`fixed top-0 inset-x-0 z-[60] flex items-center justify-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium transition-colors ${
+diff --git a/components/ui/Header.tsx b/components/ui/Header.tsx
+index 8960e0f..7f076ef 100644
+--- a/components/ui/Header.tsx
++++ b/components/ui/Header.tsx
+@@ -15,7 +15,16 @@ export function Header() {
+   const [open, setOpen] = useState(false)
+ 
+   return (
+-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
++    <header
++      className="sticky z-50 bg-white/95 backdrop-blur border-b border-gray-100 transition-[margin-top] duration-200"
++      // See components/ui/ConnectivityBanner.tsx: it's `position: fixed`
++      // and was floating directly over this header (and, on short mobile
++      // viewports, over the login button just below it) whenever the
++      // offline/reconnected banner was showing, since nothing reserved
++      // space for it. `--connectivity-banner-h` is 0px when the banner is
++      // hidden, so this is a no-op the vast majority of the time.
++      style={{ marginTop: 'var(--connectivity-banner-h, 0px)', top: 'var(--connectivity-banner-h, 0px)' }}
++    >
+       <nav className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
+         {/* Logo */}
+         <Link href="/" className="flex items-center gap-2">
+diff --git a/lib/supabase/admin-client.ts b/lib/supabase/admin-client.ts
+new file mode 100644
+index 0000000..3671c41
+--- /dev/null
++++ b/lib/supabase/admin-client.ts
+@@ -0,0 +1,29 @@
++import 'server-only'
++import type { Database } from '../database.types'
++
++/**
++ * Service-role client for admin pages/actions under app/admin/**.
++ *
++ * Every caller MUST gate on requireAdminAccess()/validateAdminAccess() from
++ * lib/validate-admin-access.ts BEFORE calling this — this client bypasses
++ * RLS entirely (same as the service-role clients already used in
++ * supabase/functions/fetch-plot-indices, app/api/cron/ews, and
++ * lib/security.ts's auditLog()). It exists so cross-farm/cross-cooperative
++ * admin reads don't require new "admins can see everything" RLS policies
++ * bolted onto farms/cooperatives/alerts/transactions — which would have to
++ * be re-reasoned about on every one of those tables and risks weakening
++ * farmer- or cooperative-facing policies by mistake. Gating happens once,
++ * in application code, instead.
++ */
++export async function createAdminServiceClient() {
++  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
++  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
++  if (!supabaseUrl || !serviceKey) {
++    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY — admin pages cannot load data without it')
++  }
++
++  const { createClient } = await import('@supabase/supabase-js')
++  return createClient<Database>(supabaseUrl, serviceKey, {
++    auth: { autoRefreshToken: false, persistSession: false },
++  })
++}
+diff --git a/lib/validate-admin-access.ts b/lib/validate-admin-access.ts
+new file mode 100644
+index 0000000..cc5fb1a
+--- /dev/null
++++ b/lib/validate-admin-access.ts
+@@ -0,0 +1,61 @@
++import { createClient } from './supabase/server'
++
++export interface AdminAccessResult {
++  success: boolean
++  userId?: string
++  role?: 'superadmin' | 'support'
++  error?: string
++}
++
++/**
++ * Checks whether the currently logged-in user is a platform admin.
++ * Mirrors lib/validate-coop-access.ts's shape and error handling on
++ * purpose: a genuine query failure (RLS hiccup, dropped connection) must
++ * not look identical to "authenticated but not an admin", the same
++ * distinction that mattered for cooperative officers.
++ */
++export async function validateAdminAccess(): Promise<AdminAccessResult> {
++  const supabase = await createClient()
++  const { data: { user }, error: authError } = await supabase.auth.getUser()
++
++  if (authError || !user) {
++    return { success: false, error: 'Unauthorized' }
++  }
++
++  const { data: admin, error } = await (supabase as any)
++    .from('platform_admins')
++    .select('role')
++    .eq('user_id', user.id)
++    .maybeSingle()
++
++  if (error) {
++    console.error('[validateAdminAccess] Error checking platform_admins:', error)
++    throw new Error(`[platform_admins] ${error.message}`)
++  }
++
++  if (!admin) {
++    return { success: false, error: 'Not a platform admin' }
++  }
++
++  return { success: true, userId: user.id, role: admin.role as 'superadmin' | 'support' }
++}
++
++/**
++ * For server actions that mutate data. Throws instead of returning a
++ * result so a missing `if (!access.success) return` can never accidentally
++ * let a write through. Pass minRole: 'superadmin' to gate actions (adding
++ * other admins, editing subscriptions) that 'support' shouldn't be able to
++ * do.
++ */
++export async function requireAdminAccess(
++  minRole?: 'superadmin'
++): Promise<{ userId: string; role: 'superadmin' | 'support' }> {
++  const access = await validateAdminAccess()
++  if (!access.success || !access.userId || !access.role) {
++    throw new Error(access.error || 'Not authorized')
++  }
++  if (minRole === 'superadmin' && access.role !== 'superadmin') {
++    throw new Error('This action requires superadmin access')
++  }
++  return { userId: access.userId, role: access.role }
++}
+diff --git a/supabase/migrations/20260713_platform_admins.sql b/supabase/migrations/20260713_platform_admins.sql
+new file mode 100644
+index 0000000..5d2edce
+--- /dev/null
++++ b/supabase/migrations/20260713_platform_admins.sql
+@@ -0,0 +1,46 @@
++-- Platform admin roles for the new /admin section.
++--
++-- Deliberately its own table rather than reusing cooperative_officers or a
++-- role column on farms: a platform admin isn't a farm owner and often isn't
++-- tied to any cooperative, and cooperative_officers RLS is scoped to "see
++-- your own cooperative" — piggybacking admin auth on it would mean either
++-- weakening that policy or giving every admin a fake cooperative row.
++create table if not exists platform_admins (
++  user_id    uuid primary key references auth.users(id) on delete cascade,
++  role       text not null check (role in ('superadmin', 'support')),
++  name       text,
++  created_at timestamptz not null default now()
++);
++
++alter table platform_admins enable row level security;
++
++-- An admin only ever needs to read their OWN row — see
++-- lib/validate-admin-access.ts, which checks "is the logged-in user in this
++-- table" and nothing more. Every actual admin data read/write (farms,
++-- cooperatives, subscriptions, alerts, audit_log, ...) happens through the
++-- service-role client server-side, gated by that check — same pattern
++-- already used by supabase/functions/fetch-plot-indices, app/api/cron/ews,
++-- and lib/security.ts's auditLog(). That keeps this migration
++-- self-contained: it changes no existing RLS policy on any other table, so
++-- nothing farmer- or cooperative-facing can regress from this change.
++create policy "admins can read own row"
++  on platform_admins for select
++  using (user_id = auth.uid());
++
++-- No insert/update/delete policy for regular sessions, on purpose — admins
++-- are provisioned once via the service role (see the one-time bootstrap
++-- note below), so a compromised admin session can never grant itself a
++-- higher role or add other admins through PostgREST.
++
++-- ── One-time bootstrap ──────────────────────────────────────────────────
++-- This migration intentionally does NOT seed a superadmin row — it doesn't
++-- know your auth.users id, and hardcoding a placeholder here is exactly the
++-- kind of thing that gets forgotten and shipped. After this migration runs,
++-- add yourself once via the Supabase SQL editor (service role, bypasses
++-- RLS):
++--
++--   insert into platform_admins (user_id, role, name)
++--   values ('<your-auth-users-uuid>', 'superadmin', 'Langat');
++--
++-- Find your uuid with:
++--   select id, phone from auth.users where phone = '2547XXXXXXXX';

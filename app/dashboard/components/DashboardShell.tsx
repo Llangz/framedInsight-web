@@ -183,7 +183,10 @@ export default function DashboardShell({ children, farmName, farmId, subInfo }: 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-14 flex items-center justify-between px-6 border-b border-zinc-800 bg-zinc-950 shrink-0">
+        <header
+          className="h-14 flex items-center justify-between px-6 border-b border-zinc-800 bg-zinc-950 shrink-0 transition-[margin-top] duration-200"
+          style={{ marginTop: 'var(--connectivity-banner-h, 0px)' }}
+        >
           <button className="lg:hidden text-zinc-500 hover:text-white transition-colors" onClick={() => setSidebarOpen(true)}>
             <Menu size={18} />
           </button>

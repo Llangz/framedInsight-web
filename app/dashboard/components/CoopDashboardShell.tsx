@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Users, MapPin, Warehouse, FileCheck,
   Settings, User, Bell, Menu, X, LogOut, Leaf, Building2,
-  Coffee, ClipboardList, Scale
+  Coffee, ClipboardList, Scale, ActivitySquare
 } from 'lucide-react'
 
 interface Props {
@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { label: 'EUDR Compliance',  href: '/dashboard/cooperative/eudr',           icon: FileCheck       },
   { label: 'Legal Compliance', href: '/dashboard/cooperative/legality',       icon: Scale           },
   { label: 'Coffee Passports', href: '/dashboard/cooperative/passports',      icon: Coffee          },
+  { label: 'System Health',    href: '/dashboard/cooperative/system',        icon: ActivitySquare  },
 ]
 
 export default function CoopDashboardShell({ children, coopName }: Props) {
@@ -152,7 +153,10 @@ export default function CoopDashboardShell({ children, coopName }: Props) {
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[#0A0C10]">
         {/* Top bar */}
-        <header className="h-14 flex items-center justify-between px-6 border-b border-[#2A2D35] bg-[#0D0F14] shrink-0">
+        <header
+          className="h-14 flex items-center justify-between px-6 border-b border-[#2A2D35] bg-[#0D0F14] shrink-0 transition-[margin-top] duration-200"
+          style={{ marginTop: 'var(--connectivity-banner-h, 0px)' }}
+        >
           <button className="lg:hidden text-zinc-400 hover:text-white transition-colors" onClick={() => setSidebarOpen(true)}>
             <Menu size={18} />
           </button>
