@@ -76,6 +76,13 @@ export async function createCoopManagedFarm(params: CreateCoopManagedFarmParams)
         claim_token: claimToken,
         farm_types: [enterprise],
         primary_enterprise: enterprise,
+        // Required by farms_subscription_tier_check — this insert never set it,
+        // so it fell through to whatever bare column default exists (which
+        // doesn't satisfy the constraint) and every coop-mapped farm failed to
+        // save. 'smallholder' matches the value the working self-signup path
+        // (lib/create-farm.ts) uses for every new farm; the 14-day trial status
+        // shown in billing is computed from created_at regardless of this value.
+        subscription_tier: 'smallholder',
       })
       .select('id')
       .single()

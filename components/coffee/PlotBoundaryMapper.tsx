@@ -187,9 +187,12 @@ export default function PlotBoundaryMapper({
   const walkPolylineRef = useRef<any>(null)      // blue trail in walk mode
   const watchIdRef = useRef<number | null>(null)
   const mapClickHandlerRef = useRef<any>(null)
+  const slowTileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [mode, setMode] = useState<MapMode>('idle')
   const [points, setPoints] = useState<LatLng[]>([])
+  const pointsRef = useRef<LatLng[]>([])
+  const modeRef = useRef<MapMode>('idle')
   const [mapLoaded, setMapLoaded] = useState(false)
   const [locating, setLocating] = useState(false)
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null)
@@ -198,6 +201,7 @@ export default function PlotBoundaryMapper({
   const [snapActive, setSnapActive] = useState(false) // near first point?
   const [result, setResult] = useState<BoundaryResult | null>(null)
   const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite')
+  const [tilesRendered, setTilesRendered] = useState(false)
   const esriLayerRef = useRef<any>(null)
   const osmLayerRef = useRef<any>(null)
   const labelsLayerRef = useRef<any>(null)
@@ -212,6 +216,9 @@ export default function PlotBoundaryMapper({
   const isIdle = mode === 'idle'
   const hasPoints = points.length > 0
   const hasPolygon = points.length >= 3
+
+  useEffect(() => { pointsRef.current = points }, [points])
+  useEffect(() => { modeRef.current = mode }, [mode])
 
   // ── Init Leaflet ────────────────────────────────────────────────────────────
 
@@ -265,14 +272,28 @@ export default function PlotBoundaryMapper({
 
         // Auto-fallback to OSM if satellite tiles keep failing (rural connectivity)
         let satErrors = 0
-        esriSat.on('tileerror', () => { if (++satErrors > 5 && map.hasLayer(esriSat)) { esriSat.remove(); esriLabels.remove(); osm.addTo(map); setMapType('street') } })
+        let fellBack = false
+        const fallBackToOsm = () => {
+          if (fellBack || !map.hasLayer(esriSat)) return
+          fellBack = true
+          esriSat.remove(); esriLabels.remove(); osm.addTo(map); setMapType('street')
+        }
+        esriSat.on('tileerror', () => { if (++satErrors > 5) fallBackToOsm() })
+        esriSat.on('tileload', () => { setTilesRendered(true); if (slowTileTimerRef.current) clearTimeout(slowTileTimerRef.current) })
+        osm.on('tileload', () => setTilesRendered(true))
+        // A throttled-but-working connection never fires tileerror — tiles just
+        // sit pending — so a farmer on weak rural data sees a plain black map
+        // with no explanation. If nothing has rendered within 8s, try OSM (its
+        // tiles are typically smaller); either way `tilesRendered` drives a
+        // "still loading" banner instead of leaving the map looking broken.
+        slowTileTimerRef.current = setTimeout(() => { if (!fellBack) fallBackToOsm() }, 8000)
 
         // Sync zoom state to React for our custom buttons
         map.on('zoom', () => setZoom(map.getZoom()))
 
         mapRef.current = map
         setMapLoaded(true)
-        autoLocate(map, L)
+        autoLocate(map, L, { silent: true })
       } catch (e) {
         console.error('Map init error:', e)
         setGpsError('Failed to load map — please refresh')
@@ -281,6 +302,7 @@ export default function PlotBoundaryMapper({
 
     init()
     return () => {
+      if (slowTileTimerRef.current) { clearTimeout(slowTileTimerRef.current); slowTileTimerRef.current = null }
       if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null }
       if (mapRef.current) { try { mapRef.current.remove() } catch {} ; mapRef.current = null }
     }
@@ -313,7 +335,7 @@ export default function PlotBoundaryMapper({
 
   // ── GPS locate ──────────────────────────────────────────────────────────────
 
-  const autoLocate = useCallback((map?: any, L?: any) => {
+  const autoLocate = useCallback((map?: any, L?: any, opts?: { silent?: boolean }) => {
     const _map = map ?? mapRef.current
     if (!_map) return
     if (!navigator.geolocation) { setGpsError('GPS not available on this device'); return }
@@ -322,7 +344,16 @@ export default function PlotBoundaryMapper({
       (pos) => {
         const { latitude: lat, longitude: lng, accuracy } = pos.coords
         setGpsAccuracy(Math.round(accuracy))
-        _map.setView([lat, lng], 18)
+        // The one-shot GPS fix on map mount can take several seconds on slow
+        // rural connections. If this is that silent, automatic call and the
+        // farmer has already started tapping corners (or switched to walk
+        // mode) while waiting for it, recentring now would yank the whole
+        // map — and every pin already placed — out from under them. A
+        // user-initiated tap of the "locate me" button always recenters.
+        const userAlreadyMapping = opts?.silent && (pointsRef.current.length > 0 || modeRef.current !== 'idle')
+        if (!userAlreadyMapping) {
+          _map.setView([lat, lng], 18)
+        }
         setLocating(false)
         // Reverse geocode
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
@@ -699,6 +730,13 @@ export default function PlotBoundaryMapper({
             {gpsAccuracy !== null && !hasPolygon && (
               <div className="absolute bottom-3 right-3 z-[1000] bg-black/60 text-white text-xs px-2 py-1 rounded-md">
                 GPS ±{gpsAccuracy}m{gpsAccuracy <= 5 ? ' ✓' : gpsAccuracy > 15 ? ' ⚠' : ''}
+              </div>
+            )}
+
+            {!tilesRendered && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-black/70 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 pointer-events-none">
+                <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                Loading satellite imagery — slow on weak signal, corners still save fine
               </div>
             )}
 

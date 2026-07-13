@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import NDVITrendChart from './components/NVDITrendChart'
 
 type HealthLabel = "good" | "watch" | "stress" | "critical";
 type DataFreshness = "current" | "recent" | "stale" | "very_stale";
@@ -446,8 +447,12 @@ export default function SatelliteClient({
     setRefreshingAll(true);
     try {
       const { data: { session }, error: _sessionError } = await supabase.auth.refreshSession();
+      // There is no separate "fetch-farm-indices" function — fetch-plot-indices
+      // now accepts a farm_id and scans just that farm's plots (see the edge
+      // function for the matching fix; it previously ignored the request body
+      // entirely and rescanned every plot on the platform regardless).
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fetch-farm-indices`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fetch-plot-indices`,
         {
           method:  "POST",
           headers: {
@@ -471,39 +476,43 @@ export default function SatelliteClient({
   const alertPlots = plots.filter(p => p.alert_triggered);
   const hasAnyData = plots.some(p => p.health_score !== null);
 
+  // NDVITrendChart takes one flat array across all plots (it groups by
+  // plot_id internally). weeks_of_decline/ndwi aren't in v_plot_ndvi_trend,
+  // so the chart derives its own decline count and simply skips the NDWI-
+  // based recommendation rule when it's absent — both are handled gracefully
+  // by the component, no schema change needed to wire it in.
+  const trendChartData = useMemo(() => plots.flatMap(plot =>
+    (trends[plot.plot_id] ?? []).map(t => ({
+      date: t.image_date,
+      plot_id: plot.plot_id,
+      plot_name: plot.plot_name,
+      ndvi: t.ndvi_mean,
+      health_score: t.health_score,
+      alert_triggered: t.alert_triggered,
+    }))
+  ), [plots, trends]);
+
   return (
     <div className="min-h-screen bg-obsidian">
-      <div className="hidden">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/dashboard/coffee"
-                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
-              >
-                ←
-              </Link>
-              <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-none">Satellite Monitoring</h1>
-                <p className="text-xs text-slate-500 mt-0.5">Sentinel-2 · NDVI · NDRE · NDWI</p>
-              </div>
-            </div>
-            <button
-              onClick={refreshAll}
-              disabled={refreshingAll || !farmId}
-              className="flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-            >
-              {refreshingAll ? (
-                <><span className="animate-spin">🔄</span> Fetching…</>
-              ) : (
-                <><span>🛰</span> Refresh All</>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-lg font-bold text-white leading-none">Satellite Monitoring</h1>
+            <p className="text-xs text-slate-400 mt-1">Sentinel-2 · NDVI · NDRE · NDWI</p>
+          </div>
+          <button
+            onClick={refreshAll}
+            disabled={refreshingAll || !farmId}
+            className="flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800 disabled:opacity-50 transition-colors"
+          >
+            {refreshingAll ? (
+              <><span className="animate-spin">🔄</span> Fetching…</>
+            ) : (
+              <><span>🛰</span> Refresh All</>
+            )}
+          </button>
+        </div>
+
         {farmHealth && <FarmHealthBanner health={farmHealth} />}
 
         {alertPlots.length > 0 && (
@@ -565,6 +574,12 @@ export default function SatelliteClient({
             >
               + Add Plot
             </Link>
+          </div>
+        )}
+
+        {trendChartData.length >= 2 && (
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <NDVITrendChart data={trendChartData} />
           </div>
         )}
 

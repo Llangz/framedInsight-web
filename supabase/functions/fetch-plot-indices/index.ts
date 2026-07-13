@@ -506,7 +506,10 @@ async function processPlot(
 
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 
-async function runSatelliteScans(sb: SupabaseClient): Promise<{
+async function runSatelliteScans(
+  sb: SupabaseClient,
+  filter?: { plotId?: string; farmId?: string },
+): Promise<{
   summary: { total: number; succeeded: number; cloudy: number; skipped: number; failed: number };
   results: ProcessResult[];
 }> {
@@ -528,10 +531,18 @@ async function runSatelliteScans(sb: SupabaseClient): Promise<{
     (farmsData || []).map((f: any) => [f.id, f as FarmRecord])
   );
 
-  // Fetch all active coffee plots
+  // Fetch active coffee plots — scoped to a single plot or farm when the
+  // caller asked for one (dashboard "Refresh" / "Refresh All"), otherwise
+  // every plot on the platform (cron's twice-monthly sweep).
   let query = sb
     .from("coffee_plots")
     .select("id, farm_id, plot_name, boundary_geojson, area_hectares, region_name");
+
+  if (filter?.plotId) {
+    query = query.eq("id", filter.plotId);
+  } else if (filter?.farmId) {
+    query = query.eq("farm_id", filter.farmId);
+  }
 
   const { data: plots, error: plotsErr } = await query;
   if (plotsErr) throw plotsErr;
@@ -581,7 +592,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const result = await runSatelliteScans(sb);
+
+    // The dashboard's per-plot "Refresh" button POSTs { plot_id } and
+    // "Refresh All" POSTs { farm_id } — this body was previously never
+    // read, so every on-demand refresh (including a single-plot tap)
+    // silently rescanned every plot for every farm on the platform.
+    // Falls back to a full scan when no body is sent, or it doesn't
+    // parse as JSON, so manual invocations (e.g. from the Supabase
+    // dashboard's "Run function" tool) keep working unchanged.
+    let filter: { plotId?: string; farmId?: string } | undefined;
+    if (req.method === "POST") {
+      try {
+        const body = await req.json() as { plot_id?: string; farm_id?: string };
+        if (body?.plot_id) filter = { plotId: body.plot_id };
+        else if (body?.farm_id) filter = { farmId: body.farm_id };
+      } catch {
+        // No/invalid JSON body — full scan, same as before this fix.
+      }
+    }
+
+    const result = await runSatelliteScans(sb, filter);
 
     return new Response(
       JSON.stringify(result),
