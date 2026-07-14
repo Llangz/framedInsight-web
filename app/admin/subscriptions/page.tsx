@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { AlertTriangle, CreditCard } from 'lucide-react'
+import ActivationFailuresPanel from './ActivationFailuresPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +11,14 @@ export default async function AdminSubscriptionsPage() {
   const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   const now = new Date().toISOString()
 
-  const [{ data: expiringSoon }, { data: expired }, { data: transactions }, { data: tierRows }] = await Promise.all([
+  const [
+    { data: expiringSoon },
+    { data: expired },
+    { data: transactions },
+    { data: tierRows },
+    { data: activationFailedRaw },
+    { data: legacyRaw },
+  ] = await Promise.all([
     sb.from('farms').select('id, farm_name, phone, subscription_tier, subscription_end_date')
       .eq('is_active', true).not('subscription_end_date', 'is', null)
       .gte('subscription_end_date', now).lte('subscription_end_date', in7Days)
@@ -19,9 +27,25 @@ export default async function AdminSubscriptionsPage() {
       .eq('is_active', true).not('subscription_end_date', 'is', null)
       .lt('subscription_end_date', now)
       .order('subscription_end_date', { ascending: false }).limit(20),
-    sb.from('transactions').select('id, farm_id, amount, status, mpesa_receipt_number, phone_number, created_at')
+    (sb.from('transactions') as any)
+      .select('id, farm_id, amount, status, activation_status, mpesa_receipt_number, phone_number, created_at')
       .order('created_at', { ascending: false }).limit(20),
     sb.from('farms').select('subscription_tier'),
+    // Cast: activation_* columns aren't in lib/database.types.ts yet — see
+    // lib/activate-subscription.ts's note. Regenerate types after applying
+    // 20260714b_payment_activation_reconciliation.sql and this cast can go.
+    (sb.from('transactions') as any)
+      .select('id, farm_id, amount, months_added, activation_attempts, activation_error, created_at')
+      .eq('status', 'completed')
+      .eq('activation_status', 'activation_failed')
+      .order('created_at', { ascending: true })
+      .limit(50),
+    (sb.from('transactions') as any)
+      .select('id, farm_id, amount, created_at')
+      .eq('status', 'completed')
+      .eq('activation_status', 'legacy_unknown')
+      .order('created_at', { ascending: false })
+      .limit(50),
   ])
 
   const tierCounts: Record<string, number> = {}
@@ -30,12 +54,52 @@ export default async function AdminSubscriptionsPage() {
     tierCounts[tier] = (tierCounts[tier] || 0) + 1
   }
 
+  // Attach farm names, and — for the legacy set — the farm's current
+  // subscription_end_date, then only surface legacy rows that actually
+  // look suspicious (no end date at all, or one that predates the
+  // payment) rather than dumping every pre-migration transaction on the
+  // admin. A farm with a healthy, far-future end date almost certainly
+  // was activated fine; this narrows "needs audit" down to the ones
+  // actually worth a human look.
+  const farmIds = Array.from(new Set([
+    ...(activationFailedRaw || []).map((t: any) => t.farm_id),
+    ...(legacyRaw || []).map((t: any) => t.farm_id),
+  ].filter(Boolean)))
+
+  const { data: farmRows } = farmIds.length
+    ? await sb.from('farms').select('id, farm_name, subscription_end_date').in('id', farmIds)
+    : { data: [] as any[] }
+
+  const farmMap = new Map((farmRows || []).map((f: any) => [f.id, f]))
+
+  const activationFailed = (activationFailedRaw || []).map((t: any) => ({
+    ...t,
+    farm_name: farmMap.get(t.farm_id)?.farm_name ?? null,
+  }))
+
+  const legacySuspicious = (legacyRaw || [])
+    .map((t: any) => {
+      const farm = farmMap.get(t.farm_id)
+      return {
+        ...t,
+        farm_name: farm?.farm_name ?? null,
+        subscription_end_date: farm?.subscription_end_date ?? null,
+      }
+    })
+    .filter((t: any) => {
+      if (!t.farm_id) return true // orphaned transaction — always worth a look
+      if (!t.subscription_end_date) return true
+      return new Date(t.subscription_end_date) < new Date(t.created_at)
+    })
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold text-white">Subscriptions &amp; billing</h1>
         <p className="text-sm text-zinc-500 mt-1">Tier breakdown, renewals coming due, and recent M-Pesa activity.</p>
       </div>
+
+      <ActivationFailuresPanel failed={activationFailed} legacy={legacySuspicious} />
 
       <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-5">
         <h2 className="text-sm font-semibold text-white mb-4">By tier</h2>
@@ -91,7 +155,7 @@ export default async function AdminSubscriptionsPage() {
             </tr>
           </thead>
           <tbody>
-            {(transactions || []).map((t) => (
+            {(transactions || []).map((t: any) => (
               <tr key={t.id} className="border-b border-[#2A2D35] last:border-0 text-zinc-400">
                 <td className="py-2">{t.phone_number}</td>
                 <td className="py-2 text-white">KES {t.amount}</td>
@@ -99,6 +163,12 @@ export default async function AdminSubscriptionsPage() {
                   <span className={t.status === 'completed' || t.status === 'success' ? 'text-emerald-500' : t.status === 'failed' ? 'text-red-400' : 'text-amber-400'}>
                     {t.status}
                   </span>
+                  {t.status === 'completed' && t.activation_status === 'activation_failed' && (
+                    <span className="block text-[10px] text-red-400 normal-case">activation failed</span>
+                  )}
+                  {t.status === 'completed' && t.activation_status === 'legacy_unknown' && (
+                    <span className="block text-[10px] text-amber-400 normal-case">activation unverified</span>
+                  )}
                 </td>
                 <td className="py-2">{t.mpesa_receipt_number || '—'}</td>
                 <td className="py-2">{new Date(t.created_at!).toLocaleString('en-KE')}</td>

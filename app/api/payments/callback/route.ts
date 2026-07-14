@@ -13,6 +13,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { activateSubscription } from '@/lib/activate-subscription'
+import { auditLog } from '@/lib/security'
 
 // Always acknowledge to Safaricom — never return non-200
 const ACK = () => NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' })
@@ -148,82 +150,70 @@ export async function POST(req: NextRequest) {
 
   console.log(`[mpesa-callback] ✅ Payment confirmed. Receipt=${receiptNumber} Amount=${paidAmount} Phone=${String(paidPhone).slice(0, 6)}***`)
 
-  // ── 5. Determine the correct tier from the amount paid ──────────────────
-  // Compare paid amount to monthly prices to infer tier.
-  // months_added was stored at STK push time — use that to derive monthly rate.
-  const monthlyRate = Math.round(txn.amount / txn.months_added)
-  const newTier = inferTierFromMonthlyRate(monthlyRate)
-
-  // ── 6. Update transaction to completed ──────────────────────────────────
+  // ── 5. Mark the payment completed, activation pending ────────────────────
+  // This is deliberately split from the activation attempt below (unlike
+  // the old code, which updated `status` to 'completed' only *after*
+  // trying — but still before checking the result). That ordering had a
+  // latent bug: once `status` is 'completed', step 3's idempotency guard
+  // (`if (txn.status !== 'pending') return ACK()`) means a Safaricom retry
+  // of this exact callback would be silently skipped even if the farm
+  // activation write had failed — the one thing that might have
+  // self-healed it never got the chance. `status` now reflects only "did
+  // Safaricom confirm the payment" (unchanged meaning, still drives the
+  // idempotency guard and the billing UI's polling), and
+  // `activation_status` tracks the farm-side write as its own,
+  // independently retryable state — see
+  // supabase/migrations/20260714b_payment_activation_reconciliation.sql.
+  // Recovery for a failed activation is now the reconcile-payments cron
+  // (app/api/cron/reconcile-payments/route.ts), not a hoped-for callback
+  // redelivery.
   const { error: txnUpdateErr } = await supabase
     .from('transactions')
     .update({
       status:               'completed',
+      activation_status:    'pending',
       mpesa_receipt_number: receiptNumber,
       result_desc:          ResultDesc,
       updated_at:           new Date().toISOString(),
-    })
+    } as any)
     .eq('id', txn.id)
 
   if (txnUpdateErr) {
     console.error('[mpesa-callback] Failed to update transaction:', txnUpdateErr.message)
-    // Don't return — still try to activate the subscription
+    // Don't return — still try to activate the subscription. Worst case
+    // the transaction row's own status field lags, but the farmer's
+    // subscription still gets turned on, which matters far more to them.
   }
 
-  // ── 7. Fetch current farm subscription state ─────────────────────────────
-  const { data: farm, error: farmErr } = await supabase
-    .from('farms')
-    .select('id, subscription_tier, subscription_end_date')
-    .eq('id', txn.farm_id)
-    .single()
+  // ── 6. Activate / extend the subscription ────────────────────────────────
+  const result = await activateSubscription({
+    id: txn.id,
+    farm_id: txn.farm_id,
+    months_added: txn.months_added,
+    amount: txn.amount,
+  })
 
-  if (farmErr || !farm) {
-    console.error('[mpesa-callback] Farm not found:', txn.farm_id)
-    return ACK()
-  }
+  if (!result.success) {
+    console.error(`[mpesa-callback] CRITICAL: Failed to activate subscription for farm ${txn.farm_id}:`, result.error)
 
-  // ── 8. Calculate new subscription end date (stacking logic) ─────────────
-  const now = new Date()
-  const currentEnd = farm.subscription_end_date
-    ? new Date(farm.subscription_end_date)
-    : null
-
-  // If current subscription is still active, stack on top of it.
-  // Otherwise start from today.
-  const startFrom = currentEnd && currentEnd > now ? currentEnd : now
-  const newEndDate = new Date(startFrom)
-  newEndDate.setMonth(newEndDate.getMonth() + txn.months_added)
-
-  // ── 9. Activate / extend the subscription ───────────────────────────────
-  const { error: farmUpdateErr } = await supabase
-    .from('farms')
-    .update({
-      subscription_tier:       newTier,
-      subscription_end_date:   newEndDate.toISOString(),
-      subscription_start_date: now.toISOString(),
-      is_active:               true,
-      updated_at:              now.toISOString(),
+    // Persisted immediately (not just console.error) so this is visible on
+    // the admin subscriptions page and in the audit trail the moment it
+    // happens, not only once the reconcile-payments cron next runs.
+    await auditLog({
+      action: 'PAYMENT_ACTIVATION_FAILED',
+      actorId: null,
+      farmId: txn.farm_id,
+      resource: 'transactions',
+      resourceId: txn.id,
+      details: { error: result.error, amount: txn.amount, months_added: txn.months_added },
+      ip: null,
     })
-    .eq('id', txn.farm_id)
-
-  if (farmUpdateErr) {
-    console.error('[mpesa-callback] CRITICAL: Failed to activate subscription:', farmUpdateErr.message)
-    // TODO: Add to a dead-letter queue / alert — farmer paid but sub not activated
   } else {
     console.log(
-      `[mpesa-callback] ✅ Subscription activated: farm=${txn.farm_id} tier=${newTier} ` +
-      `months=${txn.months_added} end=${newEndDate.toISOString().split('T')[0]}`
+      `[mpesa-callback] ✅ Subscription activated: farm=${txn.farm_id} tier=${result.tier} ` +
+      `months=${txn.months_added} end=${result.endDate?.split('T')[0]}`
     )
   }
 
   return ACK()
-}
-
-// ── Helper: derive tier from monthly KES rate ────────────────────────────────
-// Valid DB tiers: 'smallholder' | 'commercial' | 'enterprise'
-// enterprise_plus is handled via manual sales flow, not M-Pesa self-serve
-function inferTierFromMonthlyRate(monthlyKes: number): string {
-  if (monthlyKes >= 2000) return 'enterprise'
-  if (monthlyKes >= 400)  return 'commercial'
-  return 'smallholder'
 }
