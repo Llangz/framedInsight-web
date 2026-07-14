@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createAdminServiceClient } from '@/lib/supabase/admin-client'
+import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft } from 'lucide-react'
 import FarmDetailClient from './FarmDetailClient'
 
@@ -12,7 +12,11 @@ export default async function AdminFarmDetailPage({
   params: Promise<{ farmId: string }>
 }) {
   const { farmId } = await params
-  const sb = await createAdminServiceClient()
+  // Covered by the "Platform admins can view all ..." policies in
+  // supabase/migrations/20260714_platform_admin_rls.sql on farms,
+  // coffee_plots, transactions, and audit_log — no service-role client
+  // needed for any of this page's reads.
+  const sb = await createClient()
 
   const { data: farm } = await sb.from('farms').select('*').eq('id', farmId).maybeSingle()
   if (!farm) notFound()

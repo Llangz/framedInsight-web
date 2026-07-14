@@ -1,29 +1,38 @@
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminServiceClient } from '@/lib/supabase/admin-client'
 import { Users2, Building2, CreditCard, AlertTriangle, Satellite, ArrowUpRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 async function getOverviewData() {
-  const sb = await createAdminServiceClient()
+  // farms/cooperatives are now covered by the "Platform admins can view
+  // all ..." policies from supabase/migrations/20260714_platform_admin_rls.sql,
+  // so these go through the caller's own RLS-scoped session — a page that
+  // forgot to call validateAdminAccess() would get zero rows here, not
+  // every farm on the platform. alerts and coffee_satellite_fetch_log
+  // don't have RLS policies yet (see that migration's SCOPE note for why),
+  // so those two specifically still go through the service-role client.
+  const supabase = await createClient()
+  const sbService = await createAdminServiceClient()
 
   const [
     farmsTotal, farmsActive, coopsTotal,
     pendingAlerts, satelliteFailures24h, recentFarms,
   ] = await Promise.all([
-    sb.from('farms').select('id', { count: 'exact', head: true }),
-    sb.from('farms').select('id', { count: 'exact', head: true }).eq('is_active', true),
-    sb.from('cooperatives').select('id', { count: 'exact', head: true }),
-    sb.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-    sb.from('coffee_satellite_fetch_log').select('id', { count: 'exact', head: true })
+    supabase.from('farms').select('id', { count: 'exact', head: true }),
+    supabase.from('farms').select('id', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('cooperatives').select('id', { count: 'exact', head: true }),
+    sbService.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    sbService.from('coffee_satellite_fetch_log').select('id', { count: 'exact', head: true })
       .eq('status', 'error')
       .gte('fetch_attempted_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
-    sb.from('farms').select('id, farm_name, owner_name, phone, county, subscription_tier, created_at')
+    supabase.from('farms').select('id, farm_name, owner_name, phone, county, subscription_tier, created_at')
       .order('created_at', { ascending: false }).limit(6),
   ])
 
   const tierCounts: Record<string, number> = {}
-  const { data: tierRows } = await sb.from('farms').select('subscription_tier')
+  const { data: tierRows } = await supabase.from('farms').select('subscription_tier')
   for (const row of tierRows || []) {
     const tier = row.subscription_tier || 'none'
     tierCounts[tier] = (tierCounts[tier] || 0) + 1

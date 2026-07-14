@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createAdminServiceClient } from '@/lib/supabase/admin-client'
+import { createClient } from '@/lib/supabase/server'
 import { Search, MapPin, CheckCircle2, XCircle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -10,7 +10,10 @@ export default async function AdminFarmsPage({
   searchParams: Promise<{ q?: string }>
 }) {
   const { q = '' } = await searchParams
-  const sb = await createAdminServiceClient()
+  // Covered by "Platform admins can view all farms" in
+  // supabase/migrations/20260714_platform_admin_rls.sql — this is the
+  // caller's own session, not a service-role bypass.
+  const sb = await createClient()
 
   let query = sb
     .from('farms')

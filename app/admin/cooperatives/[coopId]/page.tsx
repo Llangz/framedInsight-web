@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createAdminServiceClient } from '@/lib/supabase/admin-client'
+import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft } from 'lucide-react'
 import CoopDetailClient from './CoopDetailClient'
 
@@ -12,7 +12,9 @@ export default async function AdminCoopDetailPage({
   params: Promise<{ coopId: string }>
 }) {
   const { coopId } = await params
-  const sb = await createAdminServiceClient()
+  // Covered by admin RLS policies on cooperatives, cooperative_officers,
+  // and farms — see supabase/migrations/20260714_platform_admin_rls.sql.
+  const sb = await createClient()
 
   const { data: coop } = await sb.from('cooperatives').select('*').eq('id', coopId).maybeSingle()
   if (!coop) notFound()

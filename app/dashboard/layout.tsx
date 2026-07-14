@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getSubscriptionInfo } from '@/lib/subscription'
 import { getFarmStatus } from '@/lib/get-farm-status'
+import { validateAdminAccess } from '@/lib/validate-admin-access'
 import { AccountIssueScreen } from '@/components/ui/AccountIssueScreen'
 import DashboardShell from './components/DashboardShell'
 import CoopDashboardShell from './components/CoopDashboardShell'
@@ -20,6 +21,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
+
+  // Whether to show the "Admin panel" link in the shell's user menu — see
+  // DashboardShell.tsx / CoopDashboardShell.tsx. Deliberately swallowed on
+  // error rather than using requireAdminAccess()/letting it throw: this is
+  // only cosmetic (one extra menu item), and app/admin/layout.tsx is the
+  // actual access gate regardless of what this resolves to, so a transient
+  // hiccup here should never turn into an AccountIssueScreen for every
+  // ordinary farmer loading their dashboard.
+  let isPlatformAdmin = false
+  try {
+    isPlatformAdmin = (await validateAdminAccess()).success
+  } catch (e: any) {
+    console.warn('[DashboardLayout] Could not check platform admin status (non-fatal):', e?.message)
+  }
 
   // Check if cooperative officer.
   //
@@ -83,7 +98,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
 
     return (
-      <CoopDashboardShell coopName={coop?.cooperative_name || 'My Cooperative'}>
+      <CoopDashboardShell coopName={coop?.cooperative_name || 'My Cooperative'} isPlatformAdmin={isPlatformAdmin}>
         {children}
       </CoopDashboardShell>
     )
@@ -206,6 +221,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       farmName={farm.farm_name ?? 'My Farm'}
       farmId={farm.id}
       subInfo={subInfo}
+      isPlatformAdmin={isPlatformAdmin}
     >
       {children}
     </DashboardShell>

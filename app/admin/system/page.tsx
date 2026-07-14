@@ -1,24 +1,33 @@
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminServiceClient } from '@/lib/supabase/admin-client'
 import { Satellite, AlertTriangle, ScrollText } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminSystemPage() {
-  const sb = await createAdminServiceClient()
+  // audit_log is covered by "Platform admins can view all audit log
+  // entries" (see supabase/migrations/20260714_platform_admin_rls.sql),
+  // so that one reads through the caller's own RLS-scoped session.
+  // coffee_satellite_fetch_log and alerts don't have an RLS policy for
+  // this yet — neither table has RLS enabled at all — so those two stay
+  // on the service-role client for now; see the migration's SCOPE note
+  // for why that's a separate, dedicated follow-up rather than bundled in.
+  const supabase = await createClient()
+  const sbService = await createAdminServiceClient()
 
   const [{ data: satFailures }, { data: pendingAlerts }, { data: auditRows }] = await Promise.all([
-    sb.from('coffee_satellite_fetch_log')
+    sbService.from('coffee_satellite_fetch_log')
       .select('id, plot_id, status, error_message, fetch_attempted_at, cloud_cover_pct')
       .eq('status', 'error')
       .order('fetch_attempted_at', { ascending: false })
       .limit(25),
-    sb.from('alerts')
+    sbService.from('alerts')
       .select('id, farm_id, plot_id, alert_type, alert_priority, message, alert_date, sent_at')
       .eq('status', 'pending')
       .order('alert_date', { ascending: false })
       .limit(30),
-    (sb as any).from('audit_log')
+    (supabase as any).from('audit_log')
       .select('action, resource, farm_id, created_at')
       .order('created_at', { ascending: false })
       .limit(25),

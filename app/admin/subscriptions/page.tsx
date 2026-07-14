@@ -1,11 +1,11 @@
 import Link from 'next/link'
-import { createAdminServiceClient } from '@/lib/supabase/admin-client'
+import { createClient } from '@/lib/supabase/server'
 import { AlertTriangle, CreditCard } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminSubscriptionsPage() {
-  const sb = await createAdminServiceClient()
+  const sb = await createClient()
 
   const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   const now = new Date().toISOString()

@@ -1,11 +1,14 @@
 import Link from 'next/link'
-import { createAdminServiceClient } from '@/lib/supabase/admin-client'
+import { createClient } from '@/lib/supabase/server'
 import { Building2, MapPin, Users2 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminCooperativesPage() {
-  const sb = await createAdminServiceClient()
+  // cooperatives, cooperative_officers, and farms (for the per-coop
+  // counts below) are all covered by admin RLS policies now — see
+  // supabase/migrations/20260714_platform_admin_rls.sql.
+  const sb = await createClient()
 
   const { data: coops } = await sb
     .from('cooperatives')

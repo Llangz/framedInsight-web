@@ -7,12 +7,13 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Users, MapPin, Warehouse, FileCheck,
   Settings, User, Bell, Menu, X, LogOut, Leaf, Building2,
-  Coffee, ClipboardList, Scale, ActivitySquare
+  Coffee, ClipboardList, Scale, ActivitySquare, Shield
 } from 'lucide-react'
 
 interface Props {
   children: React.ReactNode
   coopName: string
+  isPlatformAdmin?: boolean
 }
 
 const NAV_ITEMS = [
@@ -27,7 +28,7 @@ const NAV_ITEMS = [
   { label: 'System Health',    href: '/dashboard/cooperative/system',        icon: ActivitySquare  },
 ]
 
-export default function CoopDashboardShell({ children, coopName }: Props) {
+export default function CoopDashboardShell({ children, coopName, isPlatformAdmin }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -138,6 +139,14 @@ export default function CoopDashboardShell({ children, coopName }: Props) {
                 >
                   <Settings size={13} /> Account settings
                 </Link>
+                {isPlatformAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs text-amber-400 hover:text-amber-300 hover:bg-zinc-800 transition-colors border-t border-[#2A2D35] mt-1 pt-2"
+                  >
+                    <Shield size={13} /> Admin panel
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-zinc-800 transition-colors"

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Milk, Coffee, Rabbit, Bird,
-  Settings, User, Bell, Menu, X, LogOut, Leaf,
+  Settings, User, Bell, Menu, X, LogOut, Leaf, Shield,
   CreditCard, AlertTriangle, Lock,
 } from 'lucide-react'
 import SubscriptionBanner from './SubscriptionBanner'
@@ -19,6 +19,11 @@ interface Props {
   farmName: string
   farmId: string
   subInfo: SubscriptionInfo
+  // Only true for the small number of accounts that are also rows in
+  // platform_admins (see lib/validate-admin-access.ts) — most farmer
+  // accounts will never have this true, which is why the link below only
+  // renders conditionally rather than always being part of the menu.
+  isPlatformAdmin?: boolean
 }
 
 const NAV_ITEMS = [
@@ -34,7 +39,7 @@ const NAV_ITEMS = [
 // Routes that are always accessible regardless of subscription status
 const FREE_ROUTES = ['/dashboard/billing', '/dashboard/settings', '/dashboard']
 
-export default function DashboardShell({ children, farmName, farmId, subInfo }: Props) {
+export default function DashboardShell({ children, farmName, farmId, subInfo, isPlatformAdmin }: Props) {
   const pathname    = usePathname()
   const router      = useRouter()
   const [sidebarOpen,  setSidebarOpen]  = useState(false)
@@ -168,6 +173,14 @@ export default function DashboardShell({ children, farmName, farmId, subInfo }: 
                 >
                   <CreditCard size={13} /> Billing
                 </Link>
+                {isPlatformAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs text-amber-400 hover:text-amber-300 hover:bg-zinc-800 transition-colors border-t border-zinc-800 mt-1 pt-2"
+                  >
+                    <Shield size={13} /> Admin panel
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-zinc-800 transition-colors"
