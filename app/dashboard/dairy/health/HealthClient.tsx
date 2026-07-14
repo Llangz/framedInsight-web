@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, AlertCircle, CheckCircle2, Info } from 'lucide-react'
 import { recordHealthEvent } from './actions'
+import { queueDairyEvent } from '@/lib/offline-db'
 
 interface HealthClientProps {
+  farmId: string
   initialCows: any[]
   initialHistory: any[]
 }
@@ -38,7 +40,7 @@ const RECORD_TYPE_CLASSES: Record<string, string> = {
   checkup:     'text-emerald-400 border-emerald-900/40 bg-emerald-950/30',
 }
 
-export default function HealthClient({ initialCows, initialHistory }: HealthClientProps) {
+export default function HealthClient({ farmId, initialCows, initialHistory }: HealthClientProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -61,12 +63,91 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  // health_records' real live columns (cow_id/disease/drug_name/treatment/
+  // withdrawal_days/safe_meat_date/safe_milk_date) are not the field names
+  // this form collects, and per-record-type mapping (e.g. vaccination
+  // prefixing "disease" with "Vaccination: ") plus the derived
+  // safe-to-sell dates are computed server-side in recordHealthEvent. The
+  // offline queue insert bypasses that action entirely, so the same
+  // mapping is replicated here (same discipline as every other
+  // offline-queued form in the app).
+  function toHealthInsert() {
+    const withdrawalDays = form.withdrawal_period_days ? parseInt(form.withdrawal_period_days) : null
+    const cost = form.cost ? parseFloat(form.cost) : null
+
+    if (form.record_type === 'vaccination') {
+      return {
+        cow_id: form.animal_id,
+        treatment_date: form.treatment_date,
+        disease: `Vaccination: ${form.health_issue}`,
+        drug_name: form.health_issue,
+        vet_name: form.veterinarian || null,
+        treatment: 'Vaccination',
+        notes: form.notes || null,
+      }
+    }
+
+    const safeDate = withdrawalDays
+      ? new Date(new Date(form.treatment_date).getTime() + withdrawalDays * 86_400_000).toISOString().split('T')[0]
+      : null
+
+    return {
+      cow_id: form.animal_id,
+      treatment_date: form.treatment_date,
+      disease: form.health_issue,
+      drug_name: form.medication || null,
+      dosage: form.dosage && form.dosage_unit ? `${form.dosage} ${form.dosage_unit}` : (form.dosage || null),
+      treatment: form.record_type === 'diagnosis' ? 'Diagnosis' : form.record_type === 'checkup' ? 'Checkup' : 'Treatment',
+      vet_name: form.veterinarian || null,
+      cost,
+      withdrawal_days: withdrawalDays,
+      safe_meat_date: safeDate,
+      safe_milk_date: safeDate,
+      symptoms: form.notes || null,
+      notes: form.notes || null,
+    }
+  }
+
+  const resetForm = () => setForm({
+    animal_id: '', record_type: 'treatment', health_issue: '',
+    medication: '', dosage: '', dosage_unit: 'ml',
+    treatment_date: new Date().toISOString().split('T')[0],
+    withdrawal_period_days: '0', veterinarian: '', cost: '', notes: '',
+  })
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.animal_id) { setError('Select a cow'); return }
     if (!form.health_issue) { setError('Select the health issue or vaccine type'); return }
     setLoading(true)
     setError('')
+
+    // OFFLINE FALLBACK: recordHealthEvent() is a server action — a plain
+    // fetch under the hood — so calling it with no connection just throws
+    // a raw "Failed to fetch" that setError() would show verbatim to the
+    // farmer. Queue it locally instead, same as every other dairy/poultry
+    // record form already does, so this reads as "saved offline" instead
+    // of "broken."
+    if (!navigator.onLine) {
+      try {
+        await queueDairyEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'health_check',
+          farmId,
+          referenceId: form.animal_id,
+          payload: toHealthInsert(),
+        })
+        setSuccess('Saved offline — will sync when connected.')
+        resetForm()
+        setTimeout(() => { router.refresh(); setTab('history') }, 2000)
+      } catch (err: any) {
+        setError(err.message || 'Could not save offline')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     try {
       const result = await recordHealthEvent(form)
       if (!result.success) {
@@ -74,14 +155,30 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
         return
       }
       setSuccess(`${form.record_type === 'vaccination' ? 'Vaccination' : 'Health'} record saved!`)
-      setForm({
-        animal_id: '', record_type: 'treatment', health_issue: '',
-        medication: '', dosage: '', dosage_unit: 'ml',
-        treatment_date: new Date().toISOString().split('T')[0],
-        withdrawal_period_days: '0', veterinarian: '', cost: '', notes: '',
-      })
+      resetForm()
       setTimeout(() => { router.refresh(); setTab('history') }, 2000)
     } catch (err: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than showing
+      // a raw network error.
+      if (!navigator.onLine) {
+        try {
+          await queueDairyEvent({
+            eventId: crypto.randomUUID(),
+            entityType: 'health_check',
+            farmId,
+            referenceId: form.animal_id,
+            payload: toHealthInsert(),
+          })
+          setSuccess('Saved offline — will sync when connected.')
+          resetForm()
+          setTimeout(() => { router.refresh(); setTab('history') }, 2000)
+          return
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Could not save offline')
+          return
+        }
+      }
       setError(err.message || 'Failed to record health event')
     } finally {
       setLoading(false)

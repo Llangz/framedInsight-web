@@ -39,6 +39,6 @@ export default async function BreedingPage() {
   // Filter to only this farm's breeding events (though server-side should ideally handle this in the query)
   const farmEvents = events?.filter((e: any) => e.cows?.farm_id === fId) || [];
 
-  return <BreedingClient initialCows={cows || []} initialHistory={farmEvents} />;
+  return <BreedingClient farmId={fId} initialCows={cows || []} initialHistory={farmEvents} />;
 }
 

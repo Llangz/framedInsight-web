@@ -27,5 +27,5 @@ export default async function AddWeightRecordPage() {
     .eq("status", "active")
     .order("animal_tag");
 
-  return <WeightRecordClient animals={animals || []} />;
+  return <WeightRecordClient animals={animals || []} farmId={fm.farm_id} />;
 }

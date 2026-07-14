@@ -48,9 +48,16 @@ interface CoffeeOfflineEvent {
 
 interface SmallRuminantOfflineEvent {
   eventId: string
-  entityType: "small_ruminant_health" | "small_ruminant_weight" | "small_ruminant_sale" | "small_ruminant_breeding"
+  entityType:
+    | "small_ruminant_health"
+    | "small_ruminant_weight"
+    | "small_ruminant_sale"
+    | "small_ruminant_breeding"
+    | "small_ruminant_milk"
+    | "small_ruminant_registration"
+    | "small_ruminant_kidding"
   farmId: string
-  referenceId?: string // animal id
+  referenceId?: string // animal id (registration/milk/weight/health) or breeding record id (kidding)
   payload: Record<string, any>
   isoTimestamp: string
 }
@@ -582,17 +589,47 @@ async function processSmallRuminantEvent(
         return true
       }
 
+      /* ───────────── WEIGHT (append-only + ADG calc) ─────────────
+       * Mirrors weights/actions.ts's recordWeight: average_daily_gain is
+       * computed server-side from the animal's most recent prior weigh-in,
+       * never sent by the client. Without this the offline path would
+       * insert weight_kg/body_condition_score/notes but silently skip ADG
+       * on every offline-recorded weight — a quiet accuracy gap the farmer
+       * would have no way to notice from the UI. */
       case "small_ruminant_weight": {
         const { data: exists } = await supabase
           .from("weight_records").select("id").eq("id", eventId).maybeSingle()
         if (!exists) {
+          const { data: prevWeight } = await supabase
+            .from("weight_records")
+            .select("weight_kg, record_date")
+            .eq("animal_id", referenceId)
+            .order("record_date", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          let adg: number | null = null
+          if (prevWeight) {
+            const days = (new Date(payload.record_date).getTime() - new Date(prevWeight.record_date).getTime()) / 86_400_000
+            if (days > 0) {
+              adg = (payload.weight_kg - prevWeight.weight_kg) / days
+            }
+          }
+
           await supabase.from("weight_records").insert({
-            id: eventId, animal_id: referenceId, ...payload,
+            id: eventId, animal_id: referenceId, ...payload, average_daily_gain: adg,
           })
         }
         return true
       }
 
+      /* ───────────── SALE (append-only + sold-status side effect) ─────────────
+       * Mirrors sales/actions.ts's recordSale: selling a live animal, meat,
+       * or breeding stock (anything but a milk sale) also flips the animal's
+       * status to "sold". The pre-fix offline path only inserted the sales
+       * row, so an offline animal sale left the herd list still showing the
+       * animal as active indefinitely (until someone happened to edit it
+       * online), risking it being recorded against twice. */
       case "small_ruminant_sale": {
         const { data: exists } = await supabase
           .from("small_ruminant_sales").select("id").eq("id", eventId).maybeSingle()
@@ -600,17 +637,87 @@ async function processSmallRuminantEvent(
           await supabase.from("small_ruminant_sales").insert({
             id: eventId, farm_id: farmId, animal_id: referenceId, ...payload,
           })
+
+          if (payload.sale_type !== "milk" && referenceId) {
+            await supabase.from("small_ruminants").update({ status: "sold" }).eq("id", referenceId)
+          }
         }
         return true
       }
 
+      /* ───────────── BREEDING SERVICE (append-only) ─────────────
+       * Mirrors breeding/actions.ts's recordBreedingService — a straight
+       * insert, referenceId is the dam being served. */
       case "small_ruminant_breeding": {
         const { data: exists } = await supabase
           .from("small_ruminant_breeding").select("id").eq("id", eventId).maybeSingle()
         if (!exists) {
           await supabase.from("small_ruminant_breeding").insert({
+            id: eventId, dam_id: referenceId, ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── MILK (append-only) ─────────────
+       * Mirrors milk/add/page.tsx's direct insert into goat_milk_records.
+       * total_milk is a GENERATED ALWAYS column on the live table (same bug
+       * class as coffee_activities.total_cost) so it must never be sent —
+       * the client-side payload already omits it. */
+      case "small_ruminant_milk": {
+        const { data: exists } = await supabase
+          .from("goat_milk_records").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("goat_milk_records").insert({
             id: eventId, animal_id: referenceId, ...payload,
           })
+        }
+        return true
+      }
+
+      /* ───────────── REGISTRATION (append-only) ─────────────
+       * Mirrors add/page.tsx's registerAnimal insert into small_ruminants.
+       * Like coffee_plot_create, the client generates the id offline
+       * (eventId) so the new animal can be referenced (e.g. for a follow-up
+       * offline weight/health record in the same session) before sync ever
+       * runs. */
+      case "small_ruminant_registration": {
+        const { data: exists } = await supabase
+          .from("small_ruminants").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("small_ruminants").insert({
+            id: eventId, farm_id: farmId, ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── KIDDING / LAMBING (append + breeding-record update) ─────────────
+       * Mirrors breeding/kidding/actions.ts's recordKidding (as fixed
+       * alongside this sync handler — see actions.ts for the
+       * breeding_id → breeding_event_id column-name correction).
+       * referenceId is the small_ruminant_breeding record id being closed
+       * out; payload carries the kidding_lambing_records fields plus
+       * number_of_offspring, which belongs on the breeding record, not the
+       * kidding record itself. */
+      case "small_ruminant_kidding": {
+        const { number_of_offspring, ...kiddingFields } = payload
+
+        const { data: exists } = await supabase
+          .from("kidding_lambing_records").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("kidding_lambing_records").insert({
+            id: eventId,
+            dam_id: kiddingFields.dam_id,
+            delivery_date: kiddingFields.delivery_date,
+            breeding_event_id: referenceId,
+            ...kiddingFields,
+          })
+
+          await supabase.from("small_ruminant_breeding").update({
+            actual_delivery_date: kiddingFields.delivery_date,
+            number_of_offspring: number_of_offspring ?? undefined,
+          }).eq("id", referenceId)
         }
         return true
       }

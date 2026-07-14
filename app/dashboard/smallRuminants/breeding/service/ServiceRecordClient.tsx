@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { recordBreedingService } from "../actions";
+import { queueSmallRuminantEvent } from "@/lib/offline-db";
 
 interface Animal {
   id: string;
@@ -17,6 +18,7 @@ export default function ServiceRecordClient({ females, males, farmId, preselecte
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedOffline, setSavedOffline] = useState(false);
 
   // AnimalDetailClient links here with ?animal=<id> so "Record Breeding"
   // from an animal's page doesn't force re-picking her from the dropdown.
@@ -57,6 +59,24 @@ export default function ServiceRecordClient({ females, males, farmId, preselecte
         pregnancy_result: "pending",
         notes: notes || null,
       };
+      // OFFLINE FALLBACK: recordBreedingService() is a server action — a
+      // plain fetch under the hood — so calling it with no connection just
+      // throws a raw "Failed to fetch" that setError() would show verbatim
+      // to the farmer. Queue it locally instead, same as every other
+      // offline-queued form in the app.
+      if (!navigator.onLine) {
+        await queueSmallRuminantEvent({
+          eventId: crypto.randomUUID(),
+          entityType: "small_ruminant_breeding",
+          farmId,
+          referenceId: damId,
+          payload: breedingData,
+        });
+        setSavedOffline(true);
+        setTimeout(() => router.push("/dashboard/smallRuminants/breeding"), 1200);
+        return;
+      }
+
       const result = await recordBreedingService(breedingData);
       if (!result.success) {
         setError(result.error || 'Failed to record breeding service');
@@ -64,6 +84,37 @@ export default function ServiceRecordClient({ females, males, farmId, preselecte
       }
       router.push("/dashboard/smallRuminants/breeding");
     } catch (e: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than
+      // showing a raw network error.
+      if (!navigator.onLine) {
+        try {
+          await queueSmallRuminantEvent({
+            eventId: crypto.randomUUID(),
+            entityType: "small_ruminant_breeding",
+            farmId,
+            referenceId: damId,
+            payload: {
+              dam_id: damId,
+              heat_date: heatDate || null,
+              service_date: serviceDate,
+              service_type: serviceType,
+              sire_id: serviceType === "natural" && sireId !== "external" ? sireId : null,
+              sire_breed: serviceType === "AI" || sireId === "external" ? sireBreed : null,
+              sire_tag: serviceType === "AI" || sireId === "external" ? sireTag : null,
+              expected_delivery_date: expectedDelivery,
+              pregnancy_result: "pending",
+              notes: notes || null,
+            },
+          });
+          setSavedOffline(true);
+          setTimeout(() => router.push("/dashboard/smallRuminants/breeding"), 1200);
+          return;
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Could not save offline');
+          return;
+        }
+      }
       setError(e.message);
     } finally {
       setLoading(false);
@@ -105,6 +156,7 @@ export default function ServiceRecordClient({ females, males, farmId, preselecte
             </div>
           )}
           {error && <div className="text-red-600 text-sm">{error}</div>}
+          {savedOffline && <div className="text-emerald-600 text-sm">Saved offline — will sync when connected.</div>}
           <button type="submit" disabled={loading} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold">{loading ? "Saving..." : "Record Service"}</button>
         </form>
       </div>

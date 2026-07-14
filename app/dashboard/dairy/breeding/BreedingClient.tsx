@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, AlertCircle, CheckCircle2, Heart, Info } from 'lucide-react'
 import { recordBreeding } from './actions'
+import { queueDairyEvent } from '@/lib/offline-db'
 
 interface BreedingClientProps {
+  farmId: string
   initialCows: any[]
   initialHistory: any[]
 }
@@ -25,7 +27,7 @@ const RESULT_CLASSES: Record<string, string> = {
   pending:   'text-amber-400 border-amber-900/40 bg-amber-950/30',
 }
 
-export default function BreedingClient({ initialCows, initialHistory }: BreedingClientProps) {
+export default function BreedingClient({ farmId, initialCows, initialHistory }: BreedingClientProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -48,10 +50,67 @@ export default function BreedingClient({ initialCows, initialHistory }: Breeding
         .toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—'
 
+  // breeding_events' real live columns are cow_id / bull_code / sire_breed
+  // — not the dam_id / sire_id / sire_name field names this form collects
+  // — and expected_calving_date is computed here, not sent by the client
+  // to the server action. recordBreeding() does this remapping before
+  // insert; the offline queue insert bypasses that action entirely, so it
+  // must be remapped here too (same discipline as every other
+  // offline-queued form in the app).
+  function toBreedingInsert() {
+    const serviceDate = new Date(form.service_date)
+    const calvingDate = new Date(serviceDate.getTime() + 283 * 24 * 60 * 60 * 1000)
+    return {
+      cow_id: form.dam_id,
+      service_date: form.service_date,
+      service_type: form.service_type || 'AI',
+      bull_code: form.sire_id || null,
+      sire_breed: form.sire_name || null,
+      expected_calving_date: calvingDate.toISOString().split('T')[0],
+      notes: form.notes || null,
+    }
+  }
+
+  const resetForm = () => setForm({
+    dam_id: '',
+    service_date: new Date().toISOString().split('T')[0],
+    service_type: 'AI',
+    sire_id: '',
+    sire_name: '',
+    notes: '',
+  })
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    // OFFLINE FALLBACK: recordBreeding() is a server action — a plain fetch
+    // under the hood — so calling it with no connection just throws a raw
+    // "Failed to fetch" that setError() would show verbatim to the farmer.
+    // Queue it locally instead, same as every other dairy/poultry record
+    // form already does, so this reads as "saved offline" instead of
+    // "broken."
+    if (!navigator.onLine) {
+      try {
+        await queueDairyEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'breeding_event',
+          farmId,
+          referenceId: form.dam_id,
+          payload: toBreedingInsert(),
+        })
+        setSuccess('Saved offline — will sync when connected.')
+        resetForm()
+        setTimeout(() => { router.refresh(); setTab('history') }, 2000)
+      } catch (err: any) {
+        setError(err.message || 'Could not save offline')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     try {
       const result = await recordBreeding(form)
       if (!result.success) {
@@ -59,16 +118,30 @@ export default function BreedingClient({ initialCows, initialHistory }: Breeding
         return
       }
       setSuccess('Breeding record saved!')
-      setForm({
-        dam_id: '',
-        service_date: new Date().toISOString().split('T')[0],
-        service_type: 'AI',
-        sire_id: '',
-        sire_name: '',
-        notes: '',
-      })
+      resetForm()
       setTimeout(() => { router.refresh(); setTab('history') }, 2000)
     } catch (err: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than showing
+      // a raw network error.
+      if (!navigator.onLine) {
+        try {
+          await queueDairyEvent({
+            eventId: crypto.randomUUID(),
+            entityType: 'breeding_event',
+            farmId,
+            referenceId: form.dam_id,
+            payload: toBreedingInsert(),
+          })
+          setSuccess('Saved offline — will sync when connected.')
+          resetForm()
+          setTimeout(() => { router.refresh(); setTab('history') }, 2000)
+          return
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Could not save offline')
+          return
+        }
+      }
       setError(err.message || 'Failed to record breeding event')
     } finally {
       setLoading(false)

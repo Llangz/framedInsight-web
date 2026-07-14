@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { queuePoultryEvent } from '@/lib/offline-db'
 import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 interface Batch {
@@ -24,7 +25,7 @@ interface Batch {
   notes: string | null
 }
 
-interface Props { batch: Batch }
+interface Props { batch: Batch; farmId: string }
 
 const BREEDS: Record<string, string[]> = {
   layer:        ['Isa Brown', 'Lohmann Brown', 'KALRO Improved', 'Hyline Brown', 'Nick Chick', 'Other'],
@@ -52,9 +53,10 @@ function Row({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>
 }
 
-export default function EditBatchClient({ batch }: Props) {
+export default function EditBatchClient({ batch, farmId }: Props) {
   const router = useRouter()
   const supabase = createClient()
+  const [savedOffline, setSavedOffline] = useState(false)
 
   const isLayerType = batch.bird_type === 'layer' || batch.bird_type === 'dual_purpose'
   const missingFields = [
@@ -106,13 +108,63 @@ export default function EditBatchClient({ batch }: Props) {
       updated_at:              new Date().toISOString(),
     }
 
+    // OFFLINE FALLBACK: this form calls supabase.from(...).update()
+    // directly with no offline path, despite poultry_batch_update already
+    // being a supported entity type end-to-end (IndexedDB store, sync
+    // handler's last-write-wins case) that simply nothing ever queued
+    // into. A lost connection while editing a batch meant a raw Supabase
+    // network error and the edit silently not applying.
+    if (!navigator.onLine) {
+      try {
+        await queuePoultryEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'poultry_batch_update',
+          farmId,
+          batchId: batch.id,
+          payload: updates,
+        })
+        setLoading(false)
+        setSavedOffline(true)
+        setSuccess(true)
+        setTimeout(() => router.push(`/dashboard/poultry/flock/${batch.id}`), 1200)
+      } catch (err: any) {
+        setLoading(false)
+        setError(err.message || 'Could not save offline')
+      }
+      return
+    }
+
     const { error: err } = await (supabase as any)
       .from('poultry_batches')
       .update(updates)
       .eq('id', batch.id)
 
     setLoading(false)
-    if (err) { setError(err.message); return }
+    if (err) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than
+      // showing a raw network error.
+      if (!navigator.onLine) {
+        try {
+          await queuePoultryEvent({
+            eventId: crypto.randomUUID(),
+            entityType: 'poultry_batch_update',
+            farmId,
+            batchId: batch.id,
+            payload: updates,
+          })
+          setSavedOffline(true)
+          setSuccess(true)
+          setTimeout(() => router.push(`/dashboard/poultry/flock/${batch.id}`), 1200)
+          return
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Could not save offline')
+          return
+        }
+      }
+      setError(err.message)
+      return
+    }
     setSuccess(true)
     setTimeout(() => router.push(`/dashboard/poultry/flock/${batch.id}`), 1200)
   }
@@ -121,8 +173,12 @@ export default function EditBatchClient({ batch }: Props) {
     return (
       <div className="max-w-lg mx-auto px-6 py-16 text-center">
         <CheckCircle2 size={40} className="text-emerald-500 mx-auto mb-4" />
-        <h2 className="text-white font-semibold text-lg mb-1">Batch updated!</h2>
-        <p className="text-[#6B7280] text-sm">Redirecting…</p>
+        <h2 className="text-white font-semibold text-lg mb-1">
+          {savedOffline ? 'Saved offline!' : 'Batch updated!'}
+        </h2>
+        <p className="text-[#6B7280] text-sm">
+          {savedOffline ? 'Will sync when connected. Redirecting…' : 'Redirecting…'}
+        </p>
       </div>
     )
   }

@@ -1,0 +1,1443 @@
+diff --git a/app/dashboard/dairy/add-cow/AddCowClient.tsx b/app/dashboard/dairy/add-cow/AddCowClient.tsx
+index ab163e9..71e5b69 100644
+--- a/app/dashboard/dairy/add-cow/AddCowClient.tsx
++++ b/app/dashboard/dairy/add-cow/AddCowClient.tsx
+@@ -4,6 +4,7 @@ import { useState } from 'react'
+ import { useRouter } from 'next/navigation'
+ import Link from 'next/link'
+ import { addCow } from './actions'
++import { queueDairyEvent } from '@/lib/offline-db'
+ import {
+   ArrowLeft,
+   Loader2,
+@@ -64,11 +65,12 @@ const inputCls = (hasError?: boolean) =>
+       : 'border-[#2A2D35] focus:ring-emerald-700 focus:border-emerald-700'
+   }`
+ 
+-export default function AddCowClient() {
++export default function AddCowClient({ farmId }: { farmId: string }) {
+   const router = useRouter()
+   const [loading, setLoading] = useState(false)
+   const [error, setError] = useState('')
+   const [success, setSuccess] = useState(false)
++  const [savedOffline, setSavedOffline] = useState(false)
+   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+ 
+   const [form, setForm] = useState({
+@@ -103,11 +105,53 @@ export default function AddCowClient() {
+     return Object.keys(errs).length === 0
+   }
+ 
++  // cows' real live columns are cow_tag / birth_date / name — not the
++  // animal_id / date_of_birth field names this form collects. addCow()'s
++  // server action does this remapping before insert; the offline queue
++  // insert bypasses that action entirely, so it must be remapped here too
++  // (same discipline as every other offline-queued form in the app).
++  function toCowInsert() {
++    return {
++      cow_tag: (form.tag_number || form.animal_id).trim(),
++      breed: form.breed || null,
++      birth_date: form.date_of_birth || null,
++      purchase_date: form.purchase_date || null,
++      purchase_price: form.purchase_price ? parseFloat(form.purchase_price) : null,
++      status: form.status || 'active',
++      name: form.animal_id || null,
++    }
++  }
++
+   async function handleSubmit(e: React.FormEvent) {
+     e.preventDefault()
+     if (!validate()) return
+     setLoading(true)
+     setError('')
++
++    // OFFLINE FALLBACK: addCow() is a server action — a plain fetch under
++    // the hood — so calling it with no connection just throws a raw
++    // "Failed to fetch" that setError() would show verbatim to the farmer.
++    // Queue it locally instead, same as every dairy/poultry record form
++    // already does, so this reads as "saved offline" instead of "broken."
++    if (!navigator.onLine) {
++      try {
++        await queueDairyEvent({
++          eventId: crypto.randomUUID(),
++          entityType: 'cow_registration',
++          farmId,
++          payload: toCowInsert(),
++        })
++        setSuccess(true)
++        setSavedOffline(true)
++        setTimeout(() => router.push('/dashboard/dairy/herd'), 1500)
++      } catch (err: any) {
++        setError(err.message || 'Could not save offline')
++      } finally {
++        setLoading(false)
++      }
++      return
++    }
++
+     try {
+       const result = await addCow(form)
+       if (!result.success) {
+@@ -117,6 +161,26 @@ export default function AddCowClient() {
+       setSuccess(true)
+       setTimeout(() => router.push('/dashboard/dairy/herd'), 1500)
+     } catch (err: any) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than showing
++      // a raw network error.
++      if (!navigator.onLine) {
++        try {
++          await queueDairyEvent({
++            eventId: crypto.randomUUID(),
++            entityType: 'cow_registration',
++            farmId,
++            payload: toCowInsert(),
++          })
++          setSuccess(true)
++          setSavedOffline(true)
++          setTimeout(() => router.push('/dashboard/dairy/herd'), 1500)
++          return
++        } catch (queueErr: any) {
++          setError(queueErr.message || 'Could not save offline')
++          return
++        }
++      }
+       setError(err.message || 'Failed to add cow')
+     } finally {
+       setLoading(false)
+@@ -143,7 +207,9 @@ export default function AddCowClient() {
+         {success && (
+           <div className="flex items-center gap-2 p-3 mb-6 rounded-md border border-emerald-800/50 bg-emerald-950/30">
+             <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />
+-            <p className="text-sm text-emerald-300">Cow added successfully. Redirecting…</p>
++            <p className="text-sm text-emerald-300">
++              {savedOffline ? 'Saved offline — will sync when connected.' : 'Cow added successfully. Redirecting…'}
++            </p>
+           </div>
+         )}
+ 
+diff --git a/app/dashboard/dairy/add-cow/page.tsx b/app/dashboard/dairy/add-cow/page.tsx
+index 8586799..8fec068 100644
+--- a/app/dashboard/dairy/add-cow/page.tsx
++++ b/app/dashboard/dairy/add-cow/page.tsx
+@@ -1,5 +1,24 @@
++import { createClient } from "@/lib/supabase/server";
++import { redirect } from "next/navigation";
+ import AddCowClient from "./AddCowClient";
+ 
+-export default function AddCowPage() {
+-  return <AddCowClient />;
++export default async function AddCowPage() {
++  const supabase = await createClient();
++
++  const { data: { user } } = await supabase.auth.getUser();
++  if (!user) {
++    redirect("/auth/login");
++  }
++
++  const { data: farmManager } = await supabase
++    .from("farm_managers")
++    .select("farm_id")
++    .eq("user_id", user.id)
++    .maybeSingle();
++
++  if (!farmManager) {
++    redirect("/onboarding");
++  }
++
++  return <AddCowClient farmId={farmManager.farm_id} />;
+ }
+diff --git a/app/dashboard/dairy/breeding/BreedingClient.tsx b/app/dashboard/dairy/breeding/BreedingClient.tsx
+index 6f99a7b..fd4d123 100644
+--- a/app/dashboard/dairy/breeding/BreedingClient.tsx
++++ b/app/dashboard/dairy/breeding/BreedingClient.tsx
+@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation'
+ import Link from 'next/link'
+ import { ArrowLeft, AlertCircle, CheckCircle2, Heart, Info } from 'lucide-react'
+ import { recordBreeding } from './actions'
++import { queueDairyEvent } from '@/lib/offline-db'
+ 
+ interface BreedingClientProps {
++  farmId: string
+   initialCows: any[]
+   initialHistory: any[]
+ }
+@@ -25,7 +27,7 @@ const RESULT_CLASSES: Record<string, string> = {
+   pending:   'text-amber-400 border-amber-900/40 bg-amber-950/30',
+ }
+ 
+-export default function BreedingClient({ initialCows, initialHistory }: BreedingClientProps) {
++export default function BreedingClient({ farmId, initialCows, initialHistory }: BreedingClientProps) {
+   const router = useRouter()
+   const [loading, setLoading] = useState(false)
+   const [error, setError] = useState('')
+@@ -48,10 +50,67 @@ export default function BreedingClient({ initialCows, initialHistory }: Breeding
+         .toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+     : '—'
+ 
++  // breeding_events' real live columns are cow_id / bull_code / sire_breed
++  // — not the dam_id / sire_id / sire_name field names this form collects
++  // — and expected_calving_date is computed here, not sent by the client
++  // to the server action. recordBreeding() does this remapping before
++  // insert; the offline queue insert bypasses that action entirely, so it
++  // must be remapped here too (same discipline as every other
++  // offline-queued form in the app).
++  function toBreedingInsert() {
++    const serviceDate = new Date(form.service_date)
++    const calvingDate = new Date(serviceDate.getTime() + 283 * 24 * 60 * 60 * 1000)
++    return {
++      cow_id: form.dam_id,
++      service_date: form.service_date,
++      service_type: form.service_type || 'AI',
++      bull_code: form.sire_id || null,
++      sire_breed: form.sire_name || null,
++      expected_calving_date: calvingDate.toISOString().split('T')[0],
++      notes: form.notes || null,
++    }
++  }
++
++  const resetForm = () => setForm({
++    dam_id: '',
++    service_date: new Date().toISOString().split('T')[0],
++    service_type: 'AI',
++    sire_id: '',
++    sire_name: '',
++    notes: '',
++  })
++
+   async function handleSubmit(e: React.FormEvent) {
+     e.preventDefault()
+     setLoading(true)
+     setError('')
++
++    // OFFLINE FALLBACK: recordBreeding() is a server action — a plain fetch
++    // under the hood — so calling it with no connection just throws a raw
++    // "Failed to fetch" that setError() would show verbatim to the farmer.
++    // Queue it locally instead, same as every other dairy/poultry record
++    // form already does, so this reads as "saved offline" instead of
++    // "broken."
++    if (!navigator.onLine) {
++      try {
++        await queueDairyEvent({
++          eventId: crypto.randomUUID(),
++          entityType: 'breeding_event',
++          farmId,
++          referenceId: form.dam_id,
++          payload: toBreedingInsert(),
++        })
++        setSuccess('Saved offline — will sync when connected.')
++        resetForm()
++        setTimeout(() => { router.refresh(); setTab('history') }, 2000)
++      } catch (err: any) {
++        setError(err.message || 'Could not save offline')
++      } finally {
++        setLoading(false)
++      }
++      return
++    }
++
+     try {
+       const result = await recordBreeding(form)
+       if (!result.success) {
+@@ -59,16 +118,30 @@ export default function BreedingClient({ initialCows, initialHistory }: Breeding
+         return
+       }
+       setSuccess('Breeding record saved!')
+-      setForm({
+-        dam_id: '',
+-        service_date: new Date().toISOString().split('T')[0],
+-        service_type: 'AI',
+-        sire_id: '',
+-        sire_name: '',
+-        notes: '',
+-      })
++      resetForm()
+       setTimeout(() => { router.refresh(); setTab('history') }, 2000)
+     } catch (err: any) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than showing
++      // a raw network error.
++      if (!navigator.onLine) {
++        try {
++          await queueDairyEvent({
++            eventId: crypto.randomUUID(),
++            entityType: 'breeding_event',
++            farmId,
++            referenceId: form.dam_id,
++            payload: toBreedingInsert(),
++          })
++          setSuccess('Saved offline — will sync when connected.')
++          resetForm()
++          setTimeout(() => { router.refresh(); setTab('history') }, 2000)
++          return
++        } catch (queueErr: any) {
++          setError(queueErr.message || 'Could not save offline')
++          return
++        }
++      }
+       setError(err.message || 'Failed to record breeding event')
+     } finally {
+       setLoading(false)
+diff --git a/app/dashboard/dairy/breeding/page.tsx b/app/dashboard/dairy/breeding/page.tsx
+index 4b34700..c30f88b 100644
+--- a/app/dashboard/dairy/breeding/page.tsx
++++ b/app/dashboard/dairy/breeding/page.tsx
+@@ -39,6 +39,6 @@ export default async function BreedingPage() {
+   // Filter to only this farm's breeding events (though server-side should ideally handle this in the query)
+   const farmEvents = events?.filter((e: any) => e.cows?.farm_id === fId) || [];
+ 
+-  return <BreedingClient initialCows={cows || []} initialHistory={farmEvents} />;
++  return <BreedingClient farmId={fId} initialCows={cows || []} initialHistory={farmEvents} />;
+ }
+ 
+diff --git a/app/dashboard/dairy/health/HealthClient.tsx b/app/dashboard/dairy/health/HealthClient.tsx
+index 45bc4bb..b8a64ec 100644
+--- a/app/dashboard/dairy/health/HealthClient.tsx
++++ b/app/dashboard/dairy/health/HealthClient.tsx
+@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation'
+ import Link from 'next/link'
+ import { ArrowLeft, AlertCircle, CheckCircle2, Info } from 'lucide-react'
+ import { recordHealthEvent } from './actions'
++import { queueDairyEvent } from '@/lib/offline-db'
+ 
+ interface HealthClientProps {
++  farmId: string
+   initialCows: any[]
+   initialHistory: any[]
+ }
+@@ -38,7 +40,7 @@ const RECORD_TYPE_CLASSES: Record<string, string> = {
+   checkup:     'text-emerald-400 border-emerald-900/40 bg-emerald-950/30',
+ }
+ 
+-export default function HealthClient({ initialCows, initialHistory }: HealthClientProps) {
++export default function HealthClient({ farmId, initialCows, initialHistory }: HealthClientProps) {
+   const router = useRouter()
+   const [loading, setLoading] = useState(false)
+   const [error, setError] = useState('')
+@@ -61,12 +63,91 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
+ 
+   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+ 
++  // health_records' real live columns (cow_id/disease/drug_name/treatment/
++  // withdrawal_days/safe_meat_date/safe_milk_date) are not the field names
++  // this form collects, and per-record-type mapping (e.g. vaccination
++  // prefixing "disease" with "Vaccination: ") plus the derived
++  // safe-to-sell dates are computed server-side in recordHealthEvent. The
++  // offline queue insert bypasses that action entirely, so the same
++  // mapping is replicated here (same discipline as every other
++  // offline-queued form in the app).
++  function toHealthInsert() {
++    const withdrawalDays = form.withdrawal_period_days ? parseInt(form.withdrawal_period_days) : null
++    const cost = form.cost ? parseFloat(form.cost) : null
++
++    if (form.record_type === 'vaccination') {
++      return {
++        cow_id: form.animal_id,
++        treatment_date: form.treatment_date,
++        disease: `Vaccination: ${form.health_issue}`,
++        drug_name: form.health_issue,
++        vet_name: form.veterinarian || null,
++        treatment: 'Vaccination',
++        notes: form.notes || null,
++      }
++    }
++
++    const safeDate = withdrawalDays
++      ? new Date(new Date(form.treatment_date).getTime() + withdrawalDays * 86_400_000).toISOString().split('T')[0]
++      : null
++
++    return {
++      cow_id: form.animal_id,
++      treatment_date: form.treatment_date,
++      disease: form.health_issue,
++      drug_name: form.medication || null,
++      dosage: form.dosage && form.dosage_unit ? `${form.dosage} ${form.dosage_unit}` : (form.dosage || null),
++      treatment: form.record_type === 'diagnosis' ? 'Diagnosis' : form.record_type === 'checkup' ? 'Checkup' : 'Treatment',
++      vet_name: form.veterinarian || null,
++      cost,
++      withdrawal_days: withdrawalDays,
++      safe_meat_date: safeDate,
++      safe_milk_date: safeDate,
++      symptoms: form.notes || null,
++      notes: form.notes || null,
++    }
++  }
++
++  const resetForm = () => setForm({
++    animal_id: '', record_type: 'treatment', health_issue: '',
++    medication: '', dosage: '', dosage_unit: 'ml',
++    treatment_date: new Date().toISOString().split('T')[0],
++    withdrawal_period_days: '0', veterinarian: '', cost: '', notes: '',
++  })
++
+   async function handleSubmit(e: React.FormEvent) {
+     e.preventDefault()
+     if (!form.animal_id) { setError('Select a cow'); return }
+     if (!form.health_issue) { setError('Select the health issue or vaccine type'); return }
+     setLoading(true)
+     setError('')
++
++    // OFFLINE FALLBACK: recordHealthEvent() is a server action — a plain
++    // fetch under the hood — so calling it with no connection just throws
++    // a raw "Failed to fetch" that setError() would show verbatim to the
++    // farmer. Queue it locally instead, same as every other dairy/poultry
++    // record form already does, so this reads as "saved offline" instead
++    // of "broken."
++    if (!navigator.onLine) {
++      try {
++        await queueDairyEvent({
++          eventId: crypto.randomUUID(),
++          entityType: 'health_check',
++          farmId,
++          referenceId: form.animal_id,
++          payload: toHealthInsert(),
++        })
++        setSuccess('Saved offline — will sync when connected.')
++        resetForm()
++        setTimeout(() => { router.refresh(); setTab('history') }, 2000)
++      } catch (err: any) {
++        setError(err.message || 'Could not save offline')
++      } finally {
++        setLoading(false)
++      }
++      return
++    }
++
+     try {
+       const result = await recordHealthEvent(form)
+       if (!result.success) {
+@@ -74,14 +155,30 @@ export default function HealthClient({ initialCows, initialHistory }: HealthClie
+         return
+       }
+       setSuccess(`${form.record_type === 'vaccination' ? 'Vaccination' : 'Health'} record saved!`)
+-      setForm({
+-        animal_id: '', record_type: 'treatment', health_issue: '',
+-        medication: '', dosage: '', dosage_unit: 'ml',
+-        treatment_date: new Date().toISOString().split('T')[0],
+-        withdrawal_period_days: '0', veterinarian: '', cost: '', notes: '',
+-      })
++      resetForm()
+       setTimeout(() => { router.refresh(); setTab('history') }, 2000)
+     } catch (err: any) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than showing
++      // a raw network error.
++      if (!navigator.onLine) {
++        try {
++          await queueDairyEvent({
++            eventId: crypto.randomUUID(),
++            entityType: 'health_check',
++            farmId,
++            referenceId: form.animal_id,
++            payload: toHealthInsert(),
++          })
++          setSuccess('Saved offline — will sync when connected.')
++          resetForm()
++          setTimeout(() => { router.refresh(); setTab('history') }, 2000)
++          return
++        } catch (queueErr: any) {
++          setError(queueErr.message || 'Could not save offline')
++          return
++        }
++      }
+       setError(err.message || 'Failed to record health event')
+     } finally {
+       setLoading(false)
+diff --git a/app/dashboard/dairy/health/page.tsx b/app/dashboard/dairy/health/page.tsx
+index 4bf414a..470a915 100644
+--- a/app/dashboard/dairy/health/page.tsx
++++ b/app/dashboard/dairy/health/page.tsx
+@@ -38,6 +38,6 @@ export default async function HealthPage() {
+   // Filter to only this farm's health records
+   const farmHealthRecords = healthRecords?.filter((r: any) => r.cows?.farm_id === fId) || [];
+ 
+-  return <HealthClient initialCows={cows || []} initialHistory={farmHealthRecords} />;
++  return <HealthClient farmId={fId} initialCows={cows || []} initialHistory={farmHealthRecords} />;
+ }
+ 
+diff --git a/app/dashboard/poultry/flock/[id]/edit/EditBatchClient.tsx b/app/dashboard/poultry/flock/[id]/edit/EditBatchClient.tsx
+index 685b930..74ec249 100644
+--- a/app/dashboard/poultry/flock/[id]/edit/EditBatchClient.tsx
++++ b/app/dashboard/poultry/flock/[id]/edit/EditBatchClient.tsx
+@@ -4,6 +4,7 @@ import { useState } from 'react'
+ import { useRouter } from 'next/navigation'
+ import Link from 'next/link'
+ import { createClient } from '@/lib/supabase/client'
++import { queuePoultryEvent } from '@/lib/offline-db'
+ import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react'
+ 
+ interface Batch {
+@@ -24,7 +25,7 @@ interface Batch {
+   notes: string | null
+ }
+ 
+-interface Props { batch: Batch }
++interface Props { batch: Batch; farmId: string }
+ 
+ const BREEDS: Record<string, string[]> = {
+   layer:        ['Isa Brown', 'Lohmann Brown', 'KALRO Improved', 'Hyline Brown', 'Nick Chick', 'Other'],
+@@ -52,9 +53,10 @@ function Row({ children }: { children: React.ReactNode }) {
+   return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>
+ }
+ 
+-export default function EditBatchClient({ batch }: Props) {
++export default function EditBatchClient({ batch, farmId }: Props) {
+   const router = useRouter()
+   const supabase = createClient()
++  const [savedOffline, setSavedOffline] = useState(false)
+ 
+   const isLayerType = batch.bird_type === 'layer' || batch.bird_type === 'dual_purpose'
+   const missingFields = [
+@@ -106,13 +108,63 @@ export default function EditBatchClient({ batch }: Props) {
+       updated_at:              new Date().toISOString(),
+     }
+ 
++    // OFFLINE FALLBACK: this form calls supabase.from(...).update()
++    // directly with no offline path, despite poultry_batch_update already
++    // being a supported entity type end-to-end (IndexedDB store, sync
++    // handler's last-write-wins case) that simply nothing ever queued
++    // into. A lost connection while editing a batch meant a raw Supabase
++    // network error and the edit silently not applying.
++    if (!navigator.onLine) {
++      try {
++        await queuePoultryEvent({
++          eventId: crypto.randomUUID(),
++          entityType: 'poultry_batch_update',
++          farmId,
++          batchId: batch.id,
++          payload: updates,
++        })
++        setLoading(false)
++        setSavedOffline(true)
++        setSuccess(true)
++        setTimeout(() => router.push(`/dashboard/poultry/flock/${batch.id}`), 1200)
++      } catch (err: any) {
++        setLoading(false)
++        setError(err.message || 'Could not save offline')
++      }
++      return
++    }
++
+     const { error: err } = await (supabase as any)
+       .from('poultry_batches')
+       .update(updates)
+       .eq('id', batch.id)
+ 
+     setLoading(false)
+-    if (err) { setError(err.message); return }
++    if (err) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than
++      // showing a raw network error.
++      if (!navigator.onLine) {
++        try {
++          await queuePoultryEvent({
++            eventId: crypto.randomUUID(),
++            entityType: 'poultry_batch_update',
++            farmId,
++            batchId: batch.id,
++            payload: updates,
++          })
++          setSavedOffline(true)
++          setSuccess(true)
++          setTimeout(() => router.push(`/dashboard/poultry/flock/${batch.id}`), 1200)
++          return
++        } catch (queueErr: any) {
++          setError(queueErr.message || 'Could not save offline')
++          return
++        }
++      }
++      setError(err.message)
++      return
++    }
+     setSuccess(true)
+     setTimeout(() => router.push(`/dashboard/poultry/flock/${batch.id}`), 1200)
+   }
+@@ -121,8 +173,12 @@ export default function EditBatchClient({ batch }: Props) {
+     return (
+       <div className="max-w-lg mx-auto px-6 py-16 text-center">
+         <CheckCircle2 size={40} className="text-emerald-500 mx-auto mb-4" />
+-        <h2 className="text-white font-semibold text-lg mb-1">Batch updated!</h2>
+-        <p className="text-[#6B7280] text-sm">Redirecting…</p>
++        <h2 className="text-white font-semibold text-lg mb-1">
++          {savedOffline ? 'Saved offline!' : 'Batch updated!'}
++        </h2>
++        <p className="text-[#6B7280] text-sm">
++          {savedOffline ? 'Will sync when connected. Redirecting…' : 'Redirecting…'}
++        </p>
+       </div>
+     )
+   }
+diff --git a/app/dashboard/poultry/flock/[id]/edit/page.tsx b/app/dashboard/poultry/flock/[id]/edit/page.tsx
+index 7d46f81..8b0547e 100644
+--- a/app/dashboard/poultry/flock/[id]/edit/page.tsx
++++ b/app/dashboard/poultry/flock/[id]/edit/page.tsx
+@@ -33,5 +33,5 @@ export default async function EditBatchPage({
+   // Cast to the richer type that EditBatchClient expects (optional columns may be absent from generated types)
+   const batch = batchRaw as any
+ 
+-  return <EditBatchClient batch={batch} />
++  return <EditBatchClient batch={batch} farmId={farmManager.farm_id} />
+ }
+\ No newline at end of file
+diff --git a/app/dashboard/smallRuminants/add/page.tsx b/app/dashboard/smallRuminants/add/page.tsx
+index e71fc61..7e35789 100644
+--- a/app/dashboard/smallRuminants/add/page.tsx
++++ b/app/dashboard/smallRuminants/add/page.tsx
+@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
+ import { useRouter } from "next/navigation";
+ import Link from "next/link";
+ import { supabase } from "@/lib/supabase";
++import { queueSmallRuminantEvent } from "@/lib/offline-db";
+ 
+ // ─── Kenyan breed options ─────────────────────────────────────────────────────
+ 
+@@ -118,6 +119,7 @@ export default function AddAnimalPage() {
+   const [farmId, setFarmId]       = useState("");
+   const [saving, setSaving]       = useState(false);
+   const [error, setError]         = useState<string | null>(null);
++  const [savedOffline, setSavedOffline] = useState(false);
+   const [showAdvanced, setShowAdvanced] = useState(false);
+   // For sire/dam autocomplete
+   const [existingAnimals, setExistingAnimals] = useState<{ id: string; animal_tag: string; name: string | null; sex: string }[]>([]);
+@@ -185,11 +187,49 @@ export default function AddAnimalPage() {
+         notes:                 form.notes.trim() || null,
+       };
+ 
++      // OFFLINE FALLBACK: this form calls supabase.from(...).insert()
++      // directly with no offline path — a lost connection during
++      // registration meant a raw Supabase network error and a lost
++      // animal record. Like coffee_plot_create, the client generates the
++      // row id offline (eventId) so the new animal has a stable id even
++      // before sync runs (e.g. for a same-session offline weight/health
++      // record against it).
++      if (!navigator.onLine) {
++        await queueSmallRuminantEvent({
++          eventId: crypto.randomUUID(),
++          entityType: "small_ruminant_registration",
++          farmId,
++          payload,
++        });
++        setSavedOffline(true);
++        setTimeout(() => router.push("/dashboard/smallRuminants"), 1200);
++        return;
++      }
++
+       const { error: insertErr } = await supabase.from("small_ruminants").insert(payload);
+       if (insertErr) throw insertErr;
+ 
+       router.push("/dashboard/smallRuminants");
+     } catch (e: any) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than
++      // showing a raw network error.
++      if (!navigator.onLine) {
++        try {
++          await queueSmallRuminantEvent({
++            eventId: crypto.randomUUID(),
++            entityType: "small_ruminant_registration",
++            farmId,
++            payload,
++          });
++          setSavedOffline(true);
++          setTimeout(() => router.push("/dashboard/smallRuminants"), 1200);
++          return;
++        } catch (queueErr: any) {
++          setError(queueErr.message ?? "Could not save offline");
++          return;
++        }
++      }
+       setError(e.message ?? "Failed to save animal");
+     } finally {
+       setSaving(false);
+@@ -397,6 +437,9 @@ export default function AddAnimalPage() {
+         {error && (
+           <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
+         )}
++        {savedOffline && (
++          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">Saved offline — will sync when connected.</div>
++        )}
+ 
+         {/* Submit */}
+         <div className="flex gap-3 pb-8">
+diff --git a/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx b/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx
+index 1b62fec..2b6d6f6 100644
+--- a/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx
++++ b/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx
+@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
+ import { useRouter } from "next/navigation";
+ import Link from "next/link";
+ import { recordKidding } from "./actions";
++import { queueSmallRuminantEvent } from "@/lib/offline-db";
+ 
+ interface PregnantDam {
+   id: string; dam_id: string; dam_tag: string; dam_name: string | null;
+@@ -18,6 +19,7 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
+   const router = useRouter();
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
++  const [savedOffline, setSavedOffline] = useState(false);
+ 
+   const [breedingId, setBreedingId] = useState("");
+   const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().split("T")[0]);
+@@ -40,6 +42,33 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
+       const selected = pregnantDams.find(d => d.id === breedingId);
+       if (!selected) throw new Error("Select a dam");
+       const kiddingData = { breeding_id: breedingId, dam_id: selected.dam_id, delivery_date: deliveryDate, number_of_offspring: numberOfOffspring };
++
++      // OFFLINE FALLBACK: recordKidding() is a server action — a plain
++      // fetch under the hood — so calling it with no connection just
++      // throws a raw "Failed to fetch" that setError() would show verbatim
++      // to the farmer. Queue a single small_ruminant_kidding event instead;
++      // sync-offline-events' handler does both writes recordKidding does
++      // (kidding_lambing_records insert + small_ruminant_breeding update)
++      // once this reaches the database. referenceId is the breeding record
++      // being closed out, same as `breedingId` passed to recordKidding
++      // here.
++      if (!navigator.onLine) {
++        await queueSmallRuminantEvent({
++          eventId: crypto.randomUUID(),
++          entityType: "small_ruminant_kidding",
++          farmId,
++          referenceId: breedingId,
++          payload: {
++            dam_id: selected.dam_id,
++            delivery_date: deliveryDate,
++            number_of_offspring: numberOfOffspring,
++          },
++        });
++        setSavedOffline(true);
++        setTimeout(() => router.push("/dashboard/smallRuminants/breeding"), 1200);
++        return;
++      }
++
+       const result = await recordKidding(kiddingData, offspring, breedingId);
+       if (!result.success) {
+         setError(result.error || 'Failed to record kidding');
+@@ -47,6 +76,33 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
+       }
+       router.push("/dashboard/smallRuminants/breeding");
+     } catch (e: any) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than
++      // showing a raw network error.
++      if (!navigator.onLine) {
++        const selected = pregnantDams.find(d => d.id === breedingId);
++        if (selected) {
++          try {
++            await queueSmallRuminantEvent({
++              eventId: crypto.randomUUID(),
++              entityType: "small_ruminant_kidding",
++              farmId,
++              referenceId: breedingId,
++              payload: {
++                dam_id: selected.dam_id,
++                delivery_date: deliveryDate,
++                number_of_offspring: numberOfOffspring,
++              },
++            });
++            setSavedOffline(true);
++            setTimeout(() => router.push("/dashboard/smallRuminants/breeding"), 1200);
++            return;
++          } catch (queueErr: any) {
++            setError(queueErr.message || 'Could not save offline');
++            return;
++          }
++        }
++      }
+       setError(e.message);
+     } finally {
+       setLoading(false);
+@@ -104,6 +160,7 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
+             </div>
+           )}
+           {error && <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">{error}</div>}
++          {savedOffline && <div className="text-emerald-600 text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-3">Saved offline — will sync when connected.</div>}
+           <div className="flex gap-3">
+             <Link href="/dashboard/smallRuminants/breeding" className="flex-1 px-4 py-3 rounded-xl border text-sm text-center hover:bg-slate-50">Cancel</Link>
+             <button type="submit" disabled={loading} className="flex-1 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-bold">{loading ? "Saving..." : "Record Birth"}</button>
+diff --git a/app/dashboard/smallRuminants/breeding/kidding/actions.ts b/app/dashboard/smallRuminants/breeding/kidding/actions.ts
+index 2864cd1..821a37b 100644
+--- a/app/dashboard/smallRuminants/breeding/kidding/actions.ts
++++ b/app/dashboard/smallRuminants/breeding/kidding/actions.ts
+@@ -8,7 +8,7 @@ type KiddingLambingRecordInsert = Database['public']['Tables']['kidding_lambing_
+ type SmallRuminantBreedingUpdate = Database['public']['Tables']['small_ruminant_breeding']['Update'];
+ 
+ export async function recordKidding(
+-  kiddingData: KiddingLambingRecordInsert,
++  kiddingData: KiddingLambingRecordInsert & { breeding_id?: string; number_of_offspring?: number },
+   offspring: any[],
+   breedingId: string
+ ): Promise<{ success: true } | { success: false; error: string }> {
+@@ -19,13 +19,22 @@ export async function recordKidding(
+     return { success: false, error: 'Not authenticated' };
+   }
+ 
++  // BUG FIX: kidding_lambing_records has no `breeding_id` or
++  // `number_of_offspring` column (confirmed against lib/database.types.ts —
++  // the real column is `breeding_event_id`, and `number_of_offspring` only
++  // exists on small_ruminant_breeding, set further below). KiddingRecordClient
++  // sends both under the wrong/nonexistent names, so this insert had been
++  // silently failing PostgREST's schema check on every real call — "Record
++  // Birth" was broken for every farmer, online included, not just offline.
++  const { breeding_id, number_of_offspring: _unusedOnKiddingRecord, ...kiddingFields } = kiddingData as any;
++
+   // Was `if (kiddingError/updateError) throw ...` — see coffee/activities/
+   // actions.ts's recordActivity for why a thrown error here loses its
+   // message to Next.js's production redaction.
+   // Create kidding record
+   const { error: kiddingError } = await supabase
+     .from("kidding_lambing_records")
+-    .insert([kiddingData]);
++    .insert([{ ...kiddingFields, breeding_event_id: breeding_id ?? breedingId }]);
+ 
+   if (kiddingError) {
+     console.error('recordKidding insert error:', kiddingError);
+diff --git a/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx b/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx
+index d8b998b..285bba4 100644
+--- a/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx
++++ b/app/dashboard/smallRuminants/breeding/service/ServiceRecordClient.tsx
+@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
+ import { useRouter } from "next/navigation";
+ import Link from "next/link";
+ import { recordBreedingService } from "../actions";
++import { queueSmallRuminantEvent } from "@/lib/offline-db";
+ 
+ interface Animal {
+   id: string;
+@@ -17,6 +18,7 @@ export default function ServiceRecordClient({ females, males, farmId, preselecte
+   const router = useRouter();
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
++  const [savedOffline, setSavedOffline] = useState(false);
+ 
+   // AnimalDetailClient links here with ?animal=<id> so "Record Breeding"
+   // from an animal's page doesn't force re-picking her from the dropdown.
+@@ -57,6 +59,24 @@ export default function ServiceRecordClient({ females, males, farmId, preselecte
+         pregnancy_result: "pending",
+         notes: notes || null,
+       };
++      // OFFLINE FALLBACK: recordBreedingService() is a server action — a
++      // plain fetch under the hood — so calling it with no connection just
++      // throws a raw "Failed to fetch" that setError() would show verbatim
++      // to the farmer. Queue it locally instead, same as every other
++      // offline-queued form in the app.
++      if (!navigator.onLine) {
++        await queueSmallRuminantEvent({
++          eventId: crypto.randomUUID(),
++          entityType: "small_ruminant_breeding",
++          farmId,
++          referenceId: damId,
++          payload: breedingData,
++        });
++        setSavedOffline(true);
++        setTimeout(() => router.push("/dashboard/smallRuminants/breeding"), 1200);
++        return;
++      }
++
+       const result = await recordBreedingService(breedingData);
+       if (!result.success) {
+         setError(result.error || 'Failed to record breeding service');
+@@ -64,6 +84,37 @@ export default function ServiceRecordClient({ females, males, farmId, preselecte
+       }
+       router.push("/dashboard/smallRuminants/breeding");
+     } catch (e: any) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than
++      // showing a raw network error.
++      if (!navigator.onLine) {
++        try {
++          await queueSmallRuminantEvent({
++            eventId: crypto.randomUUID(),
++            entityType: "small_ruminant_breeding",
++            farmId,
++            referenceId: damId,
++            payload: {
++              dam_id: damId,
++              heat_date: heatDate || null,
++              service_date: serviceDate,
++              service_type: serviceType,
++              sire_id: serviceType === "natural" && sireId !== "external" ? sireId : null,
++              sire_breed: serviceType === "AI" || sireId === "external" ? sireBreed : null,
++              sire_tag: serviceType === "AI" || sireId === "external" ? sireTag : null,
++              expected_delivery_date: expectedDelivery,
++              pregnancy_result: "pending",
++              notes: notes || null,
++            },
++          });
++          setSavedOffline(true);
++          setTimeout(() => router.push("/dashboard/smallRuminants/breeding"), 1200);
++          return;
++        } catch (queueErr: any) {
++          setError(queueErr.message || 'Could not save offline');
++          return;
++        }
++      }
+       setError(e.message);
+     } finally {
+       setLoading(false);
+@@ -105,6 +156,7 @@ export default function ServiceRecordClient({ females, males, farmId, preselecte
+             </div>
+           )}
+           {error && <div className="text-red-600 text-sm">{error}</div>}
++          {savedOffline && <div className="text-emerald-600 text-sm">Saved offline — will sync when connected.</div>}
+           <button type="submit" disabled={loading} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold">{loading ? "Saving..." : "Record Service"}</button>
+         </form>
+       </div>
+diff --git a/app/dashboard/smallRuminants/milk/add/page.tsx b/app/dashboard/smallRuminants/milk/add/page.tsx
+index 779cc50..299a202 100644
+--- a/app/dashboard/smallRuminants/milk/add/page.tsx
++++ b/app/dashboard/smallRuminants/milk/add/page.tsx
+@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
+ import { useSearchParams } from 'next/navigation'
+ import Link from 'next/link'
+ import { createClient } from '@/lib/supabase/client'
++import { queueSmallRuminantEvent } from '@/lib/offline-db'
+ 
+ export default function AddMilkRecordPage() {
+   const searchParams = useSearchParams()
+@@ -24,6 +25,7 @@ export default function AddMilkRecordPage() {
+   const [farmId, setFarmId] = useState<string | null>(null)
+   const [error, setError] = useState<string | null>(null)
+   const [success, setSuccess] = useState(false)
++  const [savedOffline, setSavedOffline] = useState(false)
+ 
+   const supabase = createClient()
+ 
+@@ -69,33 +71,77 @@ export default function AddMilkRecordPage() {
+     })
+   }
+ 
++  const resetForm = () => setFormData({
++    animal_id: '',
++    record_date: new Date().toISOString().split('T')[0],
++    morning_milk: '',
++    evening_milk: '',
++    total_milk: '',
++    lactation_number: '',
++    days_in_milk: '',
++    notes: '',
++  })
++
+   async function handleSubmit(e: React.FormEvent) {
+     e.preventDefault()
+     setLoading(true)
+     setError(null)
+     setSuccess(false)
++    setSavedOffline(false)
++
++    // total_milk intentionally omitted — it's a GENERATED ALWAYS column on
++    // the live goat_milk_records table (confirmed via a live
++    // information_schema query), same bug class as
++    // coffee_activities.total_cost and milk_records.total_milk elsewhere
++    // in this app. formData.total_milk above stays purely as the
++    // read-only live preview shown in the form.
++    const payload = {
++      animal_id: formData.animal_id,
++      record_date: formData.record_date,
++      morning_milk: parseFloat(formData.morning_milk) || null,
++      evening_milk: parseFloat(formData.evening_milk) || null,
++      lactation_number: formData.lactation_number ? parseInt(formData.lactation_number) : null,
++      days_in_milk: formData.days_in_milk ? parseInt(formData.days_in_milk) : null,
++      notes: formData.notes || null,
++    }
++
++    // OFFLINE FALLBACK: this form previously called supabase.from(...)
++    // .insert() directly with no offline path at all — no other small
++    // ruminant entity type covers goat_milk_records, so a lost connection
++    // mid-milking meant a raw Supabase network error and a lost record,
++    // same bug class as every other form fixed alongside this one. Uses
++    // the farmId already loaded on mount rather than re-calling
++    // auth.getUser(), which itself needs a network round-trip and would
++    // otherwise fail first when fully offline.
++    if (!navigator.onLine) {
++      if (!farmId) {
++        setError('Not authenticated')
++        setLoading(false)
++        return
++      }
++      try {
++        await queueSmallRuminantEvent({
++          eventId: crypto.randomUUID(),
++          entityType: 'small_ruminant_milk',
++          farmId,
++          referenceId: formData.animal_id,
++          payload,
++        })
++        setSuccess(true)
++        setSavedOffline(true)
++        resetForm()
++      } catch (err: any) {
++        setError(err.message || 'Could not save offline')
++      } finally {
++        setLoading(false)
++      }
++      return
++    }
+ 
+     try {
+       const { data: { user } } = await supabase.auth.getUser()
+       if (!user) throw new Error('Not authenticated')
+ 
+-            const payload = {
+-                    animal_id: formData.animal_id,
+-                    record_date: formData.record_date,
+-                    morning_milk: parseFloat(formData.morning_milk) || null,
+-                    evening_milk: parseFloat(formData.evening_milk) || null,
+-                    // total_milk intentionally omitted — it's a GENERATED
+-                    // ALWAYS column on the live goat_milk_records table
+-                    // (confirmed via a live information_schema query),
+-                    // same bug class as coffee_activities.total_cost and
+-                    // milk_records.total_milk elsewhere in this app.
+-                    // formData.total_milk above stays purely as the
+-                    // read-only live preview shown in the form.
+-                    lactation_number: formData.lactation_number ? parseInt(formData.lactation_number) : null,
+-                    days_in_milk: formData.days_in_milk ? parseInt(formData.days_in_milk) : null,
+-                    notes: formData.notes || null,
+-                  }
+-
+       const { error } = await supabase
+         .from('goat_milk_records')
+         .insert(payload)
+@@ -103,17 +149,29 @@ export default function AddMilkRecordPage() {
+       if (error) throw error
+ 
+       setSuccess(true)
+-            setFormData({
+-                    animal_id: '',
+-                    record_date: new Date().toISOString().split('T')[0],
+-                    morning_milk: '',
+-                    evening_milk: '',
+-                    total_milk: '',
+-                    lactation_number: '',
+-                    days_in_milk: '',
+-                    notes: '',
+-                  })
++      resetForm()
+     } catch (err: any) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than
++      // showing a raw network error.
++      if (!navigator.onLine && farmId) {
++        try {
++          await queueSmallRuminantEvent({
++            eventId: crypto.randomUUID(),
++            entityType: 'small_ruminant_milk',
++            farmId,
++            referenceId: formData.animal_id,
++            payload,
++          })
++          setSuccess(true)
++          setSavedOffline(true)
++          resetForm()
++          return
++        } catch (queueErr: any) {
++          setError(queueErr.message || 'Could not save offline')
++          return
++        }
++      }
+       setError(err.message || 'Failed to save milk record')
+     } finally {
+       setLoading(false)
+@@ -132,7 +190,7 @@ export default function AddMilkRecordPage() {
+ 
+         {success && (
+           <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 text-green-800">
+-            ✓ Milk record saved successfully!
++            {savedOffline ? '✓ Saved offline — will sync when connected.' : '✓ Milk record saved successfully!'}
+           </div>
+         )}
+ 
+diff --git a/app/dashboard/smallRuminants/sales/add/AddSaleClient.tsx b/app/dashboard/smallRuminants/sales/add/AddSaleClient.tsx
+index 1522115..f30a7ff 100644
+--- a/app/dashboard/smallRuminants/sales/add/AddSaleClient.tsx
++++ b/app/dashboard/smallRuminants/sales/add/AddSaleClient.tsx
+@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
+ import { useRouter } from "next/navigation";
+ import Link from "next/link";
+ import { recordSale } from "../actions";
++import { queueSmallRuminantEvent } from "@/lib/offline-db";
+ 
+ interface Animal {
+   id: string;
+@@ -20,6 +21,7 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[],
+   const router = useRouter();
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
++  const [savedOffline, setSavedOffline] = useState(false);
+ 
+   const [saleType, setSaleType] = useState<SaleType>("live animal");
+   const [animalId, setAnimalId] = useState<string>("");
+@@ -76,6 +78,25 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[],
+         notes: notes || null,
+       };
+ 
++      // OFFLINE FALLBACK: recordSale() is a server action — a plain fetch
++      // under the hood — so calling it with no connection just throws a
++      // raw "Failed to fetch" that setError() would show verbatim to the
++      // farmer. Queue it locally instead; the sold-status side effect
++      // (mirrored in sync-offline-events' small_ruminant_sale case) runs
++      // once this reaches the database.
++      if (!navigator.onLine) {
++        await queueSmallRuminantEvent({
++          eventId: crypto.randomUUID(),
++          entityType: "small_ruminant_sale",
++          farmId,
++          referenceId: saleData.animal_id || undefined,
++          payload: saleData,
++        });
++        setSavedOffline(true);
++        setTimeout(() => router.push("/dashboard/smallRuminants/sales"), 1200);
++        return;
++      }
++
+       const result = await recordSale(saleData);
+       if (!result.success) {
+         setError(result.error || 'Failed to record sale');
+@@ -83,6 +104,43 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[],
+       }
+       router.push("/dashboard/smallRuminants/sales");
+     } catch (e: any) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than
++      // showing a raw network error.
++      if (!navigator.onLine) {
++        try {
++          await queueSmallRuminantEvent({
++            eventId: crypto.randomUUID(),
++            entityType: "small_ruminant_sale",
++            farmId,
++            referenceId: animalId || undefined,
++            payload: {
++              farm_id: farmId,
++              animal_id: saleType === "milk" ? null : animalId || null,
++              sale_date: saleDate,
++              sale_type: saleType,
++              buyer_name: buyerName || null,
++              buyer_contact: buyerContact || null,
++              live_weight_kg: liveWeight ? parseFloat(liveWeight) : null,
++              dressed_weight_kg: dressedWeight ? parseFloat(dressedWeight) : null,
++              price_per_kg: pricePerKg ? parseFloat(pricePerKg) : null,
++              total_price: parseFloat(totalPrice),
++              milk_quantity_liters: milkQuantity ? parseFloat(milkQuantity) : null,
++              milk_price_per_liter: milkPricePerLiter ? parseFloat(milkPricePerLiter) : null,
++              payment_method: paymentMethod,
++              payment_status: paymentStatus,
++              market_location: marketLocation || null,
++              notes: notes || null,
++            },
++          });
++          setSavedOffline(true);
++          setTimeout(() => router.push("/dashboard/smallRuminants/sales"), 1200);
++          return;
++        } catch (queueErr: any) {
++          setError(queueErr.message || 'Could not save offline');
++          return;
++        }
++      }
+       setError(e.message);
+     } finally {
+       setLoading(false);
+@@ -161,6 +219,7 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[],
+           </div>
+ 
+           {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>}
++          {savedOffline && <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-700">Saved offline — will sync when connected.</div>}
+ 
+           <div className="flex gap-3">
+             <Link href="/dashboard/smallRuminants/sales" className="flex-1 px-4 py-3 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 text-center">Cancel</Link>
+diff --git a/app/dashboard/smallRuminants/weights/add/WeightRecordClient.tsx b/app/dashboard/smallRuminants/weights/add/WeightRecordClient.tsx
+index 2571c67..133cc71 100644
+--- a/app/dashboard/smallRuminants/weights/add/WeightRecordClient.tsx
++++ b/app/dashboard/smallRuminants/weights/add/WeightRecordClient.tsx
+@@ -4,6 +4,7 @@ import { useState } from 'react'
+ import { useRouter } from 'next/navigation'
+ import Link from 'next/link'
+ import { recordWeight } from '../actions'
++import { queueSmallRuminantEvent } from '@/lib/offline-db'
+ 
+ interface Animal {
+   id: string
+@@ -12,10 +13,11 @@ interface Animal {
+   breed: string | null
+ }
+ 
+-export default function WeightRecordClient({ animals }: { animals: Animal[] }) {
++export default function WeightRecordClient({ animals, farmId }: { animals: Animal[]; farmId: string }) {
+   const router = useRouter()
+   const [loading, setLoading] = useState(false)
+   const [error, setError] = useState('')
++  const [savedOffline, setSavedOffline] = useState(false)
+ 
+   const [formData, setFormData] = useState({
+     animal_id: '',
+@@ -29,18 +31,67 @@ export default function WeightRecordClient({ animals }: { animals: Animal[] }) {
+     e.preventDefault()
+     setLoading(true)
+     setError('')
++
++    const payload = {
++      ...formData,
++      weight_kg: parseFloat(formData.weight_kg),
++      body_condition_score: parseInt(formData.body_condition_score)
++    }
++
++    // OFFLINE FALLBACK: recordWeight() is a server action — a plain fetch
++    // under the hood — so calling it with no connection just throws a raw
++    // "Failed to fetch" that setError() would show verbatim to the farmer.
++    // average_daily_gain is computed server-side (mirrored in
++    // sync-offline-events' small_ruminant_weight case) so it's fine to
++    // omit here — the sync handler fills it in from the previous
++    // weigh-in once this reaches the database.
++    if (!navigator.onLine) {
++      try {
++        await queueSmallRuminantEvent({
++          eventId: crypto.randomUUID(),
++          entityType: 'small_ruminant_weight',
++          farmId,
++          referenceId: formData.animal_id,
++          payload,
++        })
++        setSavedOffline(true)
++        setTimeout(() => router.push('/dashboard/smallRuminants/weights'), 1200)
++      } catch (err: any) {
++        setError(err.message || 'Could not save offline')
++      } finally {
++        setLoading(false)
++      }
++      return
++    }
++
+     try {
+-      const result = await recordWeight({
+-        ...formData,
+-        weight_kg: parseFloat(formData.weight_kg),
+-        body_condition_score: parseInt(formData.body_condition_score)
+-      })
++      const result = await recordWeight(payload)
+       if (!result.success) {
+         setError(result.error || 'Failed to record weight')
+         return
+       }
+       router.push('/dashboard/smallRuminants/weights')
+     } catch (err: any) {
++      // A submit that started online but lost connection mid-request lands
++      // here too — fall back to the same offline queue rather than showing
++      // a raw network error.
++      if (!navigator.onLine) {
++        try {
++          await queueSmallRuminantEvent({
++            eventId: crypto.randomUUID(),
++            entityType: 'small_ruminant_weight',
++            farmId,
++            referenceId: formData.animal_id,
++            payload,
++          })
++          setSavedOffline(true)
++          setTimeout(() => router.push('/dashboard/smallRuminants/weights'), 1200)
++          return
++        } catch (queueErr: any) {
++          setError(queueErr.message || 'Could not save offline')
++          return
++        }
++      }
+       setError(err.message || 'Failed to record weight')
+     } finally {
+       setLoading(false)
+@@ -57,6 +108,7 @@ export default function WeightRecordClient({ animals }: { animals: Animal[] }) {
+ 
+         <form onSubmit={handleSubmit} className="glass-card p-8 rounded-3xl space-y-6">
+           {error && <div className="p-4 bg-crimson-alert/10 text-crimson-alert border border-crimson-alert/20 rounded-xl">{error}</div>}
++          {savedOffline && <div className="p-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">Saved offline — will sync when connected.</div>}
+           
+           <div>
+             <label className="block text-sm font-bold text-slate-400 mb-2">Select Animal *</label>
+diff --git a/app/dashboard/smallRuminants/weights/add/page.tsx b/app/dashboard/smallRuminants/weights/add/page.tsx
+index ee1c364..27b8595 100644
+--- a/app/dashboard/smallRuminants/weights/add/page.tsx
++++ b/app/dashboard/smallRuminants/weights/add/page.tsx
+@@ -27,5 +27,5 @@ export default async function AddWeightRecordPage() {
+     .eq("status", "active")
+     .order("animal_tag");
+ 
+-  return <WeightRecordClient animals={animals || []} />;
++  return <WeightRecordClient animals={animals || []} farmId={fm.farm_id} />;
+ }
+diff --git a/lib/offline-db.ts b/lib/offline-db.ts
+index bb11aad..058de4b 100644
+--- a/lib/offline-db.ts
++++ b/lib/offline-db.ts
+@@ -58,6 +58,9 @@ export type SmallRuminantEntityType =
+   | 'small_ruminant_weight'
+   | 'small_ruminant_sale'
+   | 'small_ruminant_breeding'
++  | 'small_ruminant_milk'
++  | 'small_ruminant_registration'
++  | 'small_ruminant_kidding'
+ 
+ export type OfflineEntityType =
+   | PoultryEntityType
+diff --git a/supabase/functions/sync-offline-events/index.ts b/supabase/functions/sync-offline-events/index.ts
+index 6b723f8..7c823b0 100644
+--- a/supabase/functions/sync-offline-events/index.ts
++++ b/supabase/functions/sync-offline-events/index.ts
+@@ -48,9 +48,16 @@ interface CoffeeOfflineEvent {
+ 
+ interface SmallRuminantOfflineEvent {
+   eventId: string
+-  entityType: "small_ruminant_health" | "small_ruminant_weight" | "small_ruminant_sale" | "small_ruminant_breeding"
++  entityType:
++    | "small_ruminant_health"
++    | "small_ruminant_weight"
++    | "small_ruminant_sale"
++    | "small_ruminant_breeding"
++    | "small_ruminant_milk"
++    | "small_ruminant_registration"
++    | "small_ruminant_kidding"
+   farmId: string
+-  referenceId?: string // animal id
++  referenceId?: string // animal id (registration/milk/weight/health) or breeding record id (kidding)
+   payload: Record<string, any>
+   isoTimestamp: string
+ }
+@@ -582,17 +589,47 @@ async function processSmallRuminantEvent(
+         return true
+       }
+ 
++      /* ───────────── WEIGHT (append-only + ADG calc) ─────────────
++       * Mirrors weights/actions.ts's recordWeight: average_daily_gain is
++       * computed server-side from the animal's most recent prior weigh-in,
++       * never sent by the client. Without this the offline path would
++       * insert weight_kg/body_condition_score/notes but silently skip ADG
++       * on every offline-recorded weight — a quiet accuracy gap the farmer
++       * would have no way to notice from the UI. */
+       case "small_ruminant_weight": {
+         const { data: exists } = await supabase
+           .from("weight_records").select("id").eq("id", eventId).maybeSingle()
+         if (!exists) {
++          const { data: prevWeight } = await supabase
++            .from("weight_records")
++            .select("weight_kg, record_date")
++            .eq("animal_id", referenceId)
++            .order("record_date", { ascending: false })
++            .limit(1)
++            .maybeSingle()
++
++          let adg: number | null = null
++          if (prevWeight) {
++            const days = (new Date(payload.record_date).getTime() - new Date(prevWeight.record_date).getTime()) / 86_400_000
++            if (days > 0) {
++              adg = (payload.weight_kg - prevWeight.weight_kg) / days
++            }
++          }
++
+           await supabase.from("weight_records").insert({
+-            id: eventId, animal_id: referenceId, ...payload,
++            id: eventId, animal_id: referenceId, ...payload, average_daily_gain: adg,
+           })
+         }
+         return true
+       }
+ 
++      /* ───────────── SALE (append-only + sold-status side effect) ─────────────
++       * Mirrors sales/actions.ts's recordSale: selling a live animal, meat,
++       * or breeding stock (anything but a milk sale) also flips the animal's
++       * status to "sold". The pre-fix offline path only inserted the sales
++       * row, so an offline animal sale left the herd list still showing the
++       * animal as active indefinitely (until someone happened to edit it
++       * online), risking it being recorded against twice. */
+       case "small_ruminant_sale": {
+         const { data: exists } = await supabase
+           .from("small_ruminant_sales").select("id").eq("id", eventId).maybeSingle()
+@@ -600,21 +637,91 @@ async function processSmallRuminantEvent(
+           await supabase.from("small_ruminant_sales").insert({
+             id: eventId, farm_id: farmId, animal_id: referenceId, ...payload,
+           })
++
++          if (payload.sale_type !== "milk" && referenceId) {
++            await supabase.from("small_ruminants").update({ status: "sold" }).eq("id", referenceId)
++          }
+         }
+         return true
+       }
+ 
++      /* ───────────── BREEDING SERVICE (append-only) ─────────────
++       * Mirrors breeding/actions.ts's recordBreedingService — a straight
++       * insert, referenceId is the dam being served. */
+       case "small_ruminant_breeding": {
+         const { data: exists } = await supabase
+           .from("small_ruminant_breeding").select("id").eq("id", eventId).maybeSingle()
+         if (!exists) {
+           await supabase.from("small_ruminant_breeding").insert({
++            id: eventId, dam_id: referenceId, ...payload,
++          })
++        }
++        return true
++      }
++
++      /* ───────────── MILK (append-only) ─────────────
++       * Mirrors milk/add/page.tsx's direct insert into goat_milk_records.
++       * total_milk is a GENERATED ALWAYS column on the live table (same bug
++       * class as coffee_activities.total_cost) so it must never be sent —
++       * the client-side payload already omits it. */
++      case "small_ruminant_milk": {
++        const { data: exists } = await supabase
++          .from("goat_milk_records").select("id").eq("id", eventId).maybeSingle()
++        if (!exists) {
++          await supabase.from("goat_milk_records").insert({
+             id: eventId, animal_id: referenceId, ...payload,
+           })
+         }
+         return true
+       }
+ 
++      /* ───────────── REGISTRATION (append-only) ─────────────
++       * Mirrors add/page.tsx's registerAnimal insert into small_ruminants.
++       * Like coffee_plot_create, the client generates the id offline
++       * (eventId) so the new animal can be referenced (e.g. for a follow-up
++       * offline weight/health record in the same session) before sync ever
++       * runs. */
++      case "small_ruminant_registration": {
++        const { data: exists } = await supabase
++          .from("small_ruminants").select("id").eq("id", eventId).maybeSingle()
++        if (!exists) {
++          await supabase.from("small_ruminants").insert({
++            id: eventId, farm_id: farmId, ...payload,
++          })
++        }
++        return true
++      }
++
++      /* ───────────── KIDDING / LAMBING (append + breeding-record update) ─────────────
++       * Mirrors breeding/kidding/actions.ts's recordKidding (as fixed
++       * alongside this sync handler — see actions.ts for the
++       * breeding_id → breeding_event_id column-name correction).
++       * referenceId is the small_ruminant_breeding record id being closed
++       * out; payload carries the kidding_lambing_records fields plus
++       * number_of_offspring, which belongs on the breeding record, not the
++       * kidding record itself. */
++      case "small_ruminant_kidding": {
++        const { number_of_offspring, ...kiddingFields } = payload
++
++        const { data: exists } = await supabase
++          .from("kidding_lambing_records").select("id").eq("id", eventId).maybeSingle()
++        if (!exists) {
++          await supabase.from("kidding_lambing_records").insert({
++            id: eventId,
++            dam_id: kiddingFields.dam_id,
++            delivery_date: kiddingFields.delivery_date,
++            breeding_event_id: referenceId,
++            ...kiddingFields,
++          })
++
++          await supabase.from("small_ruminant_breeding").update({
++            actual_delivery_date: kiddingFields.delivery_date,
++            number_of_offspring: number_of_offspring ?? undefined,
++          }).eq("id", referenceId)
++        }
++        return true
++      }
++
+       default:
+         console.warn("Unknown small ruminant event type:", entityType)
+         return true

@@ -8,7 +8,7 @@ type KiddingLambingRecordInsert = Database['public']['Tables']['kidding_lambing_
 type SmallRuminantBreedingUpdate = Database['public']['Tables']['small_ruminant_breeding']['Update'];
 
 export async function recordKidding(
-  kiddingData: KiddingLambingRecordInsert,
+  kiddingData: KiddingLambingRecordInsert & { breeding_id?: string; number_of_offspring?: number },
   offspring: any[],
   breedingId: string
 ): Promise<{ success: true } | { success: false; error: string }> {
@@ -19,13 +19,22 @@ export async function recordKidding(
     return { success: false, error: 'Not authenticated' };
   }
 
+  // BUG FIX: kidding_lambing_records has no `breeding_id` or
+  // `number_of_offspring` column (confirmed against lib/database.types.ts —
+  // the real column is `breeding_event_id`, and `number_of_offspring` only
+  // exists on small_ruminant_breeding, set further below). KiddingRecordClient
+  // sends both under the wrong/nonexistent names, so this insert had been
+  // silently failing PostgREST's schema check on every real call — "Record
+  // Birth" was broken for every farmer, online included, not just offline.
+  const { breeding_id, number_of_offspring: _unusedOnKiddingRecord, ...kiddingFields } = kiddingData as any;
+
   // Was `if (kiddingError/updateError) throw ...` — see coffee/activities/
   // actions.ts's recordActivity for why a thrown error here loses its
   // message to Next.js's production redaction.
   // Create kidding record
   const { error: kiddingError } = await supabase
     .from("kidding_lambing_records")
-    .insert([kiddingData]);
+    .insert([{ ...kiddingFields, breeding_event_id: breeding_id ?? breedingId }]);
 
   if (kiddingError) {
     console.error('recordKidding insert error:', kiddingError);

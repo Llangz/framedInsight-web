@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { recordWeight } from '../actions'
+import { queueSmallRuminantEvent } from '@/lib/offline-db'
 
 interface Animal {
   id: string
@@ -12,10 +13,11 @@ interface Animal {
   breed: string | null
 }
 
-export default function WeightRecordClient({ animals }: { animals: Animal[] }) {
+export default function WeightRecordClient({ animals, farmId }: { animals: Animal[]; farmId: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [savedOffline, setSavedOffline] = useState(false)
 
   const [formData, setFormData] = useState({
     animal_id: '',
@@ -29,18 +31,67 @@ export default function WeightRecordClient({ animals }: { animals: Animal[] }) {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    const payload = {
+      ...formData,
+      weight_kg: parseFloat(formData.weight_kg),
+      body_condition_score: parseInt(formData.body_condition_score)
+    }
+
+    // OFFLINE FALLBACK: recordWeight() is a server action — a plain fetch
+    // under the hood — so calling it with no connection just throws a raw
+    // "Failed to fetch" that setError() would show verbatim to the farmer.
+    // average_daily_gain is computed server-side (mirrored in
+    // sync-offline-events' small_ruminant_weight case) so it's fine to
+    // omit here — the sync handler fills it in from the previous
+    // weigh-in once this reaches the database.
+    if (!navigator.onLine) {
+      try {
+        await queueSmallRuminantEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'small_ruminant_weight',
+          farmId,
+          referenceId: formData.animal_id,
+          payload,
+        })
+        setSavedOffline(true)
+        setTimeout(() => router.push('/dashboard/smallRuminants/weights'), 1200)
+      } catch (err: any) {
+        setError(err.message || 'Could not save offline')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     try {
-      const result = await recordWeight({
-        ...formData,
-        weight_kg: parseFloat(formData.weight_kg),
-        body_condition_score: parseInt(formData.body_condition_score)
-      })
+      const result = await recordWeight(payload)
       if (!result.success) {
         setError(result.error || 'Failed to record weight')
         return
       }
       router.push('/dashboard/smallRuminants/weights')
     } catch (err: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than showing
+      // a raw network error.
+      if (!navigator.onLine) {
+        try {
+          await queueSmallRuminantEvent({
+            eventId: crypto.randomUUID(),
+            entityType: 'small_ruminant_weight',
+            farmId,
+            referenceId: formData.animal_id,
+            payload,
+          })
+          setSavedOffline(true)
+          setTimeout(() => router.push('/dashboard/smallRuminants/weights'), 1200)
+          return
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Could not save offline')
+          return
+        }
+      }
       setError(err.message || 'Failed to record weight')
     } finally {
       setLoading(false)
@@ -57,6 +108,7 @@ export default function WeightRecordClient({ animals }: { animals: Animal[] }) {
 
         <form onSubmit={handleSubmit} className="glass-card p-8 rounded-3xl space-y-6">
           {error && <div className="p-4 bg-crimson-alert/10 text-crimson-alert border border-crimson-alert/20 rounded-xl">{error}</div>}
+          {savedOffline && <div className="p-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">Saved offline — will sync when connected.</div>}
           
           <div>
             <label className="block text-sm font-bold text-slate-400 mb-2">Select Animal *</label>

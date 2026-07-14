@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { recordKidding } from "./actions";
+import { queueSmallRuminantEvent } from "@/lib/offline-db";
 
 interface PregnantDam {
   id: string; dam_id: string; dam_tag: string; dam_name: string | null;
@@ -18,6 +19,7 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedOffline, setSavedOffline] = useState(false);
 
   const [breedingId, setBreedingId] = useState("");
   const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().split("T")[0]);
@@ -40,6 +42,33 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
       const selected = pregnantDams.find(d => d.id === breedingId);
       if (!selected) throw new Error("Select a dam");
       const kiddingData = { breeding_id: breedingId, dam_id: selected.dam_id, delivery_date: deliveryDate, number_of_offspring: numberOfOffspring };
+
+      // OFFLINE FALLBACK: recordKidding() is a server action — a plain
+      // fetch under the hood — so calling it with no connection just
+      // throws a raw "Failed to fetch" that setError() would show verbatim
+      // to the farmer. Queue a single small_ruminant_kidding event instead;
+      // sync-offline-events' handler does both writes recordKidding does
+      // (kidding_lambing_records insert + small_ruminant_breeding update)
+      // once this reaches the database. referenceId is the breeding record
+      // being closed out, same as `breedingId` passed to recordKidding
+      // here.
+      if (!navigator.onLine) {
+        await queueSmallRuminantEvent({
+          eventId: crypto.randomUUID(),
+          entityType: "small_ruminant_kidding",
+          farmId,
+          referenceId: breedingId,
+          payload: {
+            dam_id: selected.dam_id,
+            delivery_date: deliveryDate,
+            number_of_offspring: numberOfOffspring,
+          },
+        });
+        setSavedOffline(true);
+        setTimeout(() => router.push("/dashboard/smallRuminants/breeding"), 1200);
+        return;
+      }
+
       const result = await recordKidding(kiddingData, offspring, breedingId);
       if (!result.success) {
         setError(result.error || 'Failed to record kidding');
@@ -47,6 +76,33 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
       }
       router.push("/dashboard/smallRuminants/breeding");
     } catch (e: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than
+      // showing a raw network error.
+      if (!navigator.onLine) {
+        const selected = pregnantDams.find(d => d.id === breedingId);
+        if (selected) {
+          try {
+            await queueSmallRuminantEvent({
+              eventId: crypto.randomUUID(),
+              entityType: "small_ruminant_kidding",
+              farmId,
+              referenceId: breedingId,
+              payload: {
+                dam_id: selected.dam_id,
+                delivery_date: deliveryDate,
+                number_of_offspring: numberOfOffspring,
+              },
+            });
+            setSavedOffline(true);
+            setTimeout(() => router.push("/dashboard/smallRuminants/breeding"), 1200);
+            return;
+          } catch (queueErr: any) {
+            setError(queueErr.message || 'Could not save offline');
+            return;
+          }
+        }
+      }
       setError(e.message);
     } finally {
       setLoading(false);
@@ -104,6 +160,7 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
             </div>
           )}
           {error && <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">{error}</div>}
+          {savedOffline && <div className="text-emerald-600 text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-3">Saved offline — will sync when connected.</div>}
           <div className="flex gap-3">
             <Link href="/dashboard/smallRuminants/breeding" className="flex-1 px-4 py-3 rounded-xl border text-sm text-center hover:bg-slate-50">Cancel</Link>
             <button type="submit" disabled={loading} className="flex-1 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-bold">{loading ? "Saving..." : "Record Birth"}</button>

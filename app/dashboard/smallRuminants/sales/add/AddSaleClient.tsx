@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { recordSale } from "../actions";
+import { queueSmallRuminantEvent } from "@/lib/offline-db";
 
 interface Animal {
   id: string;
@@ -20,6 +21,7 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[], 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedOffline, setSavedOffline] = useState(false);
 
   const [saleType, setSaleType] = useState<SaleType>("live animal");
   const [animalId, setAnimalId] = useState<string>("");
@@ -76,6 +78,25 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[], 
         notes: notes || null,
       };
 
+      // OFFLINE FALLBACK: recordSale() is a server action — a plain fetch
+      // under the hood — so calling it with no connection just throws a
+      // raw "Failed to fetch" that setError() would show verbatim to the
+      // farmer. Queue it locally instead; the sold-status side effect
+      // (mirrored in sync-offline-events' small_ruminant_sale case) runs
+      // once this reaches the database.
+      if (!navigator.onLine) {
+        await queueSmallRuminantEvent({
+          eventId: crypto.randomUUID(),
+          entityType: "small_ruminant_sale",
+          farmId,
+          referenceId: saleData.animal_id || undefined,
+          payload: saleData,
+        });
+        setSavedOffline(true);
+        setTimeout(() => router.push("/dashboard/smallRuminants/sales"), 1200);
+        return;
+      }
+
       const result = await recordSale(saleData);
       if (!result.success) {
         setError(result.error || 'Failed to record sale');
@@ -83,6 +104,43 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[], 
       }
       router.push("/dashboard/smallRuminants/sales");
     } catch (e: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than
+      // showing a raw network error.
+      if (!navigator.onLine) {
+        try {
+          await queueSmallRuminantEvent({
+            eventId: crypto.randomUUID(),
+            entityType: "small_ruminant_sale",
+            farmId,
+            referenceId: animalId || undefined,
+            payload: {
+              farm_id: farmId,
+              animal_id: saleType === "milk" ? null : animalId || null,
+              sale_date: saleDate,
+              sale_type: saleType,
+              buyer_name: buyerName || null,
+              buyer_contact: buyerContact || null,
+              live_weight_kg: liveWeight ? parseFloat(liveWeight) : null,
+              dressed_weight_kg: dressedWeight ? parseFloat(dressedWeight) : null,
+              price_per_kg: pricePerKg ? parseFloat(pricePerKg) : null,
+              total_price: parseFloat(totalPrice),
+              milk_quantity_liters: milkQuantity ? parseFloat(milkQuantity) : null,
+              milk_price_per_liter: milkPricePerLiter ? parseFloat(milkPricePerLiter) : null,
+              payment_method: paymentMethod,
+              payment_status: paymentStatus,
+              market_location: marketLocation || null,
+              notes: notes || null,
+            },
+          });
+          setSavedOffline(true);
+          setTimeout(() => router.push("/dashboard/smallRuminants/sales"), 1200);
+          return;
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Could not save offline');
+          return;
+        }
+      }
       setError(e.message);
     } finally {
       setLoading(false);
@@ -161,6 +219,7 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[], 
           </div>
 
           {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>}
+          {savedOffline && <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-700">Saved offline — will sync when connected.</div>}
 
           <div className="flex gap-3">
             <Link href="/dashboard/smallRuminants/sales" className="flex-1 px-4 py-3 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 text-center">Cancel</Link>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { queueSmallRuminantEvent } from '@/lib/offline-db'
 
 export default function AddMilkRecordPage() {
   const searchParams = useSearchParams()
@@ -24,6 +25,7 @@ export default function AddMilkRecordPage() {
   const [farmId, setFarmId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [savedOffline, setSavedOffline] = useState(false)
 
   const supabase = createClient()
 
@@ -69,32 +71,76 @@ export default function AddMilkRecordPage() {
     })
   }
 
+  const resetForm = () => setFormData({
+    animal_id: '',
+    record_date: new Date().toISOString().split('T')[0],
+    morning_milk: '',
+    evening_milk: '',
+    total_milk: '',
+    lactation_number: '',
+    days_in_milk: '',
+    notes: '',
+  })
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setSuccess(false)
+    setSavedOffline(false)
+
+    // total_milk intentionally omitted — it's a GENERATED ALWAYS column on
+    // the live goat_milk_records table (confirmed via a live
+    // information_schema query), same bug class as
+    // coffee_activities.total_cost and milk_records.total_milk elsewhere
+    // in this app. formData.total_milk above stays purely as the
+    // read-only live preview shown in the form.
+    const payload = {
+      animal_id: formData.animal_id,
+      record_date: formData.record_date,
+      morning_milk: parseFloat(formData.morning_milk) || null,
+      evening_milk: parseFloat(formData.evening_milk) || null,
+      lactation_number: formData.lactation_number ? parseInt(formData.lactation_number) : null,
+      days_in_milk: formData.days_in_milk ? parseInt(formData.days_in_milk) : null,
+      notes: formData.notes || null,
+    }
+
+    // OFFLINE FALLBACK: this form previously called supabase.from(...)
+    // .insert() directly with no offline path at all — no other small
+    // ruminant entity type covers goat_milk_records, so a lost connection
+    // mid-milking meant a raw Supabase network error and a lost record,
+    // same bug class as every other form fixed alongside this one. Uses
+    // the farmId already loaded on mount rather than re-calling
+    // auth.getUser(), which itself needs a network round-trip and would
+    // otherwise fail first when fully offline.
+    if (!navigator.onLine) {
+      if (!farmId) {
+        setError('Not authenticated')
+        setLoading(false)
+        return
+      }
+      try {
+        await queueSmallRuminantEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'small_ruminant_milk',
+          farmId,
+          referenceId: formData.animal_id,
+          payload,
+        })
+        setSuccess(true)
+        setSavedOffline(true)
+        resetForm()
+      } catch (err: any) {
+        setError(err.message || 'Could not save offline')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
-
-            const payload = {
-                    animal_id: formData.animal_id,
-                    record_date: formData.record_date,
-                    morning_milk: parseFloat(formData.morning_milk) || null,
-                    evening_milk: parseFloat(formData.evening_milk) || null,
-                    // total_milk intentionally omitted — it's a GENERATED
-                    // ALWAYS column on the live goat_milk_records table
-                    // (confirmed via a live information_schema query),
-                    // same bug class as coffee_activities.total_cost and
-                    // milk_records.total_milk elsewhere in this app.
-                    // formData.total_milk above stays purely as the
-                    // read-only live preview shown in the form.
-                    lactation_number: formData.lactation_number ? parseInt(formData.lactation_number) : null,
-                    days_in_milk: formData.days_in_milk ? parseInt(formData.days_in_milk) : null,
-                    notes: formData.notes || null,
-                  }
 
       const { error } = await supabase
         .from('goat_milk_records')
@@ -103,17 +149,29 @@ export default function AddMilkRecordPage() {
       if (error) throw error
 
       setSuccess(true)
-            setFormData({
-                    animal_id: '',
-                    record_date: new Date().toISOString().split('T')[0],
-                    morning_milk: '',
-                    evening_milk: '',
-                    total_milk: '',
-                    lactation_number: '',
-                    days_in_milk: '',
-                    notes: '',
-                  })
+      resetForm()
     } catch (err: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than
+      // showing a raw network error.
+      if (!navigator.onLine && farmId) {
+        try {
+          await queueSmallRuminantEvent({
+            eventId: crypto.randomUUID(),
+            entityType: 'small_ruminant_milk',
+            farmId,
+            referenceId: formData.animal_id,
+            payload,
+          })
+          setSuccess(true)
+          setSavedOffline(true)
+          resetForm()
+          return
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Could not save offline')
+          return
+        }
+      }
       setError(err.message || 'Failed to save milk record')
     } finally {
       setLoading(false)
@@ -132,7 +190,7 @@ export default function AddMilkRecordPage() {
 
         {success && (
           <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 text-green-800">
-            ✓ Milk record saved successfully!
+            {savedOffline ? '✓ Saved offline — will sync when connected.' : '✓ Milk record saved successfully!'}
           </div>
         )}
 

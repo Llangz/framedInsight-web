@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { addCow } from './actions'
+import { queueDairyEvent } from '@/lib/offline-db'
 import {
   ArrowLeft,
   Loader2,
@@ -64,11 +65,12 @@ const inputCls = (hasError?: boolean) =>
       : 'border-[#2A2D35] focus:ring-emerald-700 focus:border-emerald-700'
   }`
 
-export default function AddCowClient() {
+export default function AddCowClient({ farmId }: { farmId: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [savedOffline, setSavedOffline] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const [form, setForm] = useState({
@@ -103,11 +105,53 @@ export default function AddCowClient() {
     return Object.keys(errs).length === 0
   }
 
+  // cows' real live columns are cow_tag / birth_date / name — not the
+  // animal_id / date_of_birth field names this form collects. addCow()'s
+  // server action does this remapping before insert; the offline queue
+  // insert bypasses that action entirely, so it must be remapped here too
+  // (same discipline as every other offline-queued form in the app).
+  function toCowInsert() {
+    return {
+      cow_tag: (form.tag_number || form.animal_id).trim(),
+      breed: form.breed || null,
+      birth_date: form.date_of_birth || null,
+      purchase_date: form.purchase_date || null,
+      purchase_price: form.purchase_price ? parseFloat(form.purchase_price) : null,
+      status: form.status || 'active',
+      name: form.animal_id || null,
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validate()) return
     setLoading(true)
     setError('')
+
+    // OFFLINE FALLBACK: addCow() is a server action — a plain fetch under
+    // the hood — so calling it with no connection just throws a raw
+    // "Failed to fetch" that setError() would show verbatim to the farmer.
+    // Queue it locally instead, same as every dairy/poultry record form
+    // already does, so this reads as "saved offline" instead of "broken."
+    if (!navigator.onLine) {
+      try {
+        await queueDairyEvent({
+          eventId: crypto.randomUUID(),
+          entityType: 'cow_registration',
+          farmId,
+          payload: toCowInsert(),
+        })
+        setSuccess(true)
+        setSavedOffline(true)
+        setTimeout(() => router.push('/dashboard/dairy/herd'), 1500)
+      } catch (err: any) {
+        setError(err.message || 'Could not save offline')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     try {
       const result = await addCow(form)
       if (!result.success) {
@@ -117,6 +161,26 @@ export default function AddCowClient() {
       setSuccess(true)
       setTimeout(() => router.push('/dashboard/dairy/herd'), 1500)
     } catch (err: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than showing
+      // a raw network error.
+      if (!navigator.onLine) {
+        try {
+          await queueDairyEvent({
+            eventId: crypto.randomUUID(),
+            entityType: 'cow_registration',
+            farmId,
+            payload: toCowInsert(),
+          })
+          setSuccess(true)
+          setSavedOffline(true)
+          setTimeout(() => router.push('/dashboard/dairy/herd'), 1500)
+          return
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Could not save offline')
+          return
+        }
+      }
       setError(err.message || 'Failed to add cow')
     } finally {
       setLoading(false)
@@ -143,7 +207,9 @@ export default function AddCowClient() {
         {success && (
           <div className="flex items-center gap-2 p-3 mb-6 rounded-md border border-emerald-800/50 bg-emerald-950/30">
             <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />
-            <p className="text-sm text-emerald-300">Cow added successfully. Redirecting…</p>
+            <p className="text-sm text-emerald-300">
+              {savedOffline ? 'Saved offline — will sync when connected.' : 'Cow added successfully. Redirecting…'}
+            </p>
           </div>
         )}
 

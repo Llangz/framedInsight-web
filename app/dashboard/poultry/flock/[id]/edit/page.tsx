@@ -33,5 +33,5 @@ export default async function EditBatchPage({
   // Cast to the richer type that EditBatchClient expects (optional columns may be absent from generated types)
   const batch = batchRaw as any
 
-  return <EditBatchClient batch={batch} />
+  return <EditBatchClient batch={batch} farmId={farmManager.farm_id} />
 }

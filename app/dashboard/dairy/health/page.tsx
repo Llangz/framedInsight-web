@@ -38,6 +38,6 @@ export default async function HealthPage() {
   // Filter to only this farm's health records
   const farmHealthRecords = healthRecords?.filter((r: any) => r.cows?.farm_id === fId) || [];
 
-  return <HealthClient initialCows={cows || []} initialHistory={farmHealthRecords} />;
+  return <HealthClient farmId={fId} initialCows={cows || []} initialHistory={farmHealthRecords} />;
 }
 

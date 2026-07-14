@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { queueSmallRuminantEvent } from "@/lib/offline-db";
 
 // ─── Kenyan breed options ─────────────────────────────────────────────────────
 
@@ -118,6 +119,7 @@ export default function AddAnimalPage() {
   const [farmId, setFarmId]       = useState("");
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
+  const [savedOffline, setSavedOffline] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   // For sire/dam autocomplete
   const [existingAnimals, setExistingAnimals] = useState<{ id: string; animal_tag: string; name: string | null; sex: string }[]>([]);
@@ -185,11 +187,49 @@ export default function AddAnimalPage() {
         notes:                 form.notes.trim() || null,
       };
 
+      // OFFLINE FALLBACK: this form calls supabase.from(...).insert()
+      // directly with no offline path — a lost connection during
+      // registration meant a raw Supabase network error and a lost
+      // animal record. Like coffee_plot_create, the client generates the
+      // row id offline (eventId) so the new animal has a stable id even
+      // before sync runs (e.g. for a same-session offline weight/health
+      // record against it).
+      if (!navigator.onLine) {
+        await queueSmallRuminantEvent({
+          eventId: crypto.randomUUID(),
+          entityType: "small_ruminant_registration",
+          farmId,
+          payload,
+        });
+        setSavedOffline(true);
+        setTimeout(() => router.push("/dashboard/smallRuminants"), 1200);
+        return;
+      }
+
       const { error: insertErr } = await supabase.from("small_ruminants").insert(payload);
       if (insertErr) throw insertErr;
 
       router.push("/dashboard/smallRuminants");
     } catch (e: any) {
+      // A submit that started online but lost connection mid-request lands
+      // here too — fall back to the same offline queue rather than
+      // showing a raw network error.
+      if (!navigator.onLine) {
+        try {
+          await queueSmallRuminantEvent({
+            eventId: crypto.randomUUID(),
+            entityType: "small_ruminant_registration",
+            farmId,
+            payload,
+          });
+          setSavedOffline(true);
+          setTimeout(() => router.push("/dashboard/smallRuminants"), 1200);
+          return;
+        } catch (queueErr: any) {
+          setError(queueErr.message ?? "Could not save offline");
+          return;
+        }
+      }
       setError(e.message ?? "Failed to save animal");
     } finally {
       setSaving(false);
@@ -396,6 +436,9 @@ export default function AddAnimalPage() {
         {/* Error */}
         {error && (
           <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
+        )}
+        {savedOffline && (
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">Saved offline — will sync when connected.</div>
         )}
 
         {/* Submit */}

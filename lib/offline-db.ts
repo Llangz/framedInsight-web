@@ -58,6 +58,9 @@ export type SmallRuminantEntityType =
   | 'small_ruminant_weight'
   | 'small_ruminant_sale'
   | 'small_ruminant_breeding'
+  | 'small_ruminant_milk'
+  | 'small_ruminant_registration'
+  | 'small_ruminant_kidding'
 
 export type OfflineEntityType =
   | PoultryEntityType
