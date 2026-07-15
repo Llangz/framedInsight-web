@@ -195,55 +195,55 @@ function RecordMilkContent() {
   }
 
   const sessionInfo = {
-    morning: { emoji: '🌅', label: 'Morning', time: '6am-11am', color: 'bg-orange-50 border-orange-200' },
-    midday: { emoji: '☀️', label: 'Midday', time: '11am-3pm', color: 'bg-yellow-50 border-yellow-200' },
-    evening: { emoji: '🌆', label: 'Evening', time: '3pm-8pm', color: 'bg-blue-50 border-blue-200' },
+    morning: { emoji: '🌅', label: 'Morning', time: '6am-11am', color: 'bg-orange-950/30 border-orange-700 text-orange-200' },
+    midday: { emoji: '☀️', label: 'Midday', time: '11am-3pm', color: 'bg-yellow-950/30 border-yellow-700 text-yellow-200' },
+    evening: { emoji: '🌆', label: 'Evening', time: '3pm-8pm', color: 'bg-blue-950/30 border-blue-700 text-blue-200' },
   }
 
   const grandTotal = milkRecords.reduce((sum, record) => sum + calculateTotal(record), 0)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0A0C10]">
       <div className="p-4 lg:p-8 max-w-5xl mx-auto">
 
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold text-gray-900">Record Milk Production</h1>
-            <Link href="/dashboard/dairy/milk" className="text-sm text-gray-600 hover:text-gray-900">
+            <h1 className="text-2xl font-bold text-white">Record Milk Production</h1>
+            <Link href="/dashboard/dairy/milk" className="text-sm text-[#9CA3AF] hover:text-white">
               ← Cancel
             </Link>
           </div>
-          <p className="text-gray-600 text-sm">Record milk for morning, midday, and evening sessions</p>
+          <p className="text-[#9CA3AF] text-sm">Record milk for morning, midday, and evening sessions</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
 
           {/* Date & Session Selector */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               
               {/* Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Date</label>
                 <input
                   type="date"
                   value={recordDate}
                   onChange={(e) => setRecordDate(e.target.value)}
                   max={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-md bg-[#17191F] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               {/* Current Session Indicator */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Current Session</label>
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Current Session</label>
                 <div className={`px-4 py-2 rounded-lg border-2 ${sessionInfo[currentSession].color}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">{sessionInfo[currentSession].emoji}</span>
                     <div>
-                      <p className="font-medium text-gray-900">{sessionInfo[currentSession].label}</p>
-                      <p className="text-xs text-gray-600">{sessionInfo[currentSession].time}</p>
+                      <p className="font-medium text-white">{sessionInfo[currentSession].label}</p>
+                      <p className="text-xs opacity-80">{sessionInfo[currentSession].time}</p>
                     </div>
                   </div>
                 </div>
@@ -260,8 +260,8 @@ function RecordMilkContent() {
                   onClick={() => setCurrentSession(session)}
                   className={`flex-1 px-3 py-2 rounded-lg border-2 text-sm transition-colors ${
                     currentSession === session
-                      ? 'border-primary-600 bg-primary-50 text-primary-700 font-medium'
-                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      ? 'border-emerald-600 bg-emerald-950/40 text-emerald-300 font-medium'
+                      : 'border-[#2A2D35] text-[#9CA3AF] hover:bg-[#17191F]'
                   }`}
                 >
                   {sessionInfo[session].emoji} {sessionInfo[session].label}
@@ -271,15 +271,15 @@ function RecordMilkContent() {
           </div>
 
           {/* Cow Selection */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Cows to Record</h2>
+          <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Select Cows to Record</h2>
             
             {cows.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-600 mb-4">No active cows found</p>
+                <p className="text-[#9CA3AF] mb-4">No active cows found</p>
                 <Link
                   href="/dashboard/dairy/cows/add"
-                  className="inline-block px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="inline-block px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
                 >
                   Add Your First Cow
                 </Link>
@@ -294,12 +294,12 @@ function RecordMilkContent() {
                     disabled={!!milkRecords.find(r => r.cowId === cow.id)}
                     className={`px-3 py-2 rounded-lg border-2 text-sm transition-colors ${
                       milkRecords.find(r => r.cowId === cow.id)
-                        ? 'border-green-300 bg-green-50 text-green-700 cursor-not-allowed'
-                        : 'border-gray-200 hover:border-primary-400 hover:bg-primary-50'
+                        ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300 cursor-not-allowed'
+                        : 'border-[#2A2D35] text-white hover:border-emerald-600 hover:bg-emerald-950/20'
                     }`}
                   >
                     <div className="font-medium">{cow.name || cow.cow_tag}</div>
-                    <div className="text-xs text-gray-500">{cow.cow_tag}</div>
+                    <div className="text-xs text-[#6B7280]">{cow.cow_tag}</div>
                   </button>
                 ))}
               </div>
@@ -308,29 +308,29 @@ function RecordMilkContent() {
 
           {/* Milk Records Table */}
           {milkRecords.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Milk Records</h2>
+            <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] overflow-hidden">
+              <div className="p-6 border-b border-[#2A2D35]">
+                <h2 className="text-lg font-semibold text-white">Milk Records</h2>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-[#17191F]">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Cow</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">🌅 Morning (L)</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">☀️ Midday (L)</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">🌆 Evening (L)</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Total</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-[#D1D5DB]">Cow</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">🌅 Morning (L)</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">☀️ Midday (L)</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">🌆 Evening (L)</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">Total</th>
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-[#2A2D35]">
                     {milkRecords.map(record => (
-                      <tr key={record.cowId} className="hover:bg-gray-50">
+                      <tr key={record.cowId} className="hover:bg-[#17191F]">
                         <td className="px-4 py-3">
-                          <div className="font-medium text-gray-900">{record.cowName}</div>
-                          <div className="text-xs text-gray-500">{record.cowTag}</div>
+                          <div className="font-medium text-white">{record.cowName}</div>
+                          <div className="text-xs text-[#6B7280]">{record.cowTag}</div>
                         </td>
                         <td className="px-4 py-3">
                           <input
@@ -340,8 +340,8 @@ function RecordMilkContent() {
                             placeholder="0"
                             min="0"
                             step="0.1"
-                            className={`w-20 px-2 py-1 text-center border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                              errors[`${record.cowId}_morning`] ? 'border-red-300' : 'border-gray-300'
+                            className={`w-20 px-2 py-1 text-center border rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                              errors[`${record.cowId}_morning`] ? 'border-red-500' : 'border-[#2A2D35]'
                             }`}
                           />
                         </td>
@@ -353,8 +353,8 @@ function RecordMilkContent() {
                             placeholder="0"
                             min="0"
                             step="0.1"
-                            className={`w-20 px-2 py-1 text-center border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                              errors[`${record.cowId}_midday`] ? 'border-red-300' : 'border-gray-300'
+                            className={`w-20 px-2 py-1 text-center border rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                              errors[`${record.cowId}_midday`] ? 'border-red-500' : 'border-[#2A2D35]'
                             }`}
                           />
                         </td>
@@ -366,19 +366,19 @@ function RecordMilkContent() {
                             placeholder="0"
                             min="0"
                             step="0.1"
-                            className={`w-20 px-2 py-1 text-center border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                              errors[`${record.cowId}_evening`] ? 'border-red-300' : 'border-gray-300'
+                            className={`w-20 px-2 py-1 text-center border rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                              errors[`${record.cowId}_evening`] ? 'border-red-500' : 'border-[#2A2D35]'
                             }`}
                           />
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className="font-bold text-gray-900">{calculateTotal(record).toFixed(1)}L</span>
+                          <span className="font-bold text-white">{calculateTotal(record).toFixed(1)}L</span>
                         </td>
                         <td className="px-4 py-3">
                           <button
                             type="button"
                             onClick={() => removeCowFromRecords(record.cowId)}
-                            className="text-red-600 hover:text-red-800 text-sm"
+                            className="text-red-400 hover:text-red-300 text-sm"
                           >
                             Remove
                           </button>
@@ -386,13 +386,13 @@ function RecordMilkContent() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                  <tfoot className="bg-[#17191F] border-t-2 border-[#2A2D35]">
                     <tr>
-                      <td colSpan={4} className="px-4 py-3 text-right font-semibold text-gray-900">
+                      <td colSpan={4} className="px-4 py-3 text-right font-semibold text-white">
                         Grand Total:
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="text-xl font-bold text-primary-600">{grandTotal.toFixed(1)}L</span>
+                        <span className="text-xl font-bold text-emerald-400">{grandTotal.toFixed(1)}L</span>
                       </td>
                       <td></td>
                     </tr>
@@ -404,8 +404,8 @@ function RecordMilkContent() {
 
           {/* Error Messages */}
           {errors.general && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800 text-sm">{errors.general}</p>
+            <div className="bg-red-950/40 border border-red-700 rounded-lg p-4">
+              <p className="text-red-300 text-sm">{errors.general}</p>
             </div>
           )}
 
@@ -414,14 +414,14 @@ function RecordMilkContent() {
             <div className="flex items-center justify-end gap-3 pt-4">
               <Link
                 href="/dashboard/dairy/milk"
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="px-6 py-2 border border-[#2A2D35] text-[#D1D5DB] rounded-lg hover:bg-[#17191F]"
               >
                 Cancel
               </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Saving...' : `Save ${milkRecords.length} Record${milkRecords.length > 1 ? 's' : ''}`}
               </button>
@@ -438,8 +438,8 @@ function RecordMilkContent() {
 export default function RecordMilkPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="min-h-screen bg-[#0A0C10] flex items-center justify-center">
+        <p className="text-[#9CA3AF]">Loading...</p>
       </div>
     }>
       <RecordMilkContent />

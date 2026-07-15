@@ -179,35 +179,35 @@ export default function AddMilkRecordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#0A0C10]">
       <div className="p-4 lg:p-8 max-w-2xl mx-auto">
                 <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Record Milk Production</h1>
-          <Link href="/dashboard/smallRuminants/milk" className="text-sm text-slate-600 hover:text-slate-900">
+          <h1 className="text-2xl font-bold text-white">Record Milk Production</h1>
+          <Link href="/dashboard/smallRuminants/milk" className="text-sm text-[#9CA3AF] hover:text-white">
             ← Back
           </Link>
         </div>
 
         {success && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 text-green-800">
+          <div className="mb-6 bg-emerald-950/40 border border-emerald-700 rounded-lg p-4 text-emerald-300">
             {savedOffline ? '✓ Saved offline — will sync when connected.' : '✓ Milk record saved successfully!'}
           </div>
         )}
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+          <div className="mb-6 bg-red-950/40 border border-red-700 rounded-lg p-4 text-red-300">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Animal *</label>
+            <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Animal *</label>
             <select
               value={formData.animal_id}
                             onChange={(e) => set('animal_id', e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             >
               <option value="">Select a goat/sheep...</option>
                             {animals.map(animal => (
@@ -219,20 +219,20 @@ export default function AddMilkRecordPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Date *</label>
+            <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Date *</label>
             <input
               type="date"
               value={formData.record_date}
               onChange={(e) => set('record_date', e.target.value)}
               max={new Date().toISOString().split('T')[0]}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Morning (L)</label>
+                        <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Morning (L)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -240,11 +240,11 @@ export default function AddMilkRecordPage() {
                           value={formData.morning_milk}
                           onChange={(e) => set('morning_milk', e.target.value)}
                           placeholder="0.0"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Evening (L)</label>
+                        <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Evening (L)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -252,63 +252,63 @@ export default function AddMilkRecordPage() {
                           value={formData.evening_milk}
                           onChange={(e) => set('evening_milk', e.target.value)}
                           placeholder="0.0"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
                       </div>
                     </div>
 
           <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Total (L)</label>
+                      <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Total (L)</label>
                       <input
                         type="number"
                         step="0.1"
                         min="0"
                         value={formData.total_milk}
                         readOnly
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-500"
+                        className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#1E222B] text-[#9CA3AF]"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Lactation #</label>
+                        <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Lactation #</label>
                         <input
                           type="number"
                           min="1"
                           value={formData.lactation_number}
                           onChange={(e) => set('lactation_number', e.target.value)}
                           placeholder="1"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Days in Milk</label>
+                        <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Days in Milk</label>
                         <input
                           type="number"
                           min="0"
                           value={formData.days_in_milk}
                           onChange={(e) => set('days_in_milk', e.target.value)}
                           placeholder="e.g. 45"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
+                      <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Notes</label>
                       <textarea
                         value={formData.notes}
                         onChange={(e) => set('notes', e.target.value)}
                         rows={3}
                         placeholder="Any observations about milk quality, animal health, etc."
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={loading || !formData.animal_id}
-                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
                     >
             {loading ? 'Saving...' : 'Save Milk Record'}
           </button>

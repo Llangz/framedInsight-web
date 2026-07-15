@@ -131,34 +131,34 @@ export default function AddCowPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0A0C10]">
       <div className="p-4 lg:p-8 max-w-3xl mx-auto">
         
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Add New Cow</h1>
+            <h1 className="text-2xl font-bold text-white">Add New Cow</h1>
             <Link
               href="/dashboard/dairy/cows"
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm text-[#9CA3AF] hover:text-white"
             >
               ← Cancel
             </Link>
           </div>
-          <p className="text-gray-600 text-sm mt-1">Enter the cow's details below</p>
+          <p className="text-[#9CA3AF] text-sm mt-1">Enter the cow's details below</p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6 space-y-6">
           
           {/* Basic Information */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">Basic Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
               {/* Cow Tag (Required) */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Cow Tag/ID <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -166,35 +166,35 @@ export default function AddCowPage() {
                   value={formData.cow_tag}
                   onChange={(e) => setFormData({...formData, cow_tag: e.target.value})}
                   placeholder="e.g., COW-001, TAG-123"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                    errors.cow_tag ? 'border-red-300' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                    errors.cow_tag ? 'border-red-500' : 'border-[#2A2D35]'
                   }`}
                   required
                 />
-                {errors.cow_tag && <p className="text-red-600 text-sm mt-1">{errors.cow_tag}</p>}
+                {errors.cow_tag && <p className="text-red-400 text-sm mt-1">{errors.cow_tag}</p>}
               </div>
 
               {/* Name (Optional) */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name <span className="text-xs text-gray-500">(Optional)</span>
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
+                  Name <span className="text-xs text-[#6B7280]">(Optional)</span>
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="e.g., Wanjiru, Mwende"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               {/* Breed */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Breed</label>
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">Breed</label>
                 <select
                   value={formData.breed}
                   onChange={(e) => setFormData({...formData, breed: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-md bg-[#17191F] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Select breed</option>
                   {KENYAN_BREEDS.map(breed => (
@@ -205,7 +205,7 @@ export default function AddCowPage() {
 
               {/* Birth Date (Required) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Birth Date <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -213,21 +213,21 @@ export default function AddCowPage() {
                   value={formData.birth_date}
                   onChange={(e) => setFormData({...formData, birth_date: e.target.value})}
                   max={new Date().toISOString().split('T')[0]}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                    errors.birth_date ? 'border-red-300' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                    errors.birth_date ? 'border-red-500' : 'border-[#2A2D35]'
                   }`}
                   required
                 />
-                {errors.birth_date && <p className="text-red-600 text-sm mt-1">{errors.birth_date}</p>}
+                {errors.birth_date && <p className="text-red-400 text-sm mt-1">{errors.birth_date}</p>}
               </div>
 
               {/* Sex */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sex</label>
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">Sex</label>
                 <select
                   value={formData.sex}
                   onChange={(e) => setFormData({...formData, sex: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-md bg-[#17191F] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="female">Female</option>
                   <option value="male">Male</option>
@@ -236,11 +236,11 @@ export default function AddCowPage() {
 
               {/* Purpose */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">Purpose</label>
                 <select
                   value={formData.purpose}
                   onChange={(e) => setFormData({...formData, purpose: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-md bg-[#17191F] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="dairy">Dairy</option>
                   <option value="beef">Beef</option>
@@ -254,27 +254,27 @@ export default function AddCowPage() {
 
           {/* Purchase Information */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Purchase Information <span className="text-xs text-gray-500 font-normal">(Optional)</span></h2>
+            <h2 className="text-lg font-semibold text-white mb-4">Purchase Information <span className="text-xs text-[#6B7280] font-normal">(Optional)</span></h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
               {/* Purchase Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">Purchase Date</label>
                 <input
                   type="date"
                   value={formData.purchase_date}
                   onChange={(e) => setFormData({...formData, purchase_date: e.target.value})}
                   max={new Date().toISOString().split('T')[0]}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                    errors.purchase_date ? 'border-red-300' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                    errors.purchase_date ? 'border-red-500' : 'border-[#2A2D35]'
                   }`}
                 />
-                {errors.purchase_date && <p className="text-red-600 text-sm mt-1">{errors.purchase_date}</p>}
+                {errors.purchase_date && <p className="text-red-400 text-sm mt-1">{errors.purchase_date}</p>}
               </div>
 
               {/* Purchase Price */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Price (KES)</label>
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">Purchase Price (KES)</label>
                 <input
                   type="number"
                   value={formData.purchase_price}
@@ -282,19 +282,19 @@ export default function AddCowPage() {
                   placeholder="e.g., 50000"
                   min="0"
                   step="100"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               {/* Source */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">Source</label>
                 <input
                   type="text"
                   value={formData.source}
                   onChange={(e) => setFormData({...formData, source: e.target.value})}
                   placeholder="e.g., Local market, Farm ABC"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -303,28 +303,28 @@ export default function AddCowPage() {
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes <span className="text-xs text-gray-500">(Optional)</span></label>
+            <label className="block text-sm font-medium text-[#D1D5DB] mb-1">Notes <span className="text-xs text-[#6B7280]">(Optional)</span></label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
               placeholder="Any additional information..."
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-[#2A2D35] rounded-md bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
           {/* Submit Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#2A2D35]">
             <Link
               href="/dashboard/dairy/cows"
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              className="px-6 py-2 border border-[#2A2D35] text-[#D1D5DB] rounded-lg hover:bg-[#17191F]"
             >
               Cancel
             </Link>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Adding...' : 'Add Cow'}
             </button>

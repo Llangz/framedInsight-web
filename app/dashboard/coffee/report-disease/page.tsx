@@ -193,8 +193,8 @@ export default function ReportDiseasePage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-green-600 animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your plots...</p>
+          <div className="w-12 h-12 rounded-full border-4 border-[#2A2D35] border-t-emerald-500 animate-spin mx-auto mb-4"></div>
+          <p className="text-[#9CA3AF]">Loading your plots...</p>
         </div>
       </div>
     )
@@ -213,22 +213,22 @@ export default function ReportDiseasePage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0A0C10]">
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Report Disease/Pest</h1>
-          <p className="text-gray-600 mt-2">Log a disease or pest problem affecting your coffee plot</p>
+          <h1 className="text-3xl font-bold text-white">Report Disease/Pest</h1>
+          <p className="text-[#9CA3AF] mt-2">Log a disease or pest problem affecting your coffee plot</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Problem Identification */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Problem Identification</h3>
+          <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Problem Identification</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Plot *
                 </label>
                 {plots.length > 0 ? (
@@ -236,7 +236,7 @@ export default function ReportDiseasePage() {
                     name="plotId"
                     value={formData.plotId}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   >
                     {plots.map(plot => (
@@ -246,19 +246,19 @@ export default function ReportDiseasePage() {
                     ))}
                   </select>
                 ) : (
-                  <p className="text-sm text-gray-500">No active plots found.</p>
+                  <p className="text-sm text-[#6B7280]">No active plots found.</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Disease/Pest Name *
                 </label>
                 <select
                   name="diseaseName"
                   value={formData.diseaseName}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   required
                 >
                   {diseases.map(disease => (
@@ -271,14 +271,14 @@ export default function ReportDiseasePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Severity Level *
                   </label>
                   <select
                     name="severityLevel"
                     value={formData.severityLevel}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   >
                     <option value="low">Low (up to 10%)</option>
@@ -289,7 +289,7 @@ export default function ReportDiseasePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Affected Percentage (%) *
                   </label>
                   <input
@@ -301,14 +301,14 @@ export default function ReportDiseasePage() {
                     max="100"
                     step="1"
                     placeholder="25"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Detection Date *
                 </label>
                 <input
@@ -316,7 +316,7 @@ export default function ReportDiseasePage() {
                   name="detectionDate"
                   value={formData.detectionDate}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   required
                 />
               </div>
@@ -324,12 +324,12 @@ export default function ReportDiseasePage() {
           </div>
 
           {/* Treatment Information */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Treatment Information</h3>
+          <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Treatment Information</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Treatment Applied
                 </label>
                 <textarea
@@ -338,13 +338,13 @@ export default function ReportDiseasePage() {
                   onChange={handleChange}
                   rows={3}
                   placeholder="Describe the treatment or chemical applied..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Treatment Date
                   </label>
                   <input
@@ -352,12 +352,12 @@ export default function ReportDiseasePage() {
                     name="treatmentDate"
                     value={formData.treatmentDate}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Estimated Losses (kg)
                   </label>
                   <input
@@ -368,7 +368,7 @@ export default function ReportDiseasePage() {
                     step="0.5"
                     min="0"
                     placeholder="0.0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
@@ -376,12 +376,12 @@ export default function ReportDiseasePage() {
           </div>
 
           {/* Additional Information */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h3>
+          <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Additional Information</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Photo URL
                 </label>
                 <div className="flex gap-2">
@@ -391,7 +391,7 @@ export default function ReportDiseasePage() {
                     value={formData.photoUrl}
                     onChange={handleChange}
                     placeholder="https://..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="flex-1 px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <button
                     type="button"
@@ -412,11 +412,11 @@ export default function ReportDiseasePage() {
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Provide a public image URL and click "AI Diagnose" to auto-fill the form.</p>
+                <p className="text-xs text-[#6B7280] mt-1">Provide a public image URL and click "AI Diagnose" to auto-fill the form.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Additional Notes
                 </label>
                 <textarea
@@ -425,7 +425,7 @@ export default function ReportDiseasePage() {
                   onChange={handleChange}
                   rows={3}
                   placeholder="Any additional observations..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -433,8 +433,8 @@ export default function ReportDiseasePage() {
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-800">{error}</p>
+            <div className="bg-red-950/40 border border-red-700 rounded-lg p-4">
+              <p className="text-sm text-red-300">{error}</p>
             </div>
           )}
 
@@ -443,14 +443,14 @@ export default function ReportDiseasePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg transition"
             >
               {submitting ? 'Recording...' : 'Record Disease/Pest'}
             </button>
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 font-semibold py-2 px-4 rounded-lg transition"
+              className="flex-1 bg-[#17191F] hover:bg-[#2A2D35] text-white font-semibold py-2 px-4 rounded-lg border border-[#2A2D35] transition"
             >
               Cancel
             </button>

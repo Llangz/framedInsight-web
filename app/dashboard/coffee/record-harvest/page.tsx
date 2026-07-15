@@ -153,30 +153,30 @@ export default function RecordHarvestPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-green-600 animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your plots...</p>
+          <div className="w-12 h-12 rounded-full border-4 border-[#2A2D35] border-t-emerald-500 animate-spin mx-auto mb-4"></div>
+          <p className="text-[#9CA3AF]">Loading your plots...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0A0C10]">
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Record Harvest</h1>
-          <p className="text-gray-600 mt-2">Log a new cherry harvest from your coffee plots</p>
+          <h1 className="text-3xl font-bold text-white">Record Harvest</h1>
+          <p className="text-[#9CA3AF] mt-2">Log a new cherry harvest from your coffee plots</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Harvest Details */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Harvest Details</h3>
+          <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Harvest Details</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Plot *
                 </label>
                 {plots.length > 0 ? (
@@ -184,7 +184,7 @@ export default function RecordHarvestPage() {
                     name="plotId"
                     value={formData.plotId}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   >
                     {plots.map(plot => (
@@ -194,13 +194,13 @@ export default function RecordHarvestPage() {
                     ))}
                   </select>
                 ) : (
-                  <p className="text-sm text-gray-500">No active plots found. <a href="/dashboard/coffee/plots/add" className="text-green-600 hover:text-green-700 font-semibold">Add a plot first.</a></p>
+                  <p className="text-sm text-[#6B7280]">No active plots found. <a href="/dashboard/coffee/plots/add" className="text-emerald-400 hover:text-emerald-300 font-semibold">Add a plot first.</a></p>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Harvest Date *
                   </label>
                   <input
@@ -208,13 +208,13 @@ export default function RecordHarvestPage() {
                     name="harvestDate"
                     value={formData.harvestDate}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Cherry Weight (kg) *
                   </label>
                   <input
@@ -225,7 +225,7 @@ export default function RecordHarvestPage() {
                     step="0.5"
                     min="0"
                     placeholder="0.0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   />
                 </div>
@@ -233,14 +233,14 @@ export default function RecordHarvestPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Quality Grade
                   </label>
                   <select
                     name="qualityGrade"
                     value={formData.qualityGrade}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="AA">AA (Premium)</option>
                     <option value="AB">AB (High)</option>
@@ -252,14 +252,14 @@ export default function RecordHarvestPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Processing Method
                   </label>
                   <select
                     name="processingMethod"
                     value={formData.processingMethod}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="washed">Washed</option>
                     <option value="natural">Natural</option>
@@ -271,13 +271,13 @@ export default function RecordHarvestPage() {
           </div>
 
           {/* Pricing & Payment */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Pricing & Payment</h3>
+          <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Pricing & Payment</h3>
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Price per kg (KES)
                   </label>
                   <input
@@ -288,22 +288,22 @@ export default function RecordHarvestPage() {
                     step="1"
                     min="0"
                     placeholder="140"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                     Estimated Value
                   </label>
-                  <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                  <div className="px-3 py-2 bg-[#1E222B] border border-[#2A2D35] rounded-lg text-[#D1D5DB]">
                     KES {(parseFloat(formData.cherryKg || '0') * parseFloat(formData.pricePerKg || '0')).toLocaleString()}
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Cooperative/Buyer Name
                 </label>
                 <input
@@ -312,12 +312,12 @@ export default function RecordHarvestPage() {
                   value={formData.cooperativeName}
                   onChange={handleChange}
                   placeholder="e.g., Kirinyaga Coffee Cooperative"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#D1D5DB] mb-1">
                   Lot Number
                 </label>
                 <input
@@ -326,15 +326,15 @@ export default function RecordHarvestPage() {
                   value={formData.lotNumber}
                   onChange={handleChange}
                   placeholder="e.g., LOT-2026-001"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
           </div>
 
           {/* Additional Notes */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">
+            <label className="block text-sm font-medium text-[#D1D5DB] mb-2">
               Additional Notes
             </label>
             <textarea
@@ -343,14 +343,14 @@ export default function RecordHarvestPage() {
               onChange={handleChange}
               rows={4}
               placeholder="Any additional details about this harvest..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-800">{error}</p>
+            <div className="bg-red-950/40 border border-red-700 rounded-lg p-4">
+              <p className="text-sm text-red-300">{error}</p>
             </div>
           )}
 
@@ -359,14 +359,14 @@ export default function RecordHarvestPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg transition"
             >
               {submitting ? 'Recording...' : 'Record Harvest'}
             </button>
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 font-semibold py-2 px-4 rounded-lg transition"
+              className="flex-1 bg-[#17191F] hover:bg-[#2A2D35] text-white font-semibold py-2 px-4 rounded-lg border border-[#2A2D35] transition"
             >
               Cancel
             </button>
