@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Bird, ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Button, FormField, Input, Select, Textarea } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface Props { farmId: string }
 
@@ -24,9 +26,6 @@ const BREEDS: Record<string, string[]> = {
 
 const SOURCES = ['Hatchery', 'Cooperative', 'Private breeder', 'Own hatching', 'KALRO', 'Other']
 const HOUSING = ['Deep litter', 'Battery cage', 'Free range', 'Semi-intensive', 'Pasture', 'Open shed']
-
-const FIELD = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#4B5563] focus:outline-none focus:border-[#4B5563] transition-colors'
-const LABEL = 'block text-xs font-bold text-[#D1D5DB] mb-1'
 
 export default function AddBatchClient({ farmId }: Props) {
   const router = useRouter()
@@ -113,121 +112,106 @@ export default function AddBatchClient({ farmId }: Props) {
       <form onSubmit={handleSubmit} className="space-y-6">
 
         {/* Bird type selection */}
-        <div>
-          <label className={LABEL}>Bird type *</label>
+        <FormField label="Bird type" required>
           <div className="grid grid-cols-2 gap-2">
             {BIRD_TYPES.map(t => (
               <button key={t.value} type="button"
                 onClick={() => { set('bird_type', t.value); set('breed', '') }}
-                className={`text-left px-3 py-3 rounded-lg border text-sm transition-colors ${
+                className={cn(
+                  'text-left px-3 py-3 rounded-lg border text-sm transition-colors',
                   form.bird_type === t.value
                     ? 'border-emerald-600/60 bg-emerald-950/30 text-white'
                     : 'border-[#2A2D35] bg-[#0A0C10] text-[#9CA3AF] hover:border-[#3A3D45]'
-                }`}>
+                )}>
                 <p className="font-medium">{t.label}</p>
                 <p className="text-[11px] text-[#6B7280] mt-0.5 leading-tight">{t.desc}</p>
               </button>
             ))}
           </div>
-        </div>
+        </FormField>
 
         {/* Basic info */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={LABEL}>Batch name *</label>
-            <input className={FIELD} placeholder="e.g. Batch 12, Jan 2025 Layers"
+          <FormField label="Batch name" required>
+            <Input placeholder="e.g. Batch 12, Jan 2025 Layers"
               value={form.batch_name} onChange={e => set('batch_name', e.target.value)} />
-          </div>
-          <div>
-            <label className={LABEL}>Breed</label>
-            <select className={FIELD} value={form.breed} onChange={e => set('breed', e.target.value)}>
+          </FormField>
+          <FormField label="Breed">
+            <Select value={form.breed} onChange={e => set('breed', e.target.value)}>
               <option value="">Select breed…</option>
               {BREEDS[form.bird_type].map(b => <option key={b}>{b}</option>)}
-            </select>
-          </div>
+            </Select>
+          </FormField>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={LABEL}>Date of placement *</label>
-            <input type="date" className={FIELD}
+          <FormField label="Date of placement" required>
+            <Input type="date"
               value={form.date_of_placement} onChange={e => set('date_of_placement', e.target.value)} />
-          </div>
-          <div>
-            <label className={LABEL}>Number of birds *</label>
-            <input type="number" className={FIELD} placeholder="e.g. 500"
+          </FormField>
+          <FormField label="Number of birds" required>
+            <Input type="number" placeholder="e.g. 500"
               value={form.initial_count} onChange={e => set('initial_count', e.target.value)} min="1" />
-          </div>
+          </FormField>
         </div>
 
         {/* Source & cost */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={LABEL}>Source</label>
-            <select className={FIELD} value={form.source} onChange={e => set('source', e.target.value)}>
+          <FormField label="Source">
+            <Select value={form.source} onChange={e => set('source', e.target.value)}>
               <option value="">Select source…</option>
               {SOURCES.map(s => <option key={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className={LABEL}>Purchase price / bird (KES)</label>
-            <input type="number" className={FIELD} placeholder="e.g. 120"
+            </Select>
+          </FormField>
+          <FormField label="Purchase price / bird (KES)">
+            <Input type="number" placeholder="e.g. 120"
               value={form.purchase_price_per_bird} onChange={e => set('purchase_price_per_bird', e.target.value)} min="0" step="0.5" />
-          </div>
+          </FormField>
         </div>
 
         {/* Housing */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={LABEL}>House / unit number</label>
-            <input className={FIELD} placeholder="e.g. House 1, Pen A"
+          <FormField label="House / unit number">
+            <Input placeholder="e.g. House 1, Pen A"
               value={form.house_number} onChange={e => set('house_number', e.target.value)} />
-          </div>
-          <div>
-            <label className={LABEL}>Housing system</label>
-            <select className={FIELD} value={form.housing_system} onChange={e => set('housing_system', e.target.value)}>
+          </FormField>
+          <FormField label="Housing system">
+            <Select value={form.housing_system} onChange={e => set('housing_system', e.target.value)}>
               <option value="">Select system…</option>
               {HOUSING.map(h => <option key={h}>{h}</option>)}
-            </select>
-          </div>
+            </Select>
+          </FormField>
         </div>
 
         {/* Type-specific fields */}
         {(form.bird_type === 'layer' || form.bird_type === 'dual_purpose') && (
-          <div>
-            <label className={LABEL}>Expected start of laying (date)</label>
-            <input type="date" className={FIELD}
+          <FormField label="Expected start of laying (date)" hint="Layers typically start at 18–22 weeks. Kienyeji at 22–24 weeks.">
+            <Input type="date"
               value={form.expected_laying_date} onChange={e => set('expected_laying_date', e.target.value)} />
-            <p className="text-[11px] text-[#4B5563] mt-1">Layers typically start at 18–22 weeks. Kienyeji at 22–24 weeks.</p>
-          </div>
+          </FormField>
         )}
 
         {form.bird_type === 'broiler' && (
-          <div>
-            <label className={LABEL}>Target slaughter weight (kg)</label>
-            <input type="number" className={FIELD} placeholder="e.g. 2.0"
+          <FormField label="Target slaughter weight (kg)" hint="Ross 308 typically reaches 2.0–2.5kg at 35–42 days in Kenya.">
+            <Input type="number" placeholder="e.g. 2.0"
               value={form.target_weight_kg} onChange={e => set('target_weight_kg', e.target.value)} min="0" step="0.1" />
-            <p className="text-[11px] text-[#4B5563] mt-1">Ross 308 typically reaches 2.0–2.5kg at 35–42 days in Kenya.</p>
-          </div>
+          </FormField>
         )}
 
         {/* Notes */}
-        <div>
-          <label className={LABEL}>Notes</label>
-          <textarea className={`${FIELD} resize-none`} rows={3}
-            placeholder="Vaccination schedule, feed program, any observations…"
+        <FormField label="Notes">
+          <Textarea placeholder="Vaccination schedule, feed program, any observations…"
             value={form.notes} onChange={e => set('notes', e.target.value)} />
-        </div>
+        </FormField>
 
         <div className="flex gap-3 pt-2">
           <Link href="/dashboard/poultry"
-            className="flex-1 text-center px-4 py-2.5 rounded-md border border-[#2A2D35] text-sm text-[#9CA3AF] hover:text-white hover:border-[#4B5563] transition-colors">
+            className="flex-1 text-center px-4 py-2.5 rounded-lg border border-[#2A2D35] text-sm text-[#9CA3AF] hover:text-white hover:border-[#4B5563] transition-colors">
             Cancel
           </Link>
-          <button type="submit" disabled={loading}
-            className="flex-1 px-4 py-2.5 rounded-md bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-sm font-medium text-white transition-colors">
-            {loading ? 'Saving…' : 'Register batch'}
-          </button>
+          <Button type="submit" fullWidth loading={loading} loadingText="Saving…" className="flex-1">
+            Register batch
+          </Button>
         </div>
 
       </form>

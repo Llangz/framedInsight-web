@@ -1,0 +1,570 @@
+diff --git a/app/dashboard/poultry/add-batch/AddBatchClient.tsx b/app/dashboard/poultry/add-batch/AddBatchClient.tsx
+index 7008680..b0768f8 100644
+--- a/app/dashboard/poultry/add-batch/AddBatchClient.tsx
++++ b/app/dashboard/poultry/add-batch/AddBatchClient.tsx
+@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
+ import Link from 'next/link'
+ import { createClient } from '@/lib/supabase/client'
+ import { Bird, ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react'
++import { Button, FormField, Input, Select, Textarea } from '@/components/ui'
++import { cn } from '@/lib/utils'
+ 
+ interface Props { farmId: string }
+ 
+@@ -25,9 +27,6 @@ const BREEDS: Record<string, string[]> = {
+ const SOURCES = ['Hatchery', 'Cooperative', 'Private breeder', 'Own hatching', 'KALRO', 'Other']
+ const HOUSING = ['Deep litter', 'Battery cage', 'Free range', 'Semi-intensive', 'Pasture', 'Open shed']
+ 
+-const FIELD = 'px-3 py-2 w-full rounded-md bg-[#0A0C10] border border-[#2A2D35] text-sm text-white placeholder:text-[#4B5563] focus:outline-none focus:border-[#4B5563] transition-colors'
+-const LABEL = 'block text-xs font-bold text-[#D1D5DB] mb-1'
+-
+ export default function AddBatchClient({ farmId }: Props) {
+   const router = useRouter()
+   const supabase = createClient()
+@@ -113,124 +112,109 @@ export default function AddBatchClient({ farmId }: Props) {
+       <form onSubmit={handleSubmit} className="space-y-6">
+ 
+         {/* Bird type selection */}
+-        <div>
+-          <label className={LABEL}>Bird type *</label>
++        <FormField label="Bird type" required>
+           <div className="grid grid-cols-2 gap-2">
+             {BIRD_TYPES.map(t => (
+               <button key={t.value} type="button"
+                 onClick={() => { set('bird_type', t.value); set('breed', '') }}
+-                className={`text-left px-3 py-3 rounded-lg border text-sm transition-colors ${
++                className={cn(
++                  'text-left px-3 py-3 rounded-lg border text-sm transition-colors',
+                   form.bird_type === t.value
+                     ? 'border-emerald-600/60 bg-emerald-950/30 text-white'
+                     : 'border-[#2A2D35] bg-[#0A0C10] text-[#9CA3AF] hover:border-[#3A3D45]'
+-                }`}>
++                )}>
+                 <p className="font-medium">{t.label}</p>
+                 <p className="text-[11px] text-[#6B7280] mt-0.5 leading-tight">{t.desc}</p>
+               </button>
+             ))}
+           </div>
+-        </div>
++        </FormField>
+ 
+         {/* Basic info */}
+         <div className="grid grid-cols-2 gap-4">
+-          <div>
+-            <label className={LABEL}>Batch name *</label>
+-            <input className={FIELD} placeholder="e.g. Batch 12, Jan 2025 Layers"
++          <FormField label="Batch name" required>
++            <Input placeholder="e.g. Batch 12, Jan 2025 Layers"
+               value={form.batch_name} onChange={e => set('batch_name', e.target.value)} />
+-          </div>
+-          <div>
+-            <label className={LABEL}>Breed</label>
+-            <select className={FIELD} value={form.breed} onChange={e => set('breed', e.target.value)}>
++          </FormField>
++          <FormField label="Breed">
++            <Select value={form.breed} onChange={e => set('breed', e.target.value)}>
+               <option value="">Select breed…</option>
+               {BREEDS[form.bird_type].map(b => <option key={b}>{b}</option>)}
+-            </select>
+-          </div>
++            </Select>
++          </FormField>
+         </div>
+ 
+         <div className="grid grid-cols-2 gap-4">
+-          <div>
+-            <label className={LABEL}>Date of placement *</label>
+-            <input type="date" className={FIELD}
++          <FormField label="Date of placement" required>
++            <Input type="date"
+               value={form.date_of_placement} onChange={e => set('date_of_placement', e.target.value)} />
+-          </div>
+-          <div>
+-            <label className={LABEL}>Number of birds *</label>
+-            <input type="number" className={FIELD} placeholder="e.g. 500"
++          </FormField>
++          <FormField label="Number of birds" required>
++            <Input type="number" placeholder="e.g. 500"
+               value={form.initial_count} onChange={e => set('initial_count', e.target.value)} min="1" />
+-          </div>
++          </FormField>
+         </div>
+ 
+         {/* Source & cost */}
+         <div className="grid grid-cols-2 gap-4">
+-          <div>
+-            <label className={LABEL}>Source</label>
+-            <select className={FIELD} value={form.source} onChange={e => set('source', e.target.value)}>
++          <FormField label="Source">
++            <Select value={form.source} onChange={e => set('source', e.target.value)}>
+               <option value="">Select source…</option>
+               {SOURCES.map(s => <option key={s}>{s}</option>)}
+-            </select>
+-          </div>
+-          <div>
+-            <label className={LABEL}>Purchase price / bird (KES)</label>
+-            <input type="number" className={FIELD} placeholder="e.g. 120"
++            </Select>
++          </FormField>
++          <FormField label="Purchase price / bird (KES)">
++            <Input type="number" placeholder="e.g. 120"
+               value={form.purchase_price_per_bird} onChange={e => set('purchase_price_per_bird', e.target.value)} min="0" step="0.5" />
+-          </div>
++          </FormField>
+         </div>
+ 
+         {/* Housing */}
+         <div className="grid grid-cols-2 gap-4">
+-          <div>
+-            <label className={LABEL}>House / unit number</label>
+-            <input className={FIELD} placeholder="e.g. House 1, Pen A"
++          <FormField label="House / unit number">
++            <Input placeholder="e.g. House 1, Pen A"
+               value={form.house_number} onChange={e => set('house_number', e.target.value)} />
+-          </div>
+-          <div>
+-            <label className={LABEL}>Housing system</label>
+-            <select className={FIELD} value={form.housing_system} onChange={e => set('housing_system', e.target.value)}>
++          </FormField>
++          <FormField label="Housing system">
++            <Select value={form.housing_system} onChange={e => set('housing_system', e.target.value)}>
+               <option value="">Select system…</option>
+               {HOUSING.map(h => <option key={h}>{h}</option>)}
+-            </select>
+-          </div>
++            </Select>
++          </FormField>
+         </div>
+ 
+         {/* Type-specific fields */}
+         {(form.bird_type === 'layer' || form.bird_type === 'dual_purpose') && (
+-          <div>
+-            <label className={LABEL}>Expected start of laying (date)</label>
+-            <input type="date" className={FIELD}
++          <FormField label="Expected start of laying (date)" hint="Layers typically start at 18–22 weeks. Kienyeji at 22–24 weeks.">
++            <Input type="date"
+               value={form.expected_laying_date} onChange={e => set('expected_laying_date', e.target.value)} />
+-            <p className="text-[11px] text-[#4B5563] mt-1">Layers typically start at 18–22 weeks. Kienyeji at 22–24 weeks.</p>
+-          </div>
++          </FormField>
+         )}
+ 
+         {form.bird_type === 'broiler' && (
+-          <div>
+-            <label className={LABEL}>Target slaughter weight (kg)</label>
+-            <input type="number" className={FIELD} placeholder="e.g. 2.0"
++          <FormField label="Target slaughter weight (kg)" hint="Ross 308 typically reaches 2.0–2.5kg at 35–42 days in Kenya.">
++            <Input type="number" placeholder="e.g. 2.0"
+               value={form.target_weight_kg} onChange={e => set('target_weight_kg', e.target.value)} min="0" step="0.1" />
+-            <p className="text-[11px] text-[#4B5563] mt-1">Ross 308 typically reaches 2.0–2.5kg at 35–42 days in Kenya.</p>
+-          </div>
++          </FormField>
+         )}
+ 
+         {/* Notes */}
+-        <div>
+-          <label className={LABEL}>Notes</label>
+-          <textarea className={`${FIELD} resize-none`} rows={3}
+-            placeholder="Vaccination schedule, feed program, any observations…"
++        <FormField label="Notes">
++          <Textarea placeholder="Vaccination schedule, feed program, any observations…"
+             value={form.notes} onChange={e => set('notes', e.target.value)} />
+-        </div>
++        </FormField>
+ 
+         <div className="flex gap-3 pt-2">
+           <Link href="/dashboard/poultry"
+-            className="flex-1 text-center px-4 py-2.5 rounded-md border border-[#2A2D35] text-sm text-[#9CA3AF] hover:text-white hover:border-[#4B5563] transition-colors">
++            className="flex-1 text-center px-4 py-2.5 rounded-lg border border-[#2A2D35] text-sm text-[#9CA3AF] hover:text-white hover:border-[#4B5563] transition-colors">
+             Cancel
+           </Link>
+-          <button type="submit" disabled={loading}
+-            className="flex-1 px-4 py-2.5 rounded-md bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-sm font-medium text-white transition-colors">
+-            {loading ? 'Saving…' : 'Register batch'}
+-          </button>
++          <Button type="submit" fullWidth loading={loading} loadingText="Saving…" className="flex-1">
++            Register batch
++          </Button>
+         </div>
+ 
+       </form>
+     </div>
+   )
+-}
+\ No newline at end of file
++}
+diff --git a/components/ui/Button.tsx b/components/ui/Button.tsx
+new file mode 100644
+index 0000000..0e388a5
+--- /dev/null
++++ b/components/ui/Button.tsx
+@@ -0,0 +1,75 @@
++"use client";
++
++import { forwardRef, type ButtonHTMLAttributes } from "react";
++import { Loader2 } from "lucide-react";
++import { cn } from "@/lib/utils";
++
++/**
++ * variant guide:
++ *  - primary   green, farmer-facing modules (coffee/dairy/poultry/small ruminants)
++ *  - gold      cooperative & B2B surfaces (intake, lots, passports, buyer data room)
++ *  - secondary filled neutral — secondary action next to a primary/gold button
++ *  - outline   bordered, transparent — tertiary action
++ *  - danger    destructive actions (delete, suspend, revoke)
++ *  - ghost     icon-only / nav-row actions, no border or fill at rest
++ */
++type Variant = "primary" | "gold" | "secondary" | "outline" | "danger" | "ghost";
++type Size = "sm" | "md" | "lg";
++
++const VARIANT_CLASSES: Record<Variant, string> = {
++  primary: "bg-emerald-700 hover:bg-emerald-600 text-white",
++  gold: "bg-[#C9A96E] hover:bg-[#B8935C] text-black",
++  secondary: "bg-[#17191F] hover:bg-[#1F2128] text-white border border-[#2A2D35]",
++  outline: "bg-transparent hover:bg-white/5 text-white border border-[#2A2D35]",
++  danger: "bg-red-700 hover:bg-red-600 text-white",
++  ghost: "bg-transparent hover:bg-white/5 text-[#9CA3AF] hover:text-white",
++};
++
++const SIZE_CLASSES: Record<Size, string> = {
++  sm: "px-3 py-1.5 text-xs",
++  md: "px-4 py-2.5 text-sm",
++  lg: "px-5 py-3 text-sm",
++};
++
++export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
++  variant?: Variant;
++  size?: Size;
++  fullWidth?: boolean;
++  /** Shows a spinner and disables the button. Pair with loadingText for forms mid-submit. */
++  loading?: boolean;
++  loadingText?: string;
++}
++
++export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
++  {
++    className,
++    variant = "primary",
++    size = "md",
++    fullWidth,
++    loading = false,
++    loadingText,
++    disabled,
++    children,
++    ...props
++  },
++  ref
++) {
++  return (
++    <button
++      ref={ref}
++      disabled={disabled || loading}
++      className={cn(
++        "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors",
++        "disabled:opacity-50 disabled:pointer-events-none",
++        VARIANT_CLASSES[variant],
++        SIZE_CLASSES[size],
++        fullWidth && "w-full",
++        className
++      )}
++      {...props}
++    >
++      {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
++      {loading ? loadingText ?? "Saving..." : children}
++    </button>
++  );
++});
+diff --git a/components/ui/Card.tsx b/components/ui/Card.tsx
+new file mode 100644
+index 0000000..8dbbb98
+--- /dev/null
++++ b/components/ui/Card.tsx
+@@ -0,0 +1,21 @@
++import { forwardRef, type HTMLAttributes } from "react";
++import { cn } from "@/lib/utils";
++
++/**
++ * Surface color matches the de-facto standard already used ~150+ times
++ * across dashboard pages (bg-[#0D0F14] / border-[#2A2D35]), not the
++ * `.card` utility class in globals.css (bg-[#18181b] / border-[#27272a]),
++ * which is legacy and only still used on a handful of marketing pages.
++ */
++export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(function Card(
++  { className, ...props },
++  ref
++) {
++  return (
++    <div
++      ref={ref}
++      className={cn("rounded-xl border border-[#2A2D35] bg-[#0D0F14]", className)}
++      {...props}
++    />
++  );
++});
+diff --git a/components/ui/FormField.tsx b/components/ui/FormField.tsx
+new file mode 100644
+index 0000000..769bcb3
+--- /dev/null
++++ b/components/ui/FormField.tsx
+@@ -0,0 +1,40 @@
++import type { ReactNode } from "react";
++import { Label } from "./Label";
++import { cn } from "@/lib/utils";
++
++export interface FormFieldProps {
++  label: string;
++  htmlFor?: string;
++  required?: boolean;
++  /** Shown in red below the field when set; suppresses `hint`. */
++  error?: string;
++  /** Muted helper text shown below the field when there's no error. */
++  hint?: string;
++  children: ReactNode;
++  className?: string;
++}
++
++/** Wraps a single Input/Select/Textarea with a consistent label + hint/error row. */
++export function FormField({
++  label,
++  htmlFor,
++  required,
++  error,
++  hint,
++  children,
++  className,
++}: FormFieldProps) {
++  return (
++    <div className={cn("space-y-1", className)}>
++      <Label htmlFor={htmlFor} required={required}>
++        {label}
++      </Label>
++      {children}
++      {error ? (
++        <p className="text-[11px] text-red-500">{error}</p>
++      ) : hint ? (
++        <p className="text-[11px] text-[#6B7280]">{hint}</p>
++      ) : null}
++    </div>
++  );
++}
+diff --git a/components/ui/Input.tsx b/components/ui/Input.tsx
+new file mode 100644
+index 0000000..c00611f
+--- /dev/null
++++ b/components/ui/Input.tsx
+@@ -0,0 +1,44 @@
++import { forwardRef, type InputHTMLAttributes } from "react";
++import { cn } from "@/lib/utils";
++
++/** green = farmer-facing modules (coffee/dairy/poultry/small ruminants). gold = cooperative/B2B surfaces. */
++export type FieldAccent = "green" | "gold";
++
++const RING_CLASSES: Record<FieldAccent, string> = {
++  green: "focus:border-emerald-600 focus:ring-emerald-600/30",
++  gold: "focus:border-[#C9A96E] focus:ring-[#C9A96E]/30",
++};
++
++export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
++  accent?: FieldAccent;
++  /** Marks the field as invalid — overrides the accent ring with a red one. */
++  error?: boolean;
++}
++
++/**
++ * Note on <input type="date"|"time"|"datetime-local"> and dark chrome:
++ * app/globals.css already forces `color-scheme: dark` and re-themes the
++ * native calendar icon for elements matching `bg-[#0A0C10]` (this
++ * component's default background) — no extra work needed here.
++ */
++export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
++  { className, accent = "green", error = false, ...props },
++  ref
++) {
++  return (
++    <input
++      ref={ref}
++      aria-invalid={error || undefined}
++      className={cn(
++        "w-full px-3 py-2.5 rounded-lg border bg-[#0A0C10] text-sm text-white",
++        "placeholder:text-[#6B7280] outline-none transition-colors focus:ring-1",
++        "disabled:opacity-50 disabled:cursor-not-allowed",
++        error
++          ? "border-red-600 focus:border-red-600 focus:ring-red-600/30"
++          : cn("border-[#2A2D35]", RING_CLASSES[accent]),
++        className
++      )}
++      {...props}
++    />
++  );
++});
+diff --git a/components/ui/Label.tsx b/components/ui/Label.tsx
+new file mode 100644
+index 0000000..c8f1234
+--- /dev/null
++++ b/components/ui/Label.tsx
+@@ -0,0 +1,25 @@
++import { forwardRef, type LabelHTMLAttributes } from "react";
++import { cn } from "@/lib/utils";
++
++export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
++  required?: boolean;
++}
++
++export const Label = forwardRef<HTMLLabelElement, LabelProps>(function Label(
++  { className, required, children, ...props },
++  ref
++) {
++  return (
++    <label
++      ref={ref}
++      className={cn(
++        "block text-xs font-bold uppercase tracking-wide text-[#9CA3AF] mb-1.5",
++        className
++      )}
++      {...props}
++    >
++      {children}
++      {required && <span className="text-emerald-500 ml-0.5">*</span>}
++    </label>
++  );
++});
+diff --git a/components/ui/Select.tsx b/components/ui/Select.tsx
+new file mode 100644
+index 0000000..1c560d9
+--- /dev/null
++++ b/components/ui/Select.tsx
+@@ -0,0 +1,50 @@
++import { forwardRef, type SelectHTMLAttributes } from "react";
++import { ChevronDown } from "lucide-react";
++import { cn } from "@/lib/utils";
++import type { FieldAccent } from "./Input";
++
++const RING_CLASSES: Record<FieldAccent, string> = {
++  green: "focus:border-emerald-600 focus:ring-emerald-600/30",
++  gold: "focus:border-[#C9A96E] focus:ring-[#C9A96E]/30",
++};
++
++export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
++  accent?: FieldAccent;
++  error?: boolean;
++}
++
++/**
++ * Native <select>, styled to match Input. Uses appearance-none + a Lucide
++ * chevron rather than relying on the browser's own arrow, which renders
++ * inconsistently in light chrome on a dark field. `bg-[#0A0C10]` keeps this
++ * covered by the dark option/calendar-chrome fix already in globals.css.
++ */
++export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
++  { className, accent = "green", error = false, children, ...props },
++  ref
++) {
++  return (
++    <div className="relative">
++      <select
++        ref={ref}
++        aria-invalid={error || undefined}
++        className={cn(
++          "w-full appearance-none px-3 py-2.5 pr-9 rounded-lg border bg-[#0A0C10] text-sm text-white",
++          "outline-none transition-colors focus:ring-1",
++          "disabled:opacity-50 disabled:cursor-not-allowed",
++          error
++            ? "border-red-600 focus:border-red-600 focus:ring-red-600/30"
++            : cn("border-[#2A2D35]", RING_CLASSES[accent]),
++          className
++        )}
++        {...props}
++      >
++        {children}
++      </select>
++      <ChevronDown
++        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B7280]"
++        aria-hidden="true"
++      />
++    </div>
++  );
++});
+diff --git a/components/ui/Textarea.tsx b/components/ui/Textarea.tsx
+new file mode 100644
+index 0000000..69baae9
+--- /dev/null
++++ b/components/ui/Textarea.tsx
+@@ -0,0 +1,36 @@
++import { forwardRef, type TextareaHTMLAttributes } from "react";
++import { cn } from "@/lib/utils";
++import type { FieldAccent } from "./Input";
++
++const RING_CLASSES: Record<FieldAccent, string> = {
++  green: "focus:border-emerald-600 focus:ring-emerald-600/30",
++  gold: "focus:border-[#C9A96E] focus:ring-[#C9A96E]/30",
++};
++
++export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
++  accent?: FieldAccent;
++  error?: boolean;
++}
++
++export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
++  { className, accent = "green", error = false, rows = 3, ...props },
++  ref
++) {
++  return (
++    <textarea
++      ref={ref}
++      rows={rows}
++      aria-invalid={error || undefined}
++      className={cn(
++        "w-full px-3 py-2.5 rounded-lg border bg-[#0A0C10] text-sm text-white",
++        "placeholder:text-[#6B7280] outline-none transition-colors focus:ring-1 resize-y",
++        "disabled:opacity-50 disabled:cursor-not-allowed",
++        error
++          ? "border-red-600 focus:border-red-600 focus:ring-red-600/30"
++          : cn("border-[#2A2D35]", RING_CLASSES[accent]),
++        className
++      )}
++      {...props}
++    />
++  );
++});
+diff --git a/components/ui/index.ts b/components/ui/index.ts
+new file mode 100644
+index 0000000..36cd66b
+--- /dev/null
++++ b/components/ui/index.ts
+@@ -0,0 +1,19 @@
++export { Button } from "./Button";
++export type { ButtonProps } from "./Button";
++
++export { Input } from "./Input";
++export type { InputProps, FieldAccent } from "./Input";
++
++export { Textarea } from "./Textarea";
++export type { TextareaProps } from "./Textarea";
++
++export { Select } from "./Select";
++export type { SelectProps } from "./Select";
++
++export { Label } from "./Label";
++export type { LabelProps } from "./Label";
++
++export { Card } from "./Card";
++
++export { FormField } from "./FormField";
++export type { FormFieldProps } from "./FormField";
+diff --git a/lib/utils.ts b/lib/utils.ts
+new file mode 100644
+index 0000000..792f0a6
+--- /dev/null
++++ b/lib/utils.ts
+@@ -0,0 +1,11 @@
++import { clsx, type ClassValue } from "clsx";
++import { twMerge } from "tailwind-merge";
++
++/**
++ * Merge Tailwind class strings safely — later classes win over earlier
++ * conflicting ones (e.g. `cn('px-2', condition && 'px-4')` resolves to
++ * `px-4` instead of leaving both in the DOM).
++ */
++export function cn(...inputs: ClassValue[]) {
++  return twMerge(clsx(inputs));
++}
