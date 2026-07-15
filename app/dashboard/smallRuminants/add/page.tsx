@@ -32,8 +32,8 @@ const UPGRADE_LEVELS = ["Pure", "F1 (50%)", "F2 (75%)", "F3 (87.5%)", "F4 (93.75
 
 function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="block text-xs font-semibold text-slate-700 mb-1">
-      {children}{required && <span className="text-red-500 ml-0.5">*</span>}
+    <label className="block text-xs font-semibold text-[#9CA3AF] mb-1">
+      {children}{required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
   );
 }
@@ -42,7 +42,7 @@ function Input({ ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:bg-slate-50"
+      className="w-full text-sm border border-[#2A2D35] rounded-lg px-3 py-2.5 bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-[#1E222B]"
     />
   );
 }
@@ -51,7 +51,7 @@ function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectEle
   return (
     <select
       {...props}
-      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+      className="w-full text-sm border border-[#2A2D35] rounded-lg px-3 py-2.5 bg-[#17191F] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
     >
       {children}
     </select>
@@ -63,15 +63,15 @@ function Textarea({ ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement
     <textarea
       {...props}
       rows={3}
-      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 resize-none"
+      className="w-full text-sm border border-[#2A2D35] rounded-lg px-3 py-2.5 bg-[#17191F] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
     />
   );
 }
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{title}</p>
+    <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4 space-y-3">
+      <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wide">{title}</p>
       {children}
     </div>
   );
@@ -237,15 +237,15 @@ export default function AddAnimalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-[#0A0C10]">
+      <div className="bg-[#0D0F14] border-b border-[#2A2D35] sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link href="/dashboard/smallRuminants" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors">←</Link>
+              <Link href="/dashboard/smallRuminants" className="w-8 h-8 rounded-full bg-[#1C1E26] flex items-center justify-center text-[#9CA3AF] hover:bg-[#2A2D35] transition-colors">←</Link>
               <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-none">Register Animal</h1>
-                <p className="text-xs text-slate-500 mt-0.5">New goat or sheep</p>
+                <h1 className="text-lg font-bold text-white leading-none">Register Animal</h1>
+                <p className="text-xs text-[#6B7280] mt-0.5">New goat or sheep</p>
               </div>
             </div>
           </div>
@@ -255,11 +255,11 @@ export default function AddAnimalPage() {
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
 
         {/* Species toggle */}
-        <div className="flex gap-2 bg-slate-100 rounded-xl p-1">
+        <div className="flex gap-2 bg-[#17191F] rounded-xl p-1 border border-[#2A2D35]">
           {(["goat", "sheep"] as const).map(s => (
             <button key={s} onClick={() => { set("species", s); set("breed", ""); }}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all capitalize ${
-                form.species === s ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                form.species === s ? "bg-[#2A2D35] text-white shadow-sm" : "text-[#6B7280]"
               }`}
             >{s === "goat" ? "🐐 Goat" : "🐑 Sheep"}</button>
           ))}
@@ -375,7 +375,7 @@ export default function AddAnimalPage() {
         {/* Advanced — parentage, physical */}
         <button
           onClick={() => setShowAdvanced(v => !v)}
-          className="w-full text-xs font-semibold text-slate-500 flex items-center justify-center gap-2 py-2 hover:text-emerald-600 transition-colors"
+          className="w-full text-xs font-semibold text-[#6B7280] flex items-center justify-center gap-2 py-2 hover:text-emerald-400 transition-colors"
         >
           {showAdvanced ? "▲ Hide" : "▼ Show"} parentage & physical details
         </button>
@@ -435,16 +435,16 @@ export default function AddAnimalPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-xl bg-red-950/40 border border-red-700 p-3 text-sm text-red-300">{error}</div>
         )}
         {savedOffline && (
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">Saved offline — will sync when connected.</div>
+          <div className="rounded-xl bg-emerald-950/40 border border-emerald-700 p-3 text-sm text-emerald-300">Saved offline — will sync when connected.</div>
         )}
 
         {/* Submit */}
         <div className="flex gap-3 pb-8">
           <Link href="/dashboard/smallRuminants"
-            className="flex-1 py-3 text-sm font-semibold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors text-center"
+            className="flex-1 py-3 text-sm font-semibold rounded-xl border border-[#2A2D35] text-[#9CA3AF] hover:bg-[#17191F] transition-colors text-center"
           >Cancel</Link>
           <button
             onClick={handleSubmit}

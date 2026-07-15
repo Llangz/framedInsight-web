@@ -122,41 +122,41 @@ export default function ServiceRecordClient({ females, males, farmId, preselecte
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b sticky top-0 z-10 px-4 py-4 flex items-center gap-3">
-        <Link href="/dashboard/smallRuminants/breeding" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">←</Link>
-        <h1 className="text-lg font-bold">Record Service</h1>
+    <div className="min-h-screen bg-[#0A0C10]">
+      <div className="bg-[#0D0F14] border-b border-[#2A2D35] sticky top-0 z-10 px-4 py-4 flex items-center gap-3">
+        <Link href="/dashboard/smallRuminants/breeding" className="w-8 h-8 rounded-full bg-[#1C1E26] flex items-center justify-center text-[#9CA3AF] hover:bg-[#2A2D35]">←</Link>
+        <h1 className="text-lg font-bold text-white">Record Service</h1>
       </div>
       <div className="max-w-2xl mx-auto px-4 py-4">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-white rounded-xl border p-4">
-            <label className="block text-sm font-semibold mb-2">Select Doe/Ewe *</label>
-            <select value={damId} onChange={e => setDamId(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" required>
+          <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+            <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">Select Doe/Ewe *</label>
+            <select value={damId} onChange={e => setDamId(e.target.value)} className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm bg-[#17191F] text-white" required>
               <option value="">Choose female...</option>
               {females.map(f => <option key={f.id} value={f.id}>{f.animal_tag} - {f.breed}</option>)}
             </select>
           </div>
-          <div className="bg-white rounded-xl border p-4 grid grid-cols-2 gap-3">
-            <div><label className="block text-sm font-semibold mb-1">Service Date *</label><input type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" required /></div>
-            <div><label className="block text-sm font-semibold mb-1">Due Date</label><input type="date" value={expectedDelivery} readOnly className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50" /></div>
+          <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4 grid grid-cols-2 gap-3">
+            <div><label className="block text-sm font-semibold text-[#9CA3AF] mb-1">Service Date *</label><input type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm bg-[#17191F] text-white" required /></div>
+            <div><label className="block text-sm font-semibold text-[#9CA3AF] mb-1">Due Date</label><input type="date" value={expectedDelivery} readOnly className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm bg-[#1E222B] text-[#6B7280]" /></div>
           </div>
-          <div className="bg-white rounded-xl border p-4">
+          <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setServiceType("natural")} className={`py-2 rounded-lg border text-sm ${serviceType === "natural" ? "bg-emerald-600 text-white" : "bg-white"}`}>Natural</button>
-              <button type="button" onClick={() => setServiceType("AI")} className={`py-2 rounded-lg border text-sm ${serviceType === "AI" ? "bg-emerald-600 text-white" : "bg-white"}`}>AI</button>
+              <button type="button" onClick={() => setServiceType("natural")} className={`py-2 rounded-lg border text-sm ${serviceType === "natural" ? "bg-emerald-600 text-white border-emerald-600" : "bg-[#17191F] text-[#9CA3AF] border-[#2A2D35]"}`}>Natural</button>
+              <button type="button" onClick={() => setServiceType("AI")} className={`py-2 rounded-lg border text-sm ${serviceType === "AI" ? "bg-emerald-600 text-white border-emerald-600" : "bg-[#17191F] text-[#9CA3AF] border-[#2A2D35]"}`}>AI</button>
             </div>
           </div>
           {serviceType === "natural" && (
-            <div className="bg-white rounded-xl border p-4">
-              <select value={sireId} onChange={e => setSireId(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+            <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+              <select value={sireId} onChange={e => setSireId(e.target.value)} className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm bg-[#17191F] text-white">
                 <option value="">Select Sire...</option>
                 {males.map(m => <option key={m.id} value={m.id}>{m.animal_tag} - {m.breed}</option>)}
                 <option value="external">External</option>
               </select>
             </div>
           )}
-          {error && <div className="text-red-600 text-sm">{error}</div>}
-          {savedOffline && <div className="text-emerald-600 text-sm">Saved offline — will sync when connected.</div>}
+          {error && <div className="bg-red-950/40 border border-red-700 text-red-300 text-sm rounded-lg p-3">{error}</div>}
+          {savedOffline && <div className="bg-emerald-950/40 border border-emerald-700 text-emerald-300 text-sm rounded-lg p-3">Saved offline — will sync when connected.</div>}
           <button type="submit" disabled={loading} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold">{loading ? "Saving..." : "Record Service"}</button>
         </form>
       </div>

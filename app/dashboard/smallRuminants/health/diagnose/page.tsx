@@ -94,20 +94,20 @@ export default function AIDiagnosePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#0A0C10]">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+      <div className="bg-[#0D0F14] border-b border-[#2A2D35] sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard/smallRuminants/health"
-              className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200"
+              className="w-8 h-8 rounded-full bg-[#1C1E26] flex items-center justify-center text-[#9CA3AF] hover:bg-[#2A2D35]"
             >
               ←
             </Link>
             <div>
-              <h1 className="text-lg font-bold text-slate-900">AI Disease Detection</h1>
-              <p className="text-xs text-slate-500 mt-0.5">Photo-based diagnosis</p>
+              <h1 className="text-lg font-bold text-white">AI Disease Detection</h1>
+              <p className="text-xs text-[#6B7280] mt-0.5">Photo-based diagnosis</p>
             </div>
           </div>
         </div>
@@ -117,9 +117,9 @@ export default function AIDiagnosePage() {
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         
         {/* Photo Upload */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <label className="block text-sm font-semibold text-slate-700 mb-2">
-            Upload Photo <span className="text-red-500">*</span>
+        <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+          <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">
+            Upload Photo <span className="text-red-400">*</span>
           </label>
           
           {imagePreview ? (
@@ -134,16 +134,16 @@ export default function AIDiagnosePage() {
                   setSelectedImage(null);
                   setImagePreview(null);
                 }}
-                className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600"
+                className="absolute top-2 right-2 w-8 h-8 bg-red-600 text-white rounded-full hover:bg-red-700"
               >
                 ×
               </button>
             </div>
           ) : (
-            <label className="block w-full h-64 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-colors">
+            <label className="block w-full h-64 border-2 border-dashed border-[#3A3D45] rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-950/10 transition-colors">
               <span className="text-4xl mb-2">📷</span>
-              <span className="text-sm text-slate-600">Tap to upload photo</span>
-              <span className="text-xs text-slate-400 mt-1">Show affected area clearly</span>
+              <span className="text-sm text-[#9CA3AF]">Tap to upload photo</span>
+              <span className="text-xs text-[#6B7280] mt-1">Show affected area clearly</span>
               <input
                 type="file"
                 accept="image/*"
@@ -156,8 +156,8 @@ export default function AIDiagnosePage() {
         </div>
 
         {/* Additional Symptoms */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <label className="block text-sm font-semibold text-slate-700 mb-2">
+        <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+          <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">
             Describe Symptoms (Optional)
           </label>
           <textarea
@@ -165,7 +165,7 @@ export default function AIDiagnosePage() {
             onChange={(e) => setSymptoms(e.target.value)}
             placeholder="e.g., Not eating, coughing, limping, discharge from nose..."
             rows={4}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none"
+            className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm bg-[#17191F] text-white placeholder-[#6B7280] resize-none focus:outline-none focus:ring-1 focus:ring-emerald-600"
           />
         </div>
 
@@ -180,7 +180,7 @@ export default function AIDiagnosePage() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+          <div className="bg-red-950/40 border border-red-700 rounded-xl p-4 text-sm text-red-300">
             {error}
           </div>
         )}
@@ -190,35 +190,35 @@ export default function AIDiagnosePage() {
           <div className="space-y-4">
             {/* Vet Warning */}
             {diagnosis.vet_recommended && (
-              <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
-                <p className="text-sm font-bold text-amber-900 mb-1">⚠️ Veterinary Consultation Recommended</p>
-                <p className="text-xs text-amber-800">
+              <div className="bg-amber-950/40 border border-amber-700 rounded-xl p-4">
+                <p className="text-sm font-bold text-amber-300 mb-1">⚠️ Veterinary Consultation Recommended</p>
+                <p className="text-xs text-amber-400/80">
                   This condition may require professional veterinary care. Contact a vet as soon as possible.
                 </p>
               </div>
             )}
 
             {/* Probable Diseases */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <h3 className="text-sm font-bold text-slate-900 mb-3">Probable Diagnoses</h3>
+            <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+              <h3 className="text-sm font-bold text-white mb-3">Probable Diagnoses</h3>
               <div className="space-y-3">
                 {diagnosis.probable_diseases.map((disease, i) => {
                   const confidenceColor = {
-                    high: "bg-emerald-100 text-emerald-700 border-emerald-300",
-                    medium: "bg-amber-100 text-amber-700 border-amber-300",
-                    low: "bg-slate-100 text-slate-600 border-slate-300",
+                    high: "bg-emerald-950/40 text-emerald-300 border-emerald-800",
+                    medium: "bg-amber-950/40 text-amber-300 border-amber-800",
+                    low: "bg-[#17191F] text-[#9CA3AF] border-[#2A2D35]",
                   };
 
                   const urgencyColor = {
-                    immediate: "bg-red-100 text-red-700",
-                    soon: "bg-amber-100 text-amber-700",
-                    monitor: "bg-blue-100 text-blue-700",
+                    immediate: "bg-red-950/40 text-red-300",
+                    soon: "bg-amber-950/40 text-amber-300",
+                    monitor: "bg-blue-950/40 text-blue-300",
                   };
 
                   return (
-                    <div key={i} className="border border-slate-200 rounded-lg p-3">
+                    <div key={i} className="border border-[#2A2D35] rounded-lg p-3 bg-[#17191F]">
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-sm font-bold text-slate-900">{disease.name}</h4>
+                        <h4 className="text-sm font-bold text-white">{disease.name}</h4>
                         <div className="flex gap-2">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium border capitalize ${confidenceColor[disease.confidence]}`}>
                             {disease.confidence} confidence
@@ -231,8 +231,8 @@ export default function AIDiagnosePage() {
 
                       <div className="space-y-2 text-xs">
                         <div>
-                          <p className="font-semibold text-slate-600">Symptoms:</p>
-                          <ul className="list-disc list-inside text-slate-700">
+                          <p className="font-semibold text-[#9CA3AF]">Symptoms:</p>
+                          <ul className="list-disc list-inside text-[#D1D5DB]">
                             {disease.symptoms.map((s, j) => (
                               <li key={j}>{s}</li>
                             ))}
@@ -240,8 +240,8 @@ export default function AIDiagnosePage() {
                         </div>
 
                         <div>
-                          <p className="font-semibold text-slate-600">Recommended Treatment:</p>
-                          <p className="text-slate-700">{disease.treatment}</p>
+                          <p className="font-semibold text-[#9CA3AF]">Recommended Treatment:</p>
+                          <p className="text-[#D1D5DB]">{disease.treatment}</p>
                         </div>
                       </div>
                     </div>
@@ -251,13 +251,13 @@ export default function AIDiagnosePage() {
             </div>
 
             {/* General Advice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="text-xs font-semibold text-blue-900 mb-1">💡 General Advice</p>
-              <p className="text-xs text-blue-800">{diagnosis.general_advice}</p>
+            <div className="bg-blue-950/30 border border-blue-800 rounded-xl p-4">
+              <p className="text-xs font-semibold text-blue-300 mb-1">💡 General Advice</p>
+              <p className="text-xs text-blue-200">{diagnosis.general_advice}</p>
             </div>
 
             {/* Disclaimer */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600">
+            <div className="bg-[#17191F] border border-[#2A2D35] rounded-xl p-3 text-xs text-[#9CA3AF]">
               <p className="font-semibold mb-1">⚠️ Important Disclaimer:</p>
               <p>
                 This AI diagnosis is for informational purposes only and should not replace professional 
@@ -274,7 +274,7 @@ export default function AIDiagnosePage() {
                   setImagePreview(null);
                   setSymptoms("");
                 }}
-                className="flex-1 px-4 py-3 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                className="flex-1 px-4 py-3 rounded-lg border border-[#2A2D35] text-sm font-semibold text-[#9CA3AF] hover:bg-[#17191F]"
               >
                 New Diagnosis
               </button>

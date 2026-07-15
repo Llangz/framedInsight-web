@@ -148,14 +148,14 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[], 
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-[#0A0C10]">
+      <div className="bg-[#0D0F14] border-b border-[#2A2D35] sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard/smallRuminants/sales" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors">←</Link>
+            <Link href="/dashboard/smallRuminants/sales" className="w-8 h-8 rounded-full bg-[#1C1E26] flex items-center justify-center text-[#9CA3AF] hover:bg-[#2A2D35] transition-colors">←</Link>
             <div>
-              <h1 className="text-lg font-bold text-slate-900 leading-none">Record Sale</h1>
-              <p className="text-xs text-slate-500 mt-0.5">Live animal · Meat · Milk</p>
+              <h1 className="text-lg font-bold text-white leading-none">Record Sale</h1>
+              <p className="text-xs text-[#6B7280] mt-0.5">Live animal · Meat · Milk</p>
             </div>
           </div>
         </div>
@@ -163,13 +163,13 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[], 
 
       <div className="max-w-2xl mx-auto px-4 py-4">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Sale Type *</label>
+          <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+            <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">Sale Type *</label>
             <div className="grid grid-cols-2 gap-2">
               {(["live animal", "meat", "milk", "breeding"] as SaleType[]).map(type => (
                 <button key={type} type="button" onClick={() => setSaleType(type)}
                   className={`px-4 py-2.5 rounded-lg border text-sm font-medium capitalize transition-all ${
-                    saleType === type ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    saleType === type ? "bg-emerald-600 text-white border-emerald-600" : "bg-[#17191F] text-[#9CA3AF] border-[#2A2D35] hover:border-[#4B5563]"
                   }`}
                 >
                   {type === "live animal" && "🐐"} {type === "meat" && "🥩"} {type === "milk" && "🍼"} {type === "breeding" && "🐏"} {type}
@@ -179,50 +179,50 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[], 
           </div>
 
           {saleType !== "milk" && (
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Select Animal *</label>
+            <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+              <label className="block text-sm font-semibold text-[#9CA3AF] mb-2">Select Animal *</label>
               <select value={animalId} onChange={(e) => setAnimalId(e.target.value)}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm" required>
+                className="w-full px-3 py-2.5 border border-[#2A2D35] rounded-lg text-sm bg-[#17191F] text-white" required>
                 <option value="">Choose animal...</option>
                 {animals.map(a => <option key={a.id} value={a.id}>{a.animal_tag} {a.name ? `(${a.name})` : ""} - {a.species}</option>)}
               </select>
             </div>
           )}
 
-          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+          <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Sale Date *</label>
-                <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} max={today} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" required />
+                <label className="block text-sm font-semibold text-[#9CA3AF] mb-1">Sale Date *</label>
+                <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} max={today} className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm bg-[#17191F] text-white" required />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Total Price (KES) *</label>
-                <input type="number" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold" required />
+                <label className="block text-sm font-semibold text-[#9CA3AF] mb-1">Total Price (KES) *</label>
+                <input type="number" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm font-bold bg-[#17191F] text-white placeholder-[#6B7280]" required />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Buyer Name</label>
-              <input type="text" value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="John Doe" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              <label className="block text-sm font-semibold text-[#9CA3AF] mb-1">Buyer Name</label>
+              <input type="text" value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="John Doe" className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm bg-[#17191F] text-white placeholder-[#6B7280]" />
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-            <p className="text-xs font-bold text-slate-500 uppercase">Payment Info</p>
+          <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4 space-y-3">
+            <p className="text-xs font-bold text-[#6B7280] uppercase">Payment Info</p>
             <div className="grid grid-cols-2 gap-3">
-              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm bg-[#17191F] text-white">
                 <option value="cash">Cash</option><option value="mpesa">M-Pesa</option><option value="bank">Bank</option>
               </select>
-              <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+              <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className="w-full px-3 py-2 border border-[#2A2D35] rounded-lg text-sm bg-[#17191F] text-white">
                 <option value="paid">Paid</option><option value="pending">Pending</option>
               </select>
             </div>
           </div>
 
-          {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>}
-          {savedOffline && <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-700">Saved offline — will sync when connected.</div>}
+          {error && <div className="bg-red-950/40 border border-red-700 rounded-xl p-3 text-sm text-red-300">{error}</div>}
+          {savedOffline && <div className="bg-emerald-950/40 border border-emerald-700 rounded-xl p-3 text-sm text-emerald-300">Saved offline — will sync when connected.</div>}
 
           <div className="flex gap-3">
-            <Link href="/dashboard/smallRuminants/sales" className="flex-1 px-4 py-3 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 text-center">Cancel</Link>
+            <Link href="/dashboard/smallRuminants/sales" className="flex-1 px-4 py-3 rounded-lg border border-[#2A2D35] text-sm font-semibold text-[#9CA3AF] text-center hover:bg-[#17191F]">Cancel</Link>
             <button type="submit" disabled={loading} className="flex-1 px-4 py-3 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50">
               {loading ? "Saving..." : "Record Sale"}
             </button>
