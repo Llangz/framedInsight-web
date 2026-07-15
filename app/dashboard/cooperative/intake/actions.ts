@@ -145,6 +145,23 @@ export async function addDeliveryToLot(params: AddDeliveryParams) {
     return { success: false as const, error: 'Farm not found or not a member of this cooperative' }
   }
 
+  // Verify the plot (if supplied) actually belongs to this farm — a delivery
+  // must never be tagged with a plot it didn't come from. This is also what
+  // stops a spoofed/mismatched plotId from ever reaching the EUDR/passport
+  // pipeline, since assemblePassportPayload() trusts plot_id at face value.
+  if (params.plotId) {
+    const { data: plot, error: plotError } = await supabase
+      .from('coffee_plots')
+      .select('id')
+      .eq('id', params.plotId)
+      .eq('farm_id', params.farmId)
+      .single()
+
+    if (plotError || !plot) {
+      return { success: false as const, error: 'Selected plot does not belong to this farmer' }
+    }
+  }
+
   const delivery: LotFarmerDeliveryInsert = {
     lot_id: params.lotId,
     farm_id: params.farmId,
@@ -386,7 +403,7 @@ export async function getIntakeLotDetail(lotId: string) {
     .select(`
       *,
       farms (farm_name, owner_name, phone),
-      coffee_plots (plot_name, variety)
+      coffee_plots (plot_name, variety, eudr_risk_level)
     `)
     .eq('lot_id', lotId)
     .order('created_at', { ascending: false })
@@ -417,6 +434,57 @@ export async function getCoopMemberFarms() {
     .order('owner_name')
 
   return { farms: data ?? [] }
+}
+
+// ── Fetch a single farmer's GPS-mapped plots for the delivery form ───────────
+//
+// Deliveries must be linked to the specific plot the cherry came from — this
+// is the join every downstream EUDR risk rollup and buyer-facing DDS GeoJSON
+// export depends on (see lib/passport/passport.service.ts and
+// lib/passport/buyer-access.service.ts). Fetched on demand per farmer rather
+// than bulk-loaded with the farm list, since a cooperative can have hundreds
+// of member farms but a clerk only ever needs one farmer's plots at a time.
+
+export interface FarmPlotOption {
+  id: string
+  plot_name: string | null
+  plot_code: string | null
+  variety: string | null
+  area_hectares: number | null
+  land_size_acres: number | null
+  eudr_risk_level: string | null
+  gps_latitude: number | null
+  gps_longitude: number | null
+}
+
+export async function getFarmPlots(farmId: string) {
+  const access = await validateCoopAccess()
+  if (!access.success || !access.coopId) return { plots: [] as FarmPlotOption[] }
+
+  const supabase = await createClient()
+
+  // Verify the farm belongs to this cooperative before returning its plots
+  const { data: farm, error: farmError } = await supabase
+    .from('farms')
+    .select('id')
+    .eq('id', farmId)
+    .eq('managed_by_coop_id', access.coopId)
+    .single()
+
+  if (farmError || !farm) return { plots: [] as FarmPlotOption[] }
+
+  const { data, error } = await supabase
+    .from('coffee_plots')
+    .select('id, plot_name, plot_code, variety, area_hectares, land_size_acres, eudr_risk_level, gps_latitude, gps_longitude')
+    .eq('farm_id', farmId)
+    .order('plot_name')
+
+  if (error) {
+    console.error('getFarmPlots error:', error)
+    return { plots: [] as FarmPlotOption[] }
+  }
+
+  return { plots: (data ?? []) as FarmPlotOption[] }
 }
 
 // ── Fetch factories for this cooperative ─────────────────────────────────────
