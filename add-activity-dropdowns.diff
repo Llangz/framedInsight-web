@@ -1,0 +1,81 @@
+diff --git a/app/dashboard/components/EnterpriseNavHeader.tsx b/app/dashboard/components/EnterpriseNavHeader.tsx
+index 6aac440..19fbd76 100644
+--- a/app/dashboard/components/EnterpriseNavHeader.tsx
++++ b/app/dashboard/components/EnterpriseNavHeader.tsx
+@@ -47,6 +47,8 @@ import {
+   LayoutGrid, Milk, Coffee, Rabbit, Bird,
+   PlusCircle, ChevronDown,
+   Package, Leaf, FlaskConical, Scissors, TreePine, Activity,
++  PawPrint, Stethoscope, HeartPulse, Baby, Scale,
++  Egg, Wheat, Syringe, Skull, ShoppingCart,
+ } from 'lucide-react'
+ import type { LucideIcon } from 'lucide-react'
+ 
+@@ -77,7 +79,16 @@ const ENTERPRISES: EnterpriseConfig[] = [
+       { label: 'Breeding', href: '/dashboard/dairy/breeding' },
+       { label: 'Warnings', href: '/dashboard/dairy/warnings' },
+     ],
+-    primaryAction: { type: 'link', label: 'Record milk', href: '/dashboard/dairy/milk/record' },
++    primaryAction: {
++      type: 'dropdown',
++      label: 'Record Activity',
++      options: [
++        { label: 'Add cow',        Icon: PawPrint,    href: '/dashboard/dairy/add-cow' },
++        { label: 'Record milk',    Icon: Milk,        href: '/dashboard/dairy/milk/record' },
++        { label: 'Health check',   Icon: Stethoscope, href: '/dashboard/dairy/health' },
++        { label: 'Record breeding', Icon: HeartPulse, href: '/dashboard/dairy/breeding' },
++      ],
++    },
+   },
+   {
+     id: 'coffee',
+@@ -96,7 +107,7 @@ const ENTERPRISES: EnterpriseConfig[] = [
+     ],
+     primaryAction: {
+       type: 'dropdown',
+-      label: 'Record activity',
++      label: 'Record Activity',
+       options: [
+         { label: 'Record harvest', Icon: Package,      href: '/dashboard/coffee/harvest/record' },
+         { label: 'Weeding',        Icon: Leaf,         href: '/dashboard/coffee/activities/record?type=weeding' },
+@@ -122,7 +133,19 @@ const ENTERPRISES: EnterpriseConfig[] = [
+       { label: 'Milk',      href: '/dashboard/smallRuminants/milk' },
+       { label: 'Sales',     href: '/dashboard/smallRuminants/sales' },
+     ],
+-    primaryAction: { type: 'link', label: 'Add', href: '/dashboard/smallRuminants/add' },
++    primaryAction: {
++      type: 'dropdown',
++      label: 'Record Activity',
++      options: [
++        { label: 'Add animal',       Icon: PawPrint,     href: '/dashboard/smallRuminants/add' },
++        { label: 'Health check',     Icon: Stethoscope,  href: '/dashboard/smallRuminants/health/add' },
++        { label: 'Record service',   Icon: HeartPulse,   href: '/dashboard/smallRuminants/breeding/service' },
++        { label: 'Record kidding',   Icon: Baby,         href: '/dashboard/smallRuminants/breeding/kidding' },
++        { label: 'Record weight',    Icon: Scale,        href: '/dashboard/smallRuminants/weights/add' },
++        { label: 'Record milk',      Icon: Milk,         href: '/dashboard/smallRuminants/milk/add' },
++        { label: 'Record sale',      Icon: ShoppingCart, href: '/dashboard/smallRuminants/sales/add' },
++      ],
++    },
+   },
+   {
+     id: 'poultry',
+@@ -140,7 +163,18 @@ const ENTERPRISES: EnterpriseConfig[] = [
+       { label: 'Finance',     href: '/dashboard/poultry/finance' },
+       { label: 'AI Warnings', href: '/dashboard/poultry/warnings' },
+     ],
+-    primaryAction: { type: 'link', label: 'Add Batch', href: '/dashboard/poultry/add-batch' },
++    primaryAction: {
++      type: 'dropdown',
++      label: 'Record Activity',
++      options: [
++        { label: 'Add batch',        Icon: PlusCircle,   href: '/dashboard/poultry/add-batch' },
++        { label: 'Record eggs',      Icon: Egg,          href: '/dashboard/poultry/eggs' },
++        { label: 'Record feed',      Icon: Wheat,        href: '/dashboard/poultry/feed' },
++        { label: 'Health / vaccine', Icon: Syringe,      href: '/dashboard/poultry/health' },
++        { label: 'Record mortality', Icon: Skull,        href: '/dashboard/poultry/mortality' },
++        { label: 'Record sale',      Icon: ShoppingCart, href: '/dashboard/poultry/sales' },
++      ],
++    },
+   },
+ ]
+ 
