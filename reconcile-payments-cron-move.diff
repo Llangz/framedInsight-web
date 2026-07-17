@@ -1,0 +1,48 @@
+diff --git a/.github/workflows/reconcile-payments.yml b/.github/workflows/reconcile-payments.yml
+new file mode 100644
+index 0000000..b068ca5
+--- /dev/null
++++ b/.github/workflows/reconcile-payments.yml
+@@ -0,0 +1,27 @@
++name: Reconcile payments
++
++# Vercel Hobby only allows once-per-day native Cron Jobs (see vercel.json,
++# which keeps just the daily EWS cron). This job covers the 15-minute
++# M-Pesa payment-activation reconciliation that used to run as a Vercel
++# cron — see app/api/cron/reconcile-payments/route.ts for what it does
++# and why it exists. The route itself is unchanged: it still checks
++# Authorization: Bearer ${CRON_SECRET}, so this is just a different
++# caller hitting the same protected endpoint on the same schedule.
++"on":
++  schedule:
++    - cron: '*/15 * * * *'
++  # Lets you trigger a run manually from the Actions tab to verify the
++  # secret/URL are wired correctly, without waiting for the schedule.
++  workflow_dispatch: {}
++
++jobs:
++  call-endpoint:
++    runs-on: ubuntu-latest
++    steps:
++      - name: Trigger reconcile-payments
++        env:
++          APP_URL: ${{ vars.APP_URL || 'https://framed-insight-web.vercel.app' }}
++          CRON_SECRET: ${{ secrets.CRON_SECRET }}
++        run: |
++          curl -sf -X GET "${APP_URL}/api/cron/reconcile-payments" \
++            -H "Authorization: Bearer ${CRON_SECRET}"
+diff --git a/vercel.json b/vercel.json
+index b1df26a..43cf0a7 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -3,10 +3,6 @@
+     {
+       "path": "/api/cron/ews",
+       "schedule": "0 3 * * *"
+-    },
+-    {
+-      "path": "/api/cron/reconcile-payments",
+-      "schedule": "*/15 * * * *"
+     }
+   ]
+ }
