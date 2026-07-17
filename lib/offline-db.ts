@@ -42,6 +42,7 @@ export type DairyEntityType =
   | 'cow_registration'
   | 'breeding_event'
   | 'health_check'
+  | 'milk_sale'
 
 export type CoffeeEntityType =
   | 'coffee_activity'

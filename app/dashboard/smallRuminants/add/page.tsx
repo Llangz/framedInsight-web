@@ -15,6 +15,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { queueSmallRuminantEvent } from "@/lib/offline-db";
+import type { Database } from "@/lib/database.types";
+
+type SmallRuminantInsert = Database['public']['Tables']['small_ruminants']['Insert']
 
 // ─── Kenyan breed options ─────────────────────────────────────────────────────
 
@@ -161,8 +164,13 @@ export default function AddAnimalPage() {
     if (!farmId)                 { setError("Farm not found");           return; }
 
     setSaving(true);
+    // Declared here (not inside the try block below) so it's still in
+    // scope in the catch block's offline-fallback queue call — a submit
+    // that loses connection mid-request needs the same payload the
+    // online path built, not a ReferenceError.
+    let payload: SmallRuminantInsert | undefined;
     try {
-      const payload = {
+      payload = {
         farm_id:               farmId,
         animal_tag:            form.animal_tag.trim().toUpperCase(),
         name:                  form.name.trim() || null,
@@ -214,7 +222,7 @@ export default function AddAnimalPage() {
       // A submit that started online but lost connection mid-request lands
       // here too — fall back to the same offline queue rather than
       // showing a raw network error.
-      if (!navigator.onLine) {
+      if (!navigator.onLine && payload) {
         try {
           await queueSmallRuminantEvent({
             eventId: crypto.randomUUID(),

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, TrendingUp, TrendingDown, DollarSign,
   Wheat, Syringe, Skull, ShoppingCart, BarChart3,
-  AlertTriangle, ChevronDown, Info,
+  AlertTriangle, ChevronDown, Info, FileDown,
 } from 'lucide-react'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -224,12 +224,20 @@ export default function FinanceClientComponent({
   return (
     <div className="space-y-6 px-4 pb-16">
       {/* ── Back nav */}
-      <Link
-        href="/dashboard/poultry"
-        className="inline-flex items-center gap-1.5 text-sm text-[#6B7280] hover:text-white transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" /> Poultry overview
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          href="/dashboard/poultry"
+          className="inline-flex items-center gap-1.5 text-sm text-[#6B7280] hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Poultry overview
+        </Link>
+        <a
+          href="/api/reports/farm-statement?enterprise=poultry&months=6"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2A2D35] text-xs font-semibold text-[#D1D5DB] hover:bg-[#17191F] transition-colors"
+        >
+          <FileDown className="w-3.5 h-3.5" /> Download statement
+        </a>
+      </div>
 
       {/* ── Filters */}
       <div className="flex flex-wrap gap-3 items-end">

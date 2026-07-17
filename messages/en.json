@@ -1,0 +1,59 @@
+{
+  "nav": {
+    "overview": "Overview",
+    "dairy": "Dairy",
+    "coffee": "Coffee",
+    "smallRuminants": "Small Ruminants",
+    "poultry": "Poultry",
+    "dairy_herd": "Herd",
+    "dairy_milk": "Milk",
+    "dairy_finance": "Finance",
+    "dairy_health": "Health",
+    "dairy_breeding": "Breeding",
+    "dairy_warnings": "Warnings",
+    "dairy_recordActivity": "Record Activity"
+  },
+  "languageSwitcher": {
+    "label": "Language",
+    "english": "English",
+    "swahili": "Kiswahili"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Log in to manage your farm",
+      "password": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "showPassword": "Show",
+      "hidePassword": "Hide",
+      "submitPassword": "Login",
+      "submitOtp": "Send SMS OTP",
+      "processing": "Processing...",
+      "switchToOtp": "Forgot Password? Login with SMS OTP",
+      "switchToPassword": "I remember my password. Login with Password",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "otpHelpTitle": "If you are not receiving the code",
+      "otpHelp1": "Check that your phone allows SMS and is not blocking unknown or promotional messages.",
+      "otpHelp2": "On many phones, turn off \u201cBlock unknown senders\u201d, \u201cSpam protection\u201d, or \u201cPromotional/marketing message blocking\u201d for SMS.",
+      "otpHelp3": "If you use a carrier app or handset security app, allow messages from short codes or unknown numbers temporarily.",
+      "passwordRequired": "Password is required",
+      "loading": "Loading..."
+    }
+  },
+  "dairyFinance": {
+    "title": "Dairy Finance",
+    "subtitle": "Milk revenue, costs & profitability",
+    "statement": "Statement",
+    "revenueThisMonth": "Revenue (this month)",
+    "expensesThisMonth": "Expenses (this month)",
+    "netProfitThisMonth": "Net profit (this month)",
+    "pctProductionSold": "% of production sold",
+    "recordSale": "Record Sale",
+    "recordExpense": "Record Expense",
+    "litersSold": "{count} L sold",
+    "litersProduced": "{count} L produced",
+    "noSalesYet": "No sales yet",
+    "savedOffline": "Saved offline \u2014 will sync when connected."
+  }
+}

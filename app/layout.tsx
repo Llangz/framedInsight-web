@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SyncManager } from '@/components/ui/SyncManager'
 import { WhatsAppButton } from '@/components/ui/WhatsAppButton'
@@ -72,9 +74,12 @@ export const metadata: Metadata = {
   themeColor: '#09090b',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale()
+  const messages = await getMessages()
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#09090b" />
@@ -86,13 +91,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="antialiased bg-obsidian text-foreground selection:bg-emerald-500/20 selection:text-emerald-200">
-        <ErrorBoundary>
-          <ConnectivityBanner />
-          {children}
-          <SyncManager />
-          <NavigationFallback />
-          <WhatsAppButton />
-        </ErrorBoundary>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ErrorBoundary>
+            <ConnectivityBanner />
+            {children}
+            <SyncManager />
+            <NavigationFallback />
+            <WhatsAppButton />
+          </ErrorBoundary>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/ui/Header'
 import { Footer } from '@/components/ui/Footer'
 import { PhoneInput } from '@/components/auth/PhoneInput'
@@ -14,6 +15,7 @@ import { getFarmStatus } from '@/lib/get-farm-status'
 import { getSafeRedirectPath } from '@/lib/safe-redirect'
 
 function LoginContent() {
+  const t = useTranslations('auth.login')
   const router = useRouter()
   const searchParams = useSearchParams()
   // Where the proxy layer sent the user from before bouncing them here — see
@@ -46,7 +48,7 @@ function LoginContent() {
 
     if (loginMethod === 'password') {
       if (!password) {
-        setError('Password is required')
+        setError(t('passwordRequired'))
         setLoading(false)
         return
       }
@@ -150,8 +152,8 @@ function LoginContent() {
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-8 border border-gray-100">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-            <p className="text-gray-500">Log in to manage your farm</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('title')}</h1>
+            <p className="text-gray-500">{t('subtitle')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -159,13 +161,13 @@ function LoginContent() {
             
             {loginMethod === 'password' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('password')}</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                    placeholder={t('passwordPlaceholder')}
                     className={`w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all ${error ? 'border-red-300' : 'border-gray-300'}`}
                     required={loginMethod === 'password'}
                   />
@@ -174,7 +176,7 @@ function LoginContent() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 focus:outline-none"
                   >
-                    {showPassword ? 'Hide' : 'Show'}
+                    {showPassword ? t('hidePassword') : t('showPassword')}
                   </button>
                 </div>
                 {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
@@ -186,16 +188,16 @@ function LoginContent() {
               disabled={loading}
               className="w-full px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg disabled:opacity-50 transition-all shadow-md shadow-emerald-500/20"
             >
-              {loading ? 'Processing...' : loginMethod === 'password' ? 'Login' : 'Send SMS OTP'}
+              {loading ? t('processing') : loginMethod === 'password' ? t('submitPassword') : t('submitOtp')}
             </button>
 
             {loginMethod === 'otp' && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                <p className="font-semibold">If you are not receiving the code</p>
+                <p className="font-semibold">{t('otpHelpTitle')}</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
-                  <li>Check that your phone allows SMS and is not blocking unknown or promotional messages.</li>
-                  <li>On many phones, turn off “Block unknown senders”, “Spam protection”, or “Promotional/marketing message blocking” for SMS.</li>
-                  <li>If you use a carrier app or handset security app, allow messages from short codes or unknown numbers temporarily.</li>
+                  <li>{t('otpHelp1')}</li>
+                  <li>{t('otpHelp2')}</li>
+                  <li>{t('otpHelp3')}</li>
                 </ul>
               </div>
             )}
@@ -210,15 +212,15 @@ function LoginContent() {
               type="button"
               className="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
             >
-              {loginMethod === 'password' ? 'Forgot Password? Login with SMS OTP' : 'I remember my password. Login with Password'}
+              {loginMethod === 'password' ? t('switchToOtp') : t('switchToPassword')}
             </button>
             
             <div className="w-full border-t border-gray-100 my-2"></div>
             
             <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
+              {t('noAccount')}{' '}
               <Link href="/auth/signup" className="text-emerald-600 hover:text-emerald-700 font-bold hover:underline">
-                Sign up
+                {t('signUp')}
               </Link>
             </p>
           </div>
@@ -230,10 +232,11 @@ function LoginContent() {
 }
 
 export default function LoginPage() {
+  const t = useTranslations('auth.login')
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-900">Loading...</p>
+        <p className="text-gray-900">{t('loading')}</p>
       </div>
     }>
       <LoginContent />

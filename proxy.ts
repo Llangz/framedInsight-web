@@ -26,6 +26,23 @@ export default async function proxy(request: NextRequest) {
   // ─── Update Session ───────────────────────────────────────────────────────
   const response = await updateSession(request)
 
+  // ─── Locale detection (first visit only) ──────────────────────────────────
+  // See i18n/request.ts for why this is a cookie rather than a [locale]
+  // URL segment. Only set once — after that, the language switcher
+  // (app/dashboard/settings/language/actions.ts) is the source of truth,
+  // and this must not stomp on a farmer's deliberate choice on every
+  // request just because their phone's Accept-Language disagrees with it.
+  const LOCALE_COOKIE = 'framedinsight_locale'
+  if (!request.cookies.get(LOCALE_COOKIE)) {
+    const acceptLanguage = request.headers.get('accept-language') ?? ''
+    const detected = acceptLanguage.toLowerCase().startsWith('sw') ? 'sw' : 'en'
+    response.cookies.set(LOCALE_COOKIE, detected, {
+      maxAge: 60 * 60 * 24 * 365,
+      path: '/',
+      sameSite: 'lax',
+    })
+  }
+
   // ─── Auth Guard ──────────────────────────────────────────────────────────
   const publicPaths = [
     '/', '/about', '/contact', '/blog', '/privacy', '/terms', 

@@ -29,9 +29,15 @@ export { computePassportMetrics }
 
 // ── Hash helper ──────────────────────────────────────────────────────────────
 
-const HASH_ALGORITHM = 'v2_canonical' as const
+export const HASH_ALGORITHM = 'v2_canonical' as const
 
-function normalizeForHash(value: unknown): unknown {
+// Exported for unit testing (tests/lib/passport-hash.test.ts) — canonical
+// JSON serialization is exactly the kind of logic that silently breaks the
+// hash chain if it drifts (see the jsonb key-order non-determinism bug
+// this normalization was originally added to fix), so it needs to be
+// directly testable rather than only exercised indirectly through a
+// database write.
+export function normalizeForHash(value: unknown): unknown {
   if (value === null) return null
 
   if (Array.isArray(value)) {
@@ -57,11 +63,11 @@ function normalizeForHash(value: unknown): unknown {
   return value
 }
 
-function stableStringify(value: unknown): string {
+export function stableStringify(value: unknown): string {
   return JSON.stringify(normalizeForHash(value))
 }
 
-function computeHash(
+export function computeHash(
   entityId: string,
   eventType: string,
   eventData: Record<string, unknown>,

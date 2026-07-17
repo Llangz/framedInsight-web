@@ -43,6 +43,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   LayoutGrid, Milk, Coffee, Rabbit, Bird,
   PlusCircle, ChevronDown,
@@ -51,37 +52,42 @@ import {
   Egg, Wheat, Syringe, Skull, ShoppingCart,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
 
-interface NavItem { label: string; href: string }
+interface NavItem { label: string; href: string; labelKey?: string }
 interface DropdownOption { label: string; href: string; Icon: LucideIcon }
 
 interface EnterpriseConfig {
   id: string
   label: string
+  labelKey?: string
   rootHref: string
   icon: LucideIcon
   navItems: NavItem[]
   primaryAction:
-    | { type: 'link'; label: string; href: string }
-    | { type: 'dropdown'; label: string; options: DropdownOption[] }
+    | { type: 'link'; label: string; href: string; labelKey?: string }
+    | { type: 'dropdown'; label: string; labelKey?: string; options: DropdownOption[] }
 }
 
 const ENTERPRISES: EnterpriseConfig[] = [
   {
     id: 'dairy',
     label: 'Dairy',
+    labelKey: 'nav.dairy',
     rootHref: '/dashboard/dairy',
     icon: Milk,
     navItems: [
-      { label: 'Herd',     href: '/dashboard/dairy' },
-      { label: 'Milk',     href: '/dashboard/dairy/milk' },
-      { label: 'Health',   href: '/dashboard/dairy/health' },
-      { label: 'Breeding', href: '/dashboard/dairy/breeding' },
-      { label: 'Warnings', href: '/dashboard/dairy/warnings' },
+      { label: 'Herd',     href: '/dashboard/dairy',         labelKey: 'nav.dairy_herd' },
+      { label: 'Milk',     href: '/dashboard/dairy/milk',    labelKey: 'nav.dairy_milk' },
+      { label: 'Finance',  href: '/dashboard/dairy/finance', labelKey: 'nav.dairy_finance' },
+      { label: 'Health',   href: '/dashboard/dairy/health',  labelKey: 'nav.dairy_health' },
+      { label: 'Breeding', href: '/dashboard/dairy/breeding', labelKey: 'nav.dairy_breeding' },
+      { label: 'Warnings', href: '/dashboard/dairy/warnings', labelKey: 'nav.dairy_warnings' },
     ],
     primaryAction: {
       type: 'dropdown',
       label: 'Record Activity',
+      labelKey: 'nav.dairy_recordActivity',
       options: [
         { label: 'Add cow',        Icon: PawPrint,    href: '/dashboard/dairy/add-cow' },
         { label: 'Record milk',    Icon: Milk,        href: '/dashboard/dairy/milk/record' },
@@ -184,6 +190,7 @@ const isWithin = (pathname: string, href: string) =>
 function PrimaryAction({ action }: { action: EnterpriseConfig['primaryAction'] }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const t = useTranslations('nav')
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -199,7 +206,7 @@ function PrimaryAction({ action }: { action: EnterpriseConfig['primaryAction'] }
         href={action.href}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors flex-shrink-0"
       >
-        <PlusCircle size={12} /> {action.label}
+        <PlusCircle size={12} /> {action.labelKey ? t(action.labelKey) : action.label}
       </Link>
     )
   }
@@ -211,7 +218,7 @@ function PrimaryAction({ action }: { action: EnterpriseConfig['primaryAction'] }
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded-md transition-colors"
       >
         <PlusCircle size={12} />
-        {action.label}
+        {action.labelKey ? t(action.labelKey) : action.label}
         <ChevronDown size={11} className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -240,41 +247,45 @@ function PrimaryAction({ action }: { action: EnterpriseConfig['primaryAction'] }
 export default function EnterpriseNavHeader() {
   const pathname = usePathname()
   const active = ENTERPRISES.find(e => isWithin(pathname, e.rootHref))
+  const t = useTranslations('nav')
 
   return (
     <div className="border-b border-[#2A2D35] bg-[#0A0C10] shrink-0">
       {/* Tier 1 — enterprise selector, always visible, always a real link */}
       <div className="px-4 lg:px-6">
-        <div className="max-w-6xl mx-auto flex items-center h-11 gap-1 overflow-x-auto scrollbar-hide">
-          <Link
-            href="/dashboard"
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap transition-colors ${
-              pathname === '/dashboard'
-                ? 'bg-zinc-800 text-white'
-                : 'text-zinc-500 hover:text-white hover:bg-zinc-800/50'
-            }`}
-          >
-            <LayoutGrid size={13} className={pathname === '/dashboard' ? 'text-emerald-500' : 'text-zinc-600'} />
-            Overview
-          </Link>
-          {ENTERPRISES.map(e => {
-            const Icon = e.icon
-            const isActive = active?.id === e.id
-            return (
-              <Link
-                key={e.id}
-                href={e.rootHref}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap transition-colors ${
-                  isActive
-                    ? 'bg-zinc-800 text-white'
-                    : 'text-zinc-500 hover:text-white hover:bg-zinc-800/50'
-                }`}
-              >
-                <Icon size={13} className={isActive ? 'text-emerald-500' : 'text-zinc-600'} />
-                {e.label}
-              </Link>
-            )
-          })}
+        <div className="max-w-6xl mx-auto flex items-center h-11 gap-1">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1 min-w-0">
+            <Link
+              href="/dashboard"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap transition-colors ${
+                pathname === '/dashboard'
+                  ? 'bg-zinc-800 text-white'
+                  : 'text-zinc-500 hover:text-white hover:bg-zinc-800/50'
+              }`}
+            >
+              <LayoutGrid size={13} className={pathname === '/dashboard' ? 'text-emerald-500' : 'text-zinc-600'} />
+              {t('overview')}
+            </Link>
+            {ENTERPRISES.map(e => {
+              const Icon = e.icon
+              const isActive = active?.id === e.id
+              return (
+                <Link
+                  key={e.id}
+                  href={e.rootHref}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap transition-colors ${
+                    isActive
+                      ? 'bg-zinc-800 text-white'
+                      : 'text-zinc-500 hover:text-white hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <Icon size={13} className={isActive ? 'text-emerald-500' : 'text-zinc-600'} />
+                  {e.labelKey ? t(e.labelKey) : e.label}
+                </Link>
+              )
+            })}
+          </div>
+          <LanguageSwitcher className="flex-shrink-0 pl-2" />
         </div>
       </div>
 
@@ -284,7 +295,7 @@ export default function EnterpriseNavHeader() {
         <div className="border-t border-[#2A2D35] px-4 lg:px-6">
           <div className="max-w-6xl mx-auto flex items-center justify-between h-11 gap-2">
             <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
-              {active.navItems.map(({ label, href }) => {
+              {active.navItems.map(({ label, labelKey, href }) => {
                 const isActive = href === active.rootHref ? pathname === href : pathname.startsWith(href)
                 return (
                   <Link
@@ -294,7 +305,7 @@ export default function EnterpriseNavHeader() {
                       isActive ? 'text-white bg-white/10' : 'text-[#6B7280] hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    {label}
+                    {labelKey ? t(labelKey) : label}
                   </Link>
                 )
               })}

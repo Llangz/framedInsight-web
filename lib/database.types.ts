@@ -2102,6 +2102,46 @@ export type Database = {
           },
         ]
       }
+      // Added by 20260716_dairy_finance_module.sql — not yet run through
+      // `supabase gen types`, hand-authored to match the migration exactly.
+      dairy_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          description: string | null
+          expense_date: string
+          farm_id: string
+          id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string | null
+          description?: string | null
+          expense_date: string
+          farm_id: string
+          id?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          expense_date?: string
+          farm_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dairy_expenses_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farm_managers: {
         Row: {
           created_at: string | null
@@ -2859,6 +2899,74 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "milk_records_cow_id_fkey"
+            columns: ["cow_id"]
+            isOneToOne: false
+            referencedRelation: "cows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      // Added by 20260716_dairy_finance_module.sql — not yet run through
+      // `supabase gen types`, hand-authored to match the migration exactly.
+      milk_sales: {
+        Row: {
+          buyer_contact: string | null
+          buyer_name: string | null
+          channel: string
+          cow_id: string | null
+          created_at: string | null
+          farm_id: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          payment_status: string | null
+          price_per_liter: number
+          quantity_liters: number
+          sale_date: string
+          total_amount: number
+        }
+        Insert: {
+          buyer_contact?: string | null
+          buyer_name?: string | null
+          channel?: string
+          cow_id?: string | null
+          created_at?: string | null
+          farm_id: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          price_per_liter: number
+          quantity_liters: number
+          sale_date: string
+          total_amount: number
+        }
+        Update: {
+          buyer_contact?: string | null
+          buyer_name?: string | null
+          channel?: string
+          cow_id?: string | null
+          created_at?: string | null
+          farm_id?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          price_per_liter?: number
+          quantity_liters?: number
+          sale_date?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milk_sales_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "milk_sales_cow_id_fkey"
             columns: ["cow_id"]
             isOneToOne: false
             referencedRelation: "cows"
@@ -4944,6 +5052,30 @@ export type Database = {
       }
     }
     Views: {
+      // Added by 20260716_dairy_finance_module.sql — not yet run through
+      // `supabase gen types`, hand-authored to match the migration exactly.
+      v_dairy_monthly_finance: {
+        Row: {
+          farm_id: string | null
+          month: string | null
+          liters_produced: number | null
+          liters_sold: number | null
+          total_revenue: number | null
+          total_expenses: number | null
+          net_profit: number | null
+          avg_price_per_liter: number | null
+          pct_production_sold: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milk_sales_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coffee_cost_summary: {
         Row: {
           activity_year: number | null

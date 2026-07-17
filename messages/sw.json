@@ -1,0 +1,59 @@
+{
+  "nav": {
+    "overview": "Muhtasari",
+    "dairy": "Maziwa",
+    "coffee": "Kahawa",
+    "smallRuminants": "Mbuzi na Kondoo",
+    "poultry": "Kuku",
+    "dairy_herd": "Kundi",
+    "dairy_milk": "Maziwa",
+    "dairy_finance": "Fedha",
+    "dairy_health": "Afya",
+    "dairy_breeding": "Uzazi",
+    "dairy_warnings": "Tahadhari",
+    "dairy_recordActivity": "Rekodi Shughuli"
+  },
+  "languageSwitcher": {
+    "label": "Lugha",
+    "english": "Kiingereza",
+    "swahili": "Kiswahili"
+  },
+  "auth": {
+    "login": {
+      "title": "Karibu Tena",
+      "subtitle": "Ingia kusimamia shamba lako",
+      "password": "Nenosiri",
+      "passwordPlaceholder": "Weka nenosiri lako",
+      "showPassword": "Onyesha",
+      "hidePassword": "Ficha",
+      "submitPassword": "Ingia",
+      "submitOtp": "Tuma Msimbo wa SMS",
+      "processing": "Inashughulikia...",
+      "switchToOtp": "Umesahau Nenosiri? Ingia kwa Msimbo wa SMS",
+      "switchToPassword": "Nakumbuka nenosiri langu. Ingia kwa Nenosiri",
+      "noAccount": "Huna akaunti?",
+      "signUp": "Jisajili",
+      "otpHelpTitle": "Ikiwa hupokei msimbo",
+      "otpHelp1": "Hakikisha simu yako inaruhusu SMS na haizuii ujumbe usiojulikana au wa matangazo.",
+      "otpHelp2": "Katika simu nyingi, zima mipangilio ya \u201cZuia watumaji wasiojulikana\u201d, \u201cUlinzi dhidi ya taka\u201d, au \u201cUzuiaji wa ujumbe wa matangazo\u201d kwa SMS.",
+      "otpHelp3": "Ikiwa unatumia programu ya kampuni ya simu au usalama wa simu, ruhusu ujumbe kutoka nambari fupi au zisizojulikana kwa muda.",
+      "passwordRequired": "Nenosiri linahitajika",
+      "loading": "Inapakia..."
+    }
+  },
+  "dairyFinance": {
+    "title": "Fedha za Maziwa",
+    "subtitle": "Mapato ya maziwa, gharama na faida",
+    "statement": "Taarifa",
+    "revenueThisMonth": "Mapato (mwezi huu)",
+    "expensesThisMonth": "Gharama (mwezi huu)",
+    "netProfitThisMonth": "Faida halisi (mwezi huu)",
+    "pctProductionSold": "% ya uzalishaji uliouzwa",
+    "recordSale": "Rekodi Mauzo",
+    "recordExpense": "Rekodi Gharama",
+    "litersSold": "Lita {count} zimeuzwa",
+    "litersProduced": "Lita {count} zimezalishwa",
+    "noSalesYet": "Hakuna mauzo bado",
+    "savedOffline": "Imehifadhiwa nje ya mtandao \u2014 itasawazishwa ukiunganishwa."
+  }
+}

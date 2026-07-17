@@ -210,7 +210,10 @@ export default function SalesClient({ initialSales }: { initialSales: SaleRecord
                 <p className="text-xs text-slate-500 mt-0.5">Live sales · Meat · Milk · Breeding stock</p>
               </div>
             </div>
-            <Link href="/dashboard/smallRuminants/sales/add" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record Sale</Link>
+            <div className="flex items-center gap-2">
+              <a href="/api/reports/farm-statement?enterprise=small_ruminants&months=6" className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">Statement</a>
+              <Link href="/dashboard/smallRuminants/sales/add" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record Sale</Link>
+            </div>
           </div>
           <SubNav active="/dashboard/smallRuminants/sales" />
         </div>

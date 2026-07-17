@@ -22,7 +22,7 @@ interface PoultryOfflineEvent {
 
 interface DairyOfflineEvent {
   eventId: string
-  entityType: "milk_record" | "cow_registration" | "breeding_event" | "health_check"
+  entityType: "milk_record" | "cow_registration" | "breeding_event" | "health_check" | "milk_sale"
   farmId: string
   referenceId?: string // cow id
   payload: Record<string, any>
@@ -425,6 +425,18 @@ async function processDairyEvent(
         if (!exists) {
           await supabase.from("health_records").insert({
             id: eventId, farm_id: farmId, cow_id: referenceId, ...payload,
+          })
+        }
+        return true
+      }
+
+      /* ───────────── MILK SALE (append-only) ───────────── */
+      case "milk_sale": {
+        const { data: exists } = await supabase
+          .from("milk_sales").select("id").eq("id", eventId).maybeSingle()
+        if (!exists) {
+          await supabase.from("milk_sales").insert({
+            id: eventId, farm_id: farmId, cow_id: referenceId ?? null, ...payload,
           })
         }
         return true
