@@ -12,59 +12,20 @@ import { createClient } from '@/lib/supabase/server'
 import { createHash } from 'crypto'
 import type { Json, Database } from '@/lib/database.types'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  computePassportMetrics,
+  type PublicStory,
+  type SustainabilityMetrics,
+  type QualityMetrics,
+  type GeoSummary,
+  type PassportComputationInput,
+} from './passport.metrics'
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-export interface PublicStory {
-  region: string
-  county: string
-  factory: string
-  cooperative: string
-  altitude_m?: number
-  varieties: string[]
-  processing: string
-  harvest_season: string
-  farm_count: number
-  female_farmer_pct?: number
-  avg_farm_size_acres?: number
-  hero_image_url?: string
-  farmer_story?: string
-  tasting_notes?: string
-}
-
-export interface SustainabilityMetrics {
-  eudr_compliant: boolean
-  deforestation_free_plots_pct: number
-  organic_certified: boolean
-  rainforest_alliance: boolean
-  fair_trade: boolean
-  avg_tree_cover_loss_pct?: number
-  avg_forest_cover_pct?: number
-  total_plot_area_acres?: number
-  chemical_inputs?: string[]
-}
-
-export interface QualityMetrics {
-  sca_score?: number
-  cupper_name?: string
-  cupping_date?: string
-  flavor_notes?: string
-  aroma?: number
-  acidity?: number
-  body?: number
-  grade: string
-  moisture_pct?: number
-  certifications?: string[]
-}
-
-export interface GeoSummary {
-  centroid_lat?: number
-  centroid_lng?: number
-  plot_count: number
-  factory_lat?: number
-  factory_lng?: number
-  export_port: string
-}
+// Re-exported so existing `import { PublicStory } from '.../passport.service'`
+// call sites elsewhere in the app keep working unchanged — the types now
+// live in passport.metrics.ts (see that file's header comment for why).
+export type { PublicStory, SustainabilityMetrics, QualityMetrics, GeoSummary, PassportComputationInput }
+export { computePassportMetrics }
 
 // ── Hash helper ──────────────────────────────────────────────────────────────
 
@@ -281,111 +242,7 @@ export async function assemblePassportPayload(
     qualityRecords = data ?? []
   }
 
-  // ── Compute sustainability metrics ──────────────────────────────────────────
-
-  const totalPlots = plotIds.length
-  const lowRiskPlots = eudrRecords.filter(e => e.risk_level === 'low' && !e.deforestation_risk).length
-  const deforestationFreePct = totalPlots > 0
-    ? Math.round((lowRiskPlots / totalPlots) * 100)
-    : 0
-  const avgForestCover = eudrRecords.length > 0
-    ? eudrRecords.reduce((s, e) => s + (e.forest_cover_pct ?? 0), 0) / eudrRecords.length
-    : undefined
-  const avgTreeCoverLoss = avgForestCover
-
-  const totalPlotAcres = deliveryList.reduce((s, d) => {
-    const acres = (d.coffee_plots as any)?.land_size_acres
-      ?? ((d.coffee_plots as any)?.area_hectares ?? 0) * 2.471
-    return s + Number(acres)
-  }, 0)
-
-  // ── Compute variety breakdown ────────────────────────────────────────────────
-
-  const varietyMap: Record<string, number> = {}
-  deliveryList.forEach(d => {
-    const v = (d.coffee_plots as any)?.variety
-    if (v) varietyMap[v] = (varietyMap[v] ?? 0) + 1
-  })
-  const varieties = Object.entries(varietyMap)
-    .sort((a, b) => b[1] - a[1])
-    .map(([v]) => v)
-
-  // ── Compute geo summary ─────────────────────────────────────────────────────
-
-  const lats = deliveryList
-    .map(d => (d.coffee_plots as any)?.gps_latitude ?? (d.farms as any)?.gps_latitude)
-    .filter(Boolean) as number[]
-  const lngs = deliveryList
-    .map(d => (d.coffee_plots as any)?.gps_longitude ?? (d.farms as any)?.gps_longitude)
-    .filter(Boolean) as number[]
-
-  const centroidLat = lats.length > 0 ? lats.reduce((s, v) => s + v, 0) / lats.length : undefined
-  const centroidLng = lngs.length > 0 ? lngs.reduce((s, v) => s + v, 0) / lngs.length : undefined
-
-  const factory = batch.coop_factories as any
-  const coop = batch.cooperatives as any
-
-  // ── Best quality record ─────────────────────────────────────────────────────
-
-  const bestQuality = qualityRecords[0]
-
-  // ── Assemble ────────────────────────────────────────────────────────────────
-
-  const publicStory: PublicStory = {
-    region: coop?.ward ?? coop?.sub_county ?? coop?.county ?? 'Kenya',
-    county: coop?.county ?? 'Kenya',
-    factory: factory?.factory_name ?? 'Cooperative Factory',
-    cooperative: coop?.cooperative_name ?? '',
-    varieties: varieties.length > 0 ? varieties : ['Unknown'],
-    processing: exportLot?.processing_method
-      ? String(exportLot.processing_method)
-      : batch.washing_date ? 'Fully Washed' : 'Natural',
-    harvest_season: `${batch.season === 'main' ? 'Main Crop' : 'Fly Crop'} ${batch.harvest_year ?? new Date().getFullYear()}`,
-    farm_count: farmCount,
-    avg_farm_size_acres: totalPlotAcres > 0 && farmCount > 0
-      ? Math.round((totalPlotAcres / farmCount) * 10) / 10
-      : undefined,
-    tasting_notes: bestQuality?.flavor_notes ?? undefined,
-  }
-
-  const sustainabilityMetrics: SustainabilityMetrics = {
-    eudr_compliant: deforestationFreePct === 100,
-    deforestation_free_plots_pct: deforestationFreePct,
-    organic_certified: bestQuality?.organic_certified ?? false,
-    rainforest_alliance: bestQuality?.rainforest_alliance ?? false,
-    fair_trade: bestQuality?.fair_trade_certified ?? false,
-    avg_tree_cover_loss_pct: avgTreeCoverLoss !== undefined
-      ? Math.round(avgTreeCoverLoss * 10) / 10
-      : undefined,
-    total_plot_area_acres: Math.round(totalPlotAcres * 10) / 10,
-  }
-
-  const qualityMetrics: QualityMetrics = {
-    sca_score: exportLot?.sca_cupping_score ?? bestQuality?.cupping_score ?? undefined,
-    cupper_name: bestQuality?.cupper_name ?? undefined,
-    cupping_date: bestQuality?.cupping_date ?? undefined,
-    flavor_notes: bestQuality?.flavor_notes ?? undefined,
-    aroma: bestQuality?.aroma_score ?? undefined,
-    acidity: bestQuality?.acidity_score ?? undefined,
-    body: bestQuality?.body_score ?? undefined,
-    grade: exportLot?.grade ?? 'Unknown',
-    moisture_pct: exportLot?.moisture_content_pct ?? batch.moisture_content_pct ?? undefined,
-    certifications: [
-      bestQuality?.organic_certified && 'Organic',
-      bestQuality?.utz_certified && 'UTZ',
-      bestQuality?.rainforest_alliance && 'Rainforest Alliance',
-      bestQuality?.fair_trade_certified && 'Fair Trade',
-    ].filter(Boolean) as string[],
-  }
-
-  const geoSummary: GeoSummary = {
-    centroid_lat: centroidLat,
-    centroid_lng: centroidLng,
-    plot_count: totalPlots || farmCount,
-    export_port: 'Mombasa',
-  }
-
-  return { publicStory, sustainabilityMetrics, qualityMetrics, geoSummary }
+  return computePassportMetrics({ batch, deliveryList, eudrRecords, qualityRecords, exportLot })
 }
 
 // ── Create a new passport ────────────────────────────────────────────────────

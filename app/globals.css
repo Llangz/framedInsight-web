@@ -140,6 +140,64 @@ select[class*="bg-[#161921]"] option {
   color: #FFFFFF;
 }
 
+/* ── Autofill background fix ───────────────────────────────────
+   The `-webkit-text-fill-color: white` inline style used across dairy/
+   coffee/poultry forms (e.g. AddCowClient.tsx) only overrides the
+   *text* color on an autofilled field — Chrome/Edge still paint their
+   own background (a pale yellow/blue highlight) underneath via the
+   `:-webkit-autofill` UA style, which plain `background-color` cannot
+   beat regardless of specificity or `!important`. Net effect once a
+   field on a repeatedly-used form (like "Add Cow") gets autofilled:
+   white text forced onto a pale background — unreadable, even though
+   the text-color half of the fix is technically working. This is
+   unrelated to prefers-color-scheme / light vs dark mode; it reproduces
+   in any browser profile that has saved a prior value for the field,
+   which is why it shows up more readily on desktop (accumulated
+   autofill history) than on a fresh mobile session.
+
+   The only reliable cross-browser override is the box-shadow-inset
+   trick below: `background-color` itself is what the UA style ignores,
+   but a spread box-shadow painted at 1000px pushes the intended color
+   over the entire field, visually replacing the autofill highlight.
+   All four autofill pseudo-classes must be covered independently —
+   WebKit reverts to the plain background the moment focus/hover state
+   changes if any one of them is missing. The long transition-delay
+   stops the one-frame flash of the native color while the override
+   applies.
+
+   Scoped to the same dark-palette bg-hex allowlist as the rules above,
+   so light-themed pages (small ruminants, a handful of coffee pages)
+   are unaffected. */
+input[class*="bg-[#0A0C10]"]:-webkit-autofill,
+input[class*="bg-[#0A0C10]"]:-webkit-autofill:hover,
+input[class*="bg-[#0A0C10]"]:-webkit-autofill:focus,
+input[class*="bg-[#0A0C10]"]:-webkit-autofill:active,
+input[class*="bg-[#0D0F14]"]:-webkit-autofill,
+input[class*="bg-[#0D0F14]"]:-webkit-autofill:hover,
+input[class*="bg-[#0D0F14]"]:-webkit-autofill:focus,
+input[class*="bg-[#0D0F14]"]:-webkit-autofill:active,
+input[class*="bg-[#17191F]"]:-webkit-autofill,
+input[class*="bg-[#17191F]"]:-webkit-autofill:hover,
+input[class*="bg-[#17191F]"]:-webkit-autofill:focus,
+input[class*="bg-[#17191F]"]:-webkit-autofill:active,
+input[class*="bg-[#1A1D24]"]:-webkit-autofill,
+input[class*="bg-[#1A1D24]"]:-webkit-autofill:hover,
+input[class*="bg-[#1A1D24]"]:-webkit-autofill:focus,
+input[class*="bg-[#1A1D24]"]:-webkit-autofill:active,
+input[class*="bg-[#161921]"]:-webkit-autofill,
+input[class*="bg-[#161921]"]:-webkit-autofill:hover,
+input[class*="bg-[#161921]"]:-webkit-autofill:focus,
+input[class*="bg-[#161921]"]:-webkit-autofill:active {
+  -webkit-text-fill-color: #FFFFFF;
+  caret-color: #FFFFFF;
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+input[class*="bg-[#0A0C10]"]:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #0A0C10 inset; }
+input[class*="bg-[#0D0F14]"]:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #0D0F14 inset; }
+input[class*="bg-[#17191F]"]:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #17191F inset; }
+input[class*="bg-[#1A1D24]"]:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #1A1D24 inset; }
+input[class*="bg-[#161921]"]:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #161921 inset; }
+
 /* ── Scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--background); }

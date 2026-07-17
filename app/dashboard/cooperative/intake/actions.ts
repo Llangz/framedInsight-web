@@ -11,6 +11,7 @@ import {
   getCurrentSeason,
   getCurrentHarvestYear,
 } from '@/lib/intake.types'
+import { computeLotTotals } from './lot-totals'
 
 // ── Create a new factory intake lot ─────────────────────────────────────────
 
@@ -189,16 +190,19 @@ export async function addDeliveryToLot(params: AddDeliveryParams) {
   }
 
   // Update lot totals atomically
-  const newCherry = (lot.total_cherry_kg ?? 0) + (params.accepted !== false ? params.cherryKg : 0)
-  const newMbuni = (lot.total_mbuni_kg ?? 0) + (params.accepted !== false ? (params.mbuniKg ?? 0) : 0)
-  const newFarmers = (lot.total_farmers ?? 0) + 1
+  const newTotals = computeLotTotals({
+    lot,
+    cherryKg: params.cherryKg,
+    mbuniKg: params.mbuniKg,
+    accepted: params.accepted,
+  })
 
   await supabase
     .from('factory_intake_lots')
     .update({
-      total_cherry_kg: newCherry,
-      total_mbuni_kg: newMbuni,
-      total_farmers: newFarmers,
+      total_cherry_kg: newTotals.total_cherry_kg,
+      total_mbuni_kg: newTotals.total_mbuni_kg,
+      total_farmers: newTotals.total_farmers,
       updated_at: new Date().toISOString(),
     })
     .eq('id', params.lotId)

@@ -278,7 +278,7 @@ function RecordMilkContent() {
               <div className="text-center py-8">
                 <p className="text-[#9CA3AF] mb-4">No active cows found</p>
                 <Link
-                  href="/dashboard/dairy/cows/add"
+                  href="/dashboard/dairy/add-cow"
                   className="inline-block px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
                 >
                   Add Your First Cow

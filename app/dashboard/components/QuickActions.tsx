@@ -24,7 +24,7 @@ export default function QuickActions({
     {
       label: 'Add Cow',
       icon: PlusCircle,
-      href: '/dashboard/dairy/cows/add',
+      href: '/dashboard/dairy/add-cow',
       show: hasDairy && (selectedEnterprise === 'all' || selectedEnterprise === 'dairy'),
     },
     {

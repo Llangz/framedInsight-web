@@ -53,6 +53,37 @@ export function inferTierFromMonthlyRate(monthlyKes: number): string {
   return 'smallholder'
 }
 
+// ── Pure computation (unit-testable, no I/O) ────────────────────────────────
+//
+// The tier-inference + stacking-date math from activateSubscription,
+// pulled out so it can be tested against fixture farms/transactions
+// without a live Supabase connection — see activate-subscription.test.ts.
+// Behavior unchanged.
+
+export interface SubscriptionUpdateInput {
+  farm: { subscription_end_date?: string | null }
+  txn: { amount: number; months_added: number }
+  now: Date
+}
+
+export function computeSubscriptionUpdate({ farm, txn, now }: SubscriptionUpdateInput): {
+  tier: string
+  endDate: Date
+} {
+  const monthlyRate = Math.round(txn.amount / (txn.months_added || 1))
+  const tier = inferTierFromMonthlyRate(monthlyRate)
+
+  // Stacking logic — if the current subscription is still active, extend
+  // from its existing end date rather than today, so a farmer who pays
+  // early doesn't lose the remainder of what they already paid for.
+  const currentEnd = farm.subscription_end_date ? new Date(farm.subscription_end_date) : null
+  const startFrom = currentEnd && currentEnd > now ? currentEnd : now
+  const endDate = new Date(startFrom)
+  endDate.setMonth(endDate.getMonth() + txn.months_added)
+
+  return { tier, endDate }
+}
+
 /**
  * Attempts to activate/extend a farm's subscription for a completed M-Pesa
  * transaction, and always writes the outcome back onto the transaction row
@@ -92,16 +123,7 @@ export async function activateSubscription(
     return { success: false, error }
   }
 
-  const monthlyRate = Math.round(txn.amount / (txn.months_added || 1))
-  const newTier = inferTierFromMonthlyRate(monthlyRate)
-
-  // Stacking logic — if the current subscription is still active, extend
-  // from its existing end date rather than today, so a farmer who pays
-  // early doesn't lose the remainder of what they already paid for.
-  const currentEnd = farm.subscription_end_date ? new Date(farm.subscription_end_date) : null
-  const startFrom = currentEnd && currentEnd > now ? currentEnd : now
-  const newEndDate = new Date(startFrom)
-  newEndDate.setMonth(newEndDate.getMonth() + txn.months_added)
+  const { tier: newTier, endDate: newEndDate } = computeSubscriptionUpdate({ farm, txn, now })
 
   const { error: farmUpdateErr } = await supabase
     .from('farms')

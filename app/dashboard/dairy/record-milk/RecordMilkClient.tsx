@@ -147,7 +147,7 @@ export default function RecordMilkClient({ farmId, initialCows }: Props) {
         {initialCows.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[#2A2D35] p-8 text-center">
             <p className="text-sm text-[#6B7280] mb-2">No active cows registered</p>
-            <Link href="/dashboard/dairy/cows/add" className="text-sm text-emerald-500">Add a cow →</Link>
+            <Link href="/dashboard/dairy/add-cow" className="text-sm text-emerald-500">Add a cow →</Link>
           </div>
         ) : (
           <>
