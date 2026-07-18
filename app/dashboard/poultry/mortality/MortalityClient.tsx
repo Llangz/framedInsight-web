@@ -81,9 +81,12 @@ export default function MortalityClient({ farmId, initialBatches, initialRecords
     e.preventDefault()
     setError('')
     if (!form.batch_id || !form.count_dead) { setError('Select batch and enter count'); return }
+    const count = parseInt(form.count_dead)
+    // count_dead_check requires > 0 — '!form.count_dead' above lets a
+    // literal "0" string through since it's non-empty/truthy.
+    if (!count || count <= 0) { setError('Count must be at least 1'); return }
     setLoading(true)
 
-    const count = parseInt(form.count_dead)
     const batch = initialBatches.find(b => b.id === form.batch_id)
 
     // Insert mortality record
@@ -92,6 +95,15 @@ export default function MortalityClient({ farmId, initialBatches, initialRecords
   farm_id: farmId,
   batch_id: form.batch_id,
   record_date: form.record_date,
+  // BUG FIX: poultry_mortality_record_type_check requires record_type to be
+  // 'mortality' or 'culling'. This column has a DB default of 'mortality'
+  // (confirmed), so omitting it didn't block saves — but it meant every
+  // "Culled birds" entry was silently being recorded as a mortality/death
+  // instead, corrupting mortality-rate stats. It's also missing from
+  // lib/database.types.ts (stale for this table, same dashboard-schema-
+  // drift as coffee_activities). `type` already tracks exactly this
+  // distinction in the UI.
+  record_type: type,
   count_dead: count,
   cause: type === 'mortality' ? (form.cause || null) : null,
   symptoms: type === 'mortality' ? (form.symptoms || null) : null,

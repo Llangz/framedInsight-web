@@ -3,7 +3,16 @@ import { redirect } from "next/navigation";
 import { unwrapOr } from "@/lib/safe-query";
 import ActivityRecordClient from "./ActivityRecordClient";
 
-export default async function RecordActivityPage() {
+interface RecordActivityPageProps {
+  // CoffeeClient's quick-action tiles send ?type=; PlotDetailClient's
+  // "Log first activity" sends ?plot=; DiseaseClient's disease-triggered
+  // spray link sends ?type=&plot_id=&trigger=disease. Accept both plot
+  // param spellings.
+  searchParams: Promise<{ type?: string; plot?: string; plot_id?: string; trigger?: string }>;
+}
+
+export default async function RecordActivityPage({ searchParams }: RecordActivityPageProps) {
+  const { type, plot, plot_id, trigger } = await searchParams;
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,5 +41,13 @@ export default async function RecordActivityPage() {
     .order("plot_name");
   const plots = unwrapOr(plotsRes as any, [] as any[], 'coffee_plots');
 
-  return <ActivityRecordClient farmId={manager.farm_id} plots={plots} />;
+  return (
+    <ActivityRecordClient
+      farmId={manager.farm_id}
+      plots={plots}
+      initialType={type}
+      initialPlotId={plot || plot_id}
+      initialTrigger={trigger}
+    />
+  );
 }

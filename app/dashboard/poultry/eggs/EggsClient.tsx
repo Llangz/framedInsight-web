@@ -52,12 +52,35 @@ export default function EggsClient({ farmId, initialBatches, initialRecords }: P
     if (!form.batch_id || !form.total_eggs) { setError('Select batch and enter egg count'); return }
     setLoading(true)
 
+    // BUG FIX (critical): the live column is `collected_eggs`, not
+    // `eggs_collected` — confirmed by information_schema AND by
+    // app/dashboard/poultry/page.tsx's own read query
+    // (`.select('...,collected_eggs')`), which already uses the correct
+    // name. Sending `eggs_collected` in the insert payload is an unknown
+    // column to PostgREST, which errors outright rather than silently
+    // dropping it — every single egg record save was failing here, not
+    // just losing the broken_eggs breakdown (see below).
+    const totalEggs = parseInt(form.total_eggs) || 0
+    // broken_eggs has a DB default of 0, so omitting it (the previous bug)
+    // didn't block saves — it just silently recorded 0 breakage regardless
+    // of what was typed. collected_eggs is nullable, so it wasn't blocking
+    // either, but was never being computed at all. Clamping brokenEggs to
+    // totalEggs guarantees broken_eggs <= total_eggs can never be violated.
+    const brokenEggs = Math.min(parseInt(form.broken_eggs || '0') || 0, totalEggs)
+
     const payload = {
-  farm_id: farmId,
+  // BUG FIX (critical, second one on this same insert): poultry_egg_records
+  // has no farm_id column at all (confirmed by information_schema — it's
+  // scoped via batch_id -> poultry_batches.farm_id, same pattern as
+  // milk_records -> cows.farm_id from the dairy finance view bug).
+  // Sending farm_id here was ALSO an unrecognized-column error, stacked on
+  // top of the eggs_collected/collected_eggs mismatch below — egg records
+  // had two independent reasons to fail on every single save.
   batch_id: form.batch_id,
   record_date: form.record_date,
-  eggs_collected: parseInt(form.total_eggs),
-  total_eggs: parseInt(form.total_eggs),
+  collected_eggs: Math.max(0, totalEggs - brokenEggs),
+  total_eggs: totalEggs,
+  broken_eggs: brokenEggs,
   notes: form.notes || null,
 }
 

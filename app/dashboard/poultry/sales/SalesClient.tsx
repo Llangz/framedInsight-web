@@ -83,6 +83,8 @@ export default function SalesClient({ farmId, initialBatches, initialSales }: Pr
     const qty  = parseFloat(form.quantity)
     const ppu  = parseFloat(form.price_per_unit)
 
+    if (!qty || qty <= 0) { setError('Quantity must be greater than 0'); setLoading(false); return }
+
     const salePayload = {
       id:             crypto.randomUUID(),
       farm_id:        farmId,
@@ -96,6 +98,16 @@ export default function SalesClient({ farmId, initialBatches, initialSales }: Pr
       buyer_name:     form.buyer_name || null,
       buyer_contact:  form.buyer_contact || null,
       payment_method: form.payment_method,
+      // BUG FIX: poultry_sales_payment_status_check requires 'paid' |
+      // 'pending' | 'partial'. This column has a DB default of 'paid'
+      // (confirmed), so omitting it didn't block saves — but it meant
+      // every Credit sale was silently marked as already paid, which is
+      // wrong for a deferred-payment sale. Missing from
+      // lib/database.types.ts too (stale for this table, same dashboard-
+      // schema-drift as coffee_activities). There's no dedicated UI for
+      // this yet, so it's derived from payment_method: 'Credit' implies
+      // not yet paid, everything else defaults to paid at point of sale.
+      payment_status: form.payment_method === 'Credit' ? 'pending' : 'paid',
       market:         form.market || null,
       notes:          form.notes || null,
     }

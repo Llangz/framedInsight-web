@@ -93,7 +93,11 @@ export default function HealthClient({ farmId, initialBatches, initialEvents }: 
   id:            crypto.randomUUID(),
   farm_id:       farmId,
   batch_id:      form.batch_id,
-  record_date:   form.event_date,
+  // BUG FIX (critical): the live column is event_date, not record_date —
+  // record_date doesn't exist on poultry_health_records at all (confirmed
+  // via information_schema). Sending it was an unrecognized-column error
+  // on every single health event save.
+  event_date:    form.event_date,
   event_type:    form.event_type,
   // vaccine_name/disease/drug_name/dosage/vet_name/cost were added to
   // poultry_health_records by 20260709_add_poultry_health_mortality_fields.sql

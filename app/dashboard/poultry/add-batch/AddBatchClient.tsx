@@ -68,6 +68,13 @@ export default function AddBatchClient({ farmId }: Props) {
       batch_name:             form.batch_name.trim(),
       bird_type:              form.bird_type,
       date_of_placement:      form.date_of_placement,
+      // BUG FIX: poultry_batches_initial_count_check (CHECK (initial_count
+      // > 0)) proves this column exists live, even though it's missing
+      // from lib/database.types.ts (stale for this table). It was never
+      // sent — only current_count was — which loses the batch's starting
+      // size for later mortality-rate calculations as current_count drops.
+      // At creation both counts are the same value.
+      initial_count:          count,
       current_count:          count,
       source:                 form.source || null,
       status:                 'active',

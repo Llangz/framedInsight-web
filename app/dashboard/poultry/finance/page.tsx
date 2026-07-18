@@ -61,10 +61,17 @@ export default async function PoultryFinancePage() {
 
     (supabase as any)
       .from('poultry_health_records')
-      .select('id, batch_id, record_date, event_type, vaccine_name, disease, drug_name, cost, poultry_batches(batch_name)')
+      // BUG FIX: real column is event_date, not record_date (confirmed via
+      // information_schema) — record_date doesn't exist on this table at
+      // all, so this query was failing silently (data destructured
+      // straight from { data }, no error check) and every health cost was
+      // dropped from the P&L with no visible error. Aliased back to
+      // record_date so FinanceClientComponent, which treats all four
+      // record types uniformly via that field name, needs no changes.
+      .select('id, batch_id, record_date:event_date, event_type, vaccine_name, disease, drug_name, cost, poultry_batches(batch_name)')
       .in('batch_id', allBatchIds)
       .not('cost', 'is', null)
-      .order('record_date', { ascending: false }),
+      .order('event_date', { ascending: false }),
 
     (supabase as any)
       .from('poultry_mortality')

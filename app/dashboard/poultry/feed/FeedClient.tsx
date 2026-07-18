@@ -71,9 +71,10 @@ export default function FeedClient({ farmId, initialBatches, initialRecords }: P
     e.preventDefault()
     setError('')
     if (!form.batch_id || !form.quantity_kg) { setError('Select batch and enter quantity'); return }
+    const qty = parseFloat(form.quantity_kg)
+    if (!qty || qty <= 0) { setError('Quantity must be greater than 0'); return }
     setLoading(true)
 
-    const qty = parseFloat(form.quantity_kg)
 const cpu = form.cost_per_kg ? parseFloat(form.cost_per_kg) : 0
 
 const feedPayload = {
@@ -83,6 +84,15 @@ const feedPayload = {
   record_date: form.record_date,
   feed_type: form.feed_type,
   quantity_kg: qty,
+  // BUG FIX: cost_per_kg/total_cost were already being computed above
+  // (cpu, and totalCost for the UI preview) but never included in the
+  // insert — both are real columns (NOT NULL, DEFAULT 0), so every feed
+  // record was silently saved with 0 cost regardless of what was typed.
+  // app/dashboard/poultry/finance reads these two columns directly for
+  // its P&L, so this was quietly zeroing out feed costs on the finance
+  // dashboard, not just losing the number on this page.
+  cost_per_kg: cpu,
+  total_cost: Math.round(qty * cpu),
   days_remaining: form.days_remaining
     ? parseInt(form.days_remaining)
     : null,

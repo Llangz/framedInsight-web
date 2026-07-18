@@ -26,9 +26,37 @@ interface Plot {
 interface Props {
   farmId: string
   plots: Plot[]
+  // Populated from the ?type=&plot=/&plot_id= query string. CoffeeClient's
+  // quick-action tiles ("Weeding", "Fertilizer", "Spraying", ...),
+  // PlotDetailClient's "Log first activity" and DiseaseClient's
+  // "Record spray" links all send these — previously page.tsx never read
+  // searchParams at all, so every one of those buttons silently landed on
+  // the same default (Weeding, Step 1) and the farmer had to reselect the
+  // activity type by hand every time.
+  initialType?: string
+  initialPlotId?: string
+  // 'disease' when reached from DiseaseClient's "Record spray" link off a
+  // pest/disease scouting alert — used to default spray_reason_code to
+  // 'scouting_detected' instead of the generic 'preventive'.
+  initialTrigger?: string
 }
 
 type ActivityType = 'weeding' | 'nutrition' | 'crop_protection' | 'pruning' | 'mulching' | 'other'
+
+// The quick-action links use a mix of UI-level and DB-level vocabulary
+// ('fertilizer' from CoffeeClient's tile, 'spraying' from DiseaseClient's
+// disease-triggered link) — normalize both onto the ActivityType this
+// component actually keys its step-2 form on.
+const QUERY_TYPE_TO_ACTIVITY_TYPE: Record<string, ActivityType> = {
+  weeding: 'weeding',
+  nutrition: 'nutrition',
+  fertilizer: 'nutrition',
+  crop_protection: 'crop_protection',
+  spraying: 'crop_protection',
+  pruning: 'pruning',
+  mulching: 'mulching',
+  other: 'other',
+}
 
 // ── Activity top-level config ─────────────────────────────────────────────────
 const ACTIVITY_CONFIG: Record<ActivityType, { icon: React.ElementType; label: string; description: string }> = {
@@ -77,6 +105,36 @@ const BASAL_PRODUCTS = [
   'Single Super Phosphate (SSP)', 'Other',
 ]
 
+// coffee_activities_fertilizer_type_check only allows this coarse taxonomy:
+// NPK / CAN / DSP / foliar / organic_manure / other (confirmed live 2026-07-18).
+// The product picker above is intentionally more specific for record-keeping
+// (exact product goes in product_name), so basal/top-dress selections need to
+// be bucketed down to a category the constraint accepts. DAP and SSP are both
+// phosphate-based straights and are mapped to the DSP bucket, which is the
+// closest available slot in this enum — if "DSP" was actually meant to mean
+// something narrower than "phosphate fertilizer" on the DB side, that's worth
+// confirming and, if so, renaming/expanding the constraint rather than the
+// mapping here.
+const FERTILIZER_CATEGORY_MAP: Record<string, string> = {
+  'DAP (Diammonium Phosphate)':    'DSP',
+  'CAN (Calcium Ammonium Nitrate)': 'CAN',
+  'NPK 17:17:17':                  'NPK',
+  'NPK 23:23:0':                   'NPK',
+  'Mavuno Coffee':                 'NPK',
+  'Urea (46% N)':                  'other',
+  'Muriate of Potash (MOP)':       'other',
+  'Farm Yard Manure (FYM)':        'organic_manure',
+  'Compost':                       'organic_manure',
+  'Single Super Phosphate (SSP)':  'DSP',
+  'Other':                         'other',
+}
+
+function fertilizerCategory(nutritionMethod: string, product: string | null): string | null {
+  if (nutritionMethod === 'foliar') return 'foliar'
+  if (!product) return null
+  return FERTILIZER_CATEGORY_MAP[product] ?? 'other'
+}
+
 const FOLIAR_PRODUCTS = [
   'Optimizer', 'Goldchance Bloom', 'Legendary', 'Lavender', 'Dimiphite',
   'Bio-Distinction', 'Multi-K (Potassium Nitrate)', 'Calcium Boron foliar',
@@ -87,9 +145,15 @@ const FOLIAR_PRODUCTS = [
 //   FUNGICIDE — CBD, CLR, damping off, brown eye spot
 //   INSECTICIDE / PESTICIDE — Antestia, coffee leaf miner, scale insects, white stem borer
 //   HERBICIDE — weed kill via spray (knapsack)
+// dbSprayType maps each UI option onto coffee_activities_spray_type_check's
+// actual allowed values (fungicide/pesticide/herbicide/foliar_fertilizer/
+// combined) — the UI's own `value`s ('insecticide', 'herbicide_spray') don't
+// match that enum and were being sent straight through, which is why every
+// non-fungicide spray record was failing to save.
 const PROTECTION_TYPES = [
   {
     value: 'fungicide',
+    dbSprayType: 'fungicide',
     label: 'Fungicide',
     description: 'Controls CBD, CLR, brown eye spot, damping-off.',
     products: ['Ridomil Gold', 'Comet (Pyraclostrobin)', 'Copper Oxychloride', 'Mancozeb', 'Score (Difenoconazole)', 'Dithianon', 'Thiophanate-Methyl', 'Other'],
@@ -97,6 +161,7 @@ const PROTECTION_TYPES = [
   },
   {
     value: 'insecticide',
+    dbSprayType: 'pesticide',
     label: 'Insecticide / Pesticide',
     description: 'Controls Antestia bug, leaf miner, scale insects, stem borer, mealybugs.',
     products: ['Confidor (Imidacloprid)', 'Kingcode Elite', 'Ampligo', 'Profile (Chlorpyrifos)', 'Duduthrin', 'Neem-based (organic)', 'Other'],
@@ -104,6 +169,7 @@ const PROTECTION_TYPES = [
   },
   {
     value: 'herbicide_spray',
+    dbSprayType: 'herbicide',
     label: 'Herbicide (spray)',
     description: 'Knapsack-applied weed control. Knockdown or selective.',
     products: ['Clampdown 480SL (Glyphosate)', 'Touchdown (Glyphosate)', 'Gramoxone (Paraquat)', 'Basta (Glufosinate)', 'Other'],
@@ -127,11 +193,30 @@ const SPRAY_EQUIPMENT = [
   { value: 'boom',       label: 'Boom sprayer' },
 ]
 
+// Values match coffee_activities_weather_conditions_check exactly
+// (dry_sunny/cloudy_no_rain/before_rain/after_rain — confirmed live
+// 2026-07-18). The previous set ('dry_calm','overcast','windy','light_rain')
+// didn't match any allowed value, so saving a spray/foliar record with a
+// weather condition selected always failed.
 const WEATHER_OPTIONS = [
-  { value: 'dry_calm',    label: 'Dry & calm (ideal)' },
-  { value: 'overcast',    label: 'Overcast, no wind' },
-  { value: 'windy',       label: 'Windy (avoid foliar)' },
-  { value: 'light_rain',  label: 'Light rain (avoid spray)' },
+  { value: 'dry_sunny',      label: 'Dry & sunny (ideal)' },
+  { value: 'cloudy_no_rain', label: 'Cloudy, no rain expected' },
+  { value: 'before_rain',    label: 'Rain expected soon (avoid — will wash off)' },
+  { value: 'after_rain',     label: 'Just after rain' },
+]
+
+// Matches coffee_activities_spray_reason_check exactly. The form previously
+// sent the free-text target pest/disease name (e.g. "Antestia bug") into
+// this column instead — that's a completely different piece of information
+// (what pest, not why the spray happened) and never matched this enum, so
+// every crop-protection save with a pest selected failed. The pest/disease
+// name itself is preserved in notes instead (see handleSubmit) so it isn't
+// lost, and this now captures the actual spray trigger/reason.
+const SPRAY_REASONS = [
+  { value: 'preventive',            label: 'Preventive / routine' },
+  { value: 'scouting_detected',     label: 'Found during scouting' },
+  { value: 'calendar_recommended',  label: 'Calendar-recommended spray' },
+  { value: 'emergency',             label: 'Emergency (severe outbreak)' },
 ]
 
 const LABOUR_MODES = [
@@ -163,6 +248,7 @@ interface FormState {
   // crop protection
   protection_type:    string   // fungicide | insecticide | herbicide_spray
   target_pest:        string
+  spray_reason_code:  string   // preventive | scouting_detected | calendar_recommended | emergency
   product_name:       string
   dilution_rate:      string
   litres_water:       string
@@ -196,6 +282,7 @@ const INITIAL: FormState = {
   quantity_unit:      'kg',
   protection_type:    '',
   target_pest:        '',
+  spray_reason_code:  'preventive',
   product_name:       '',
   dilution_rate:      '',
   litres_water:       '',
@@ -214,10 +301,15 @@ const INITIAL: FormState = {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function ActivityRecordClient({ farmId, plots }: Props) {
+export default function ActivityRecordClient({ farmId, plots, initialType, initialPlotId, initialTrigger }: Props) {
   const router = useRouter()
   const [step, setStep]     = useState(1)
-  const [form, setForm]     = useState<FormState>(INITIAL)
+  const [form, setForm]     = useState<FormState>(() => ({
+    ...INITIAL,
+    activity_type: (initialType && QUERY_TYPE_TO_ACTIVITY_TYPE[initialType]) || INITIAL.activity_type,
+    plot_ids: initialPlotId && plots.some(p => p.id === initialPlotId) ? [initialPlotId] : INITIAL.plot_ids,
+    spray_reason_code: initialTrigger === 'disease' ? 'scouting_detected' : INITIAL.spray_reason_code,
+  }))
   const [loading, setLoading] = useState(false)
   const [error, setError]   = useState('')
   const [success, setSuccess] = useState('')
@@ -316,29 +408,63 @@ export default function ActivityRecordClient({ farmId, plots }: Props) {
                          : form.activity_type === 'crop_protection' ? 'spraying'
                          : form.activity_type
 
+    const protConfig = PROTECTION_TYPES.find(p => p.value === form.protection_type)
+
+    // The pest/disease name (form.target_pest) has nowhere else to live —
+    // coffee_activities has no dedicated pest/target column — so fold it
+    // into notes rather than silently drop it now that it's no longer
+    // (mis)used as spray_reason below.
+    const notesWithPest = form.activity_type === 'crop_protection' && form.target_pest
+      ? [`Target: ${form.target_pest}`, form.notes].filter(Boolean).join(' — ')
+      : form.notes || null
+
     const payload = {
       plot_ids:           form.plot_ids,
       activity_type:      dbActivityType,
       activity_date:      form.activity_date,
       application_method: applicationMethod,
       area_covered_ha:    areaCoveredHa,
-      calendar_triggered: false,
+      calendar_triggered: initialTrigger === 'calendar',
       cost_inputs:        form.cost_inputs  ? Number(form.cost_inputs)  : null,
       cost_labour:        form.cost_labour  ? Number(form.cost_labour)  : null,
       days_worked:        form.days_worked  ? Number(form.days_worked)  : null,
       dilution_rate:      form.dilution_rate || null,
-      fertilizer_type:    form.nutrition_method || form.protection_type || null,
+      // BUG FIX: coffee_activities_fertilizer_type_check only allows
+      // ['NPK','CAN','DSP','foliar','organic_manure','other'] — a coarse
+      // category, not a free-text product name. The old code sent
+      // form.nutrition_method/form.protection_type ('basal', 'fungicide',
+      // ...) here, which never matched either, and fell through to `null`
+      // for pruning (the constraint doesn't accept null — no "IS NULL OR"
+      // clause), which is why pruning hit this same constraint. Now bucketed
+      // via fertilizerCategory()/FERTILIZER_CATEGORY_MAP; null for every
+      // activity type other than nutrition.
+      fertilizer_type:    form.activity_type === 'nutrition'
+                             ? fertilizerCategory(form.nutrition_method, form.fertilizer_type)
+                             : null,
       labour_mode:        form.labour_mode || null,
       litres_water:       form.litres_water ? Number(form.litres_water) : null,
-      notes:              form.notes || null,
+      notes:              notesWithPest,
       num_workers:        form.num_workers  ? Number(form.num_workers)  : null,
       product_name:       effectiveProduct,
       pruning_type:       form.pruning_type || null,
       quantity:           form.quantity     ? Number(form.quantity)     : null,
       quantity_unit:      form.quantity_unit || null,
       rate_per_day:       form.rate_per_day ? Number(form.rate_per_day) : null,
-      spray_reason:       form.target_pest || null,
-      spray_type:         form.protection_type || null,
+      // BUG FIX: coffee_activities_spray_reason_check only allows
+      // ['preventive','scouting_detected','calendar_recommended',
+      // 'emergency'] — this previously received form.target_pest (e.g.
+      // "Antestia bug"), a pest name, which never matched and failed every
+      // crop-protection save that had a pest selected. Now uses the
+      // dedicated spray_reason_code field (see SPRAY_REASONS); the pest
+      // name itself is preserved in notes above instead.
+      spray_reason:       form.activity_type === 'crop_protection' ? form.spray_reason_code : null,
+      // BUG FIX: coffee_activities_spray_type_check only allows
+      // ['fungicide','pesticide','herbicide','foliar_fertilizer','combined']
+      // — form.protection_type uses UI values ('insecticide',
+      // 'herbicide_spray') that don't match ('fungicide' was the only one
+      // that happened to line up), so every insecticide/herbicide spray
+      // failed to save. Now goes through PROTECTION_TYPES[].dbSprayType.
+      spray_type:         protConfig?.dbSprayType || null,
       total_cost:         totalCost || null,
       weather_conditions: form.weather_conditions || null,
       weeding_method:     form.weeding_method || null,
@@ -614,6 +740,13 @@ export default function ActivityRecordClient({ farmId, plots }: Props) {
                       <select className={FIELD} value={form.target_pest} onChange={e => set('target_pest', e.target.value)}>
                         <option value="">Select…</option>
                         {protConfig.targetPests.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={LABEL}>Reason for spray</label>
+                      <select className={FIELD} value={form.spray_reason_code} onChange={e => set('spray_reason_code', e.target.value)}>
+                        {SPRAY_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                       </select>
                     </div>
 
