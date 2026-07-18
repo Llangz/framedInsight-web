@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Rabbit, Check, ChevronUp, ChevronDown } from 'lucide-react'
 import { updateAnimal } from '../../action'
 import { Database } from '@/lib/database.types'
 
@@ -179,7 +180,6 @@ export default function EditAnimalClient(props: Props) {
     }
   }
 
-  const emoji = form.species === 'goat' ? '🐐' : '🐑'
   const displayName = animal.name ?? animal.animal_tag
 
   return (
@@ -196,8 +196,8 @@ export default function EditAnimalClient(props: Props) {
                 ←
               </Link>
               <div>
-                <h1 className="text-lg font-bold text-white leading-none">
-                  {emoji} Edit {displayName}
+                <h1 className="text-lg font-bold text-white leading-none flex items-center gap-2">
+                  <Rabbit size={18} /> Edit {displayName}
                 </h1>
                 <p className="text-xs text-[#6B7280] mt-0.5">Tag: {animal.animal_tag}</p>
               </div>
@@ -209,8 +209,8 @@ export default function EditAnimalClient(props: Props) {
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
 
         {success && (
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700 font-medium">
-            ✓ Saved — redirecting…
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700 font-medium flex items-center gap-1.5">
+            <Check size={14} /> Saved — redirecting…
           </div>
         )}
 
@@ -219,13 +219,13 @@ export default function EditAnimalClient(props: Props) {
           {(['goat', 'sheep'] as const).map(s => (
             <div
               key={s}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg text-center capitalize ${
+              className={`flex-1 py-2 text-sm font-semibold rounded-lg text-center capitalize flex items-center justify-center gap-1.5 ${
                 form.species === s
                   ? 'bg-[#2A2D35] text-white shadow-sm'
                   : 'text-[#6B7280]'
               }`}
             >
-              {s === 'goat' ? '🐐 Goat' : '🐑 Sheep'}
+              <Rabbit size={14} /> {s === 'goat' ? 'Goat' : 'Sheep'}
             </div>
           ))}
         </div>
@@ -415,9 +415,9 @@ export default function EditAnimalClient(props: Props) {
         {/* Advanced — parentage, physical */}
         <button
           onClick={() => setShowAdvanced(v => !v)}
-          className="w-full text-xs font-semibold text-[#6B7280] flex items-center justify-center gap-2 py-2 hover:text-emerald-400 transition-colors"
+          className="w-full text-xs font-semibold text-[#6B7280] flex items-center justify-center gap-1.5 py-2 hover:text-emerald-400 transition-colors"
         >
-          {showAdvanced ? '▲ Hide' : '▼ Show'} parentage & physical details
+          {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {showAdvanced ? 'Hide' : 'Show'} parentage & physical details
         </button>
 
         {showAdvanced && (
@@ -515,7 +515,7 @@ export default function EditAnimalClient(props: Props) {
             disabled={saving || success}
             className="flex-1 py-3 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
           >
-            {saving ? 'Saving…' : success ? '✓ Saved' : 'Save Changes'}
+            {saving ? 'Saving…' : success ? (<span className="inline-flex items-center gap-1"><Check size={14} /> Saved</span>) : 'Save Changes'}
           </button>
         </div>
 

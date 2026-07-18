@@ -48,7 +48,7 @@ export function FilterBar({ filters, onChange, total }: FilterBarProps) {
         {(["all", "goat", "sheep"] as FilterSpecies[]).map(s =>
           pill(
             filters.species === s,
-            s === "all" ? `All (${total})` : s === "goat" ? "🐐 Goats" : "🐑 Sheep",
+            s === "all" ? `All (${total})` : s === "goat" ? "Goats" : "Sheep",
             () => onChange({ ...filters, species: s })
           )
         )}

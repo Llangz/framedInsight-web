@@ -13,6 +13,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Rabbit, ChevronUp, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { queueSmallRuminantEvent } from "@/lib/offline-db";
 import type { Database } from "@/lib/database.types";
@@ -266,10 +267,10 @@ export default function AddAnimalPage() {
         <div className="flex gap-2 bg-[#17191F] rounded-xl p-1 border border-[#2A2D35]">
           {(["goat", "sheep"] as const).map(s => (
             <button key={s} onClick={() => { set("species", s); set("breed", ""); }}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all capitalize ${
+              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all capitalize flex items-center justify-center gap-1.5 ${
                 form.species === s ? "bg-[#2A2D35] text-white shadow-sm" : "text-[#6B7280]"
               }`}
-            >{s === "goat" ? "🐐 Goat" : "🐑 Sheep"}</button>
+            ><Rabbit size={14} /> {s === "goat" ? "Goat" : "Sheep"}</button>
           ))}
         </div>
 
@@ -383,9 +384,9 @@ export default function AddAnimalPage() {
         {/* Advanced — parentage, physical */}
         <button
           onClick={() => setShowAdvanced(v => !v)}
-          className="w-full text-xs font-semibold text-[#6B7280] flex items-center justify-center gap-2 py-2 hover:text-emerald-400 transition-colors"
+          className="w-full text-xs font-semibold text-[#6B7280] flex items-center justify-center gap-1.5 py-2 hover:text-emerald-400 transition-colors"
         >
-          {showAdvanced ? "▲ Hide" : "▼ Show"} parentage & physical details
+          {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {showAdvanced ? "Hide" : "Show"} parentage & physical details
         </button>
 
         {showAdvanced && (

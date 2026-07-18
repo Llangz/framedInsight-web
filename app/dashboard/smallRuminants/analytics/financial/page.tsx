@@ -14,6 +14,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Landmark, Wallet, Receipt, TrendingUp, Target, Rabbit, PiggyBank, BarChart3, FileText, type LucideIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -70,14 +71,14 @@ function FinancialCard({
   value, 
   subtitle, 
   trend,
-  icon,
+  icon: Icon,
   color = "slate"
 }: {
   title: string;
   value: string;
   subtitle: string;
   trend?: "positive" | "negative" | "neutral";
-  icon: string;
+  icon: LucideIcon;
   color?: "slate" | "emerald" | "red" | "amber" | "blue";
 }) {
   const colorClasses = {
@@ -98,7 +99,7 @@ function FinancialCard({
     <div className={`rounded-xl border p-4 ${colorClasses[color]}`}>
       <div className="flex items-start justify-between mb-2">
         <p className="text-xs font-bold uppercase tracking-wide text-slate-600">{title}</p>
-        <span className="text-xl opacity-50">{icon}</span>
+        <Icon size={18} className="opacity-50" />
       </div>
       <p className={`text-2xl font-bold ${trend ? valueColor[trend] : "text-slate-900"}`}>
         {value}
@@ -115,7 +116,7 @@ function ProfitByPurposeTable({ data }: { data: ProfitByPurpose[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3">💰 Profitability by Purpose</h3>
+      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><PiggyBank size={15} /> Profitability by Purpose</h3>
       <div className="space-y-3">
         {sorted.map(p => {
           const margin = p.revenue > 0 ? ((p.profit / p.revenue) * 100) : 0;
@@ -163,7 +164,7 @@ function CostBreakdownChart({ costs }: { costs: CostBreakdown[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3">📊 Cost Breakdown</h3>
+      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><BarChart3 size={15} /> Cost Breakdown</h3>
       
       {/* Horizontal bar chart */}
       <div className="space-y-3">
@@ -379,7 +380,7 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
                 title="Flock Valuation"
                 value={kes(metrics.totalValuation)}
                 subtitle="Current market value estimate"
-                icon="🏦"
+                icon={Landmark}
                 color="blue"
               />
               
@@ -387,7 +388,7 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
                 title="Total Revenue"
                 value={kes(metrics.totalRevenue)}
                 subtitle="All-time sales"
-                icon="💵"
+                icon={Wallet}
                 color="emerald"
                 trend="positive"
               />
@@ -398,7 +399,7 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
                 title="Total Costs"
                 value={kes(metrics.totalCosts)}
                 subtitle="Feed + vet + other"
-                icon="💸"
+                icon={Receipt}
                 color="amber"
               />
               
@@ -406,7 +407,7 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
                 title="Net Profit"
                 value={kes(metrics.netProfit)}
                 subtitle="Revenue - Costs"
-                icon="📈"
+                icon={TrendingUp}
                 color={metrics.netProfit >= 0 ? "emerald" : "red"}
                 trend={metrics.netProfit >= 0 ? "positive" : "negative"}
               />
@@ -415,7 +416,7 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
                 title="ROI"
                 value={`${metrics.roi.toFixed(1)}%`}
                 subtitle="Return on investment"
-                icon="🎯"
+                icon={Target}
                 color={metrics.roi >= 20 ? "emerald" : metrics.roi >= 0 ? "amber" : "red"}
                 trend={metrics.roi >= 0 ? "positive" : "negative"}
               />
@@ -425,7 +426,7 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
               title="Cost per Animal"
               value={kes(metrics.costPerAnimal)}
               subtitle="Average lifetime cost"
-              icon="🐐"
+              icon={Rabbit}
               color="slate"
             />
 
@@ -437,7 +438,7 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
 
             {/* Notes */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-              <p className="font-semibold mb-1">📝 Notes on Calculations:</p>
+              <p className="font-semibold mb-1 flex items-center gap-1.5"><FileText size={13} /> Notes on Calculations:</p>
               <ul className="space-y-0.5 text-xs">
                 <li>• Flock valuation based on current market rates for each purpose category</li>
                 <li>• Feed costs estimated at KES 50/day per animal (adjust based on your actuals)</li>

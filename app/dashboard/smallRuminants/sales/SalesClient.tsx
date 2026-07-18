@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Rabbit, Package, Milk, HeartPulse, Banknote, ChevronUp, ChevronDown, type LucideIcon } from "lucide-react";
 
 interface SaleRecord {
   id: string;
@@ -32,12 +33,12 @@ function formatDate(d: string | null) {
 
 function kes(n: number) { return `KES ${n.toLocaleString("en-KE")}`; }
 
-const SALE_TYPE_STYLE: Record<string, { icon: string; color: string; bg: string; border: string }> = {
-  "live animal": { icon: "🐐", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
-  "meat":        { icon: "🥩", color: "text-orange-700",  bg: "bg-orange-50",  border: "border-orange-200" },
-  "milk":        { icon: "🍼", color: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200" },
-  "breeding":    { icon: "🐏", color: "text-purple-700",  bg: "bg-purple-50",  border: "border-purple-200" },
-  "default":     { icon: "💰", color: "text-slate-700",   bg: "bg-slate-50",   border: "border-slate-200" },
+const SALE_TYPE_STYLE: Record<string, { icon: LucideIcon; color: string; bg: string; border: string }> = {
+  "live animal": { icon: Rabbit,    color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
+  "meat":        { icon: Package,   color: "text-orange-700",  bg: "bg-orange-50",  border: "border-orange-200" },
+  "milk":        { icon: Milk,      color: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200" },
+  "breeding":    { icon: HeartPulse, color: "text-purple-700",  bg: "bg-purple-50",  border: "border-purple-200" },
+  "default":     { icon: Banknote,  color: "text-slate-700",   bg: "bg-slate-50",   border: "border-slate-200" },
 };
 
 function saleStyle(type: string | null) {
@@ -112,8 +113,8 @@ function RevenueBanner({ sales }: { sales: SaleRecord[] }) {
           {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([type, total]) => {
             const style = saleStyle(type);
             return (
-              <span key={type} className={`text-xs px-2 py-0.5 rounded-full border font-medium ${style.bg} ${style.color} ${style.border}`}>
-                {style.icon} {type}: {kes(total)}
+              <span key={type} className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${style.bg} ${style.color} ${style.border}`}>
+                <style.icon size={11} /> {type}: {kes(total)}
               </span>
             );
           })}
@@ -135,7 +136,7 @@ function SaleCard({ sale }: { sale: SaleRecord }) {
       <button className="w-full text-left p-4" onClick={() => setExpanded(v => !v)}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2">
-            <span className="text-lg flex-shrink-0">{style.icon}</span>
+            <span className={`flex-shrink-0 ${style.color}`}><style.icon size={18} /></span>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-bold text-slate-900">{kes(sale.total_price)}</p>
@@ -160,7 +161,7 @@ function SaleCard({ sale }: { sale: SaleRecord }) {
               </div>
             </div>
           </div>
-          <span className="text-slate-300 text-xs flex-shrink-0">{expanded ? "▲" : "▼"}</span>
+          <span className="text-slate-300 flex-shrink-0">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
         </div>
       </button>
 
@@ -227,17 +228,20 @@ export default function SalesClient({ initialSales }: { initialSales: SaleRecord
           <div className="flex gap-2 flex-wrap">
             {saleTypes.map(t => (
               <button key={t} onClick={() => setTypeFilter(t)}
-                className={`px-3 py-1.5 text-xs rounded-full border transition-all capitalize ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border transition-all capitalize ${
                   typeFilter === t ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                 }`}
-              >{t === "all" ? `All (${initialSales.length})` : `${saleStyle(t).icon} ${t} (${initialSales.filter(s => s.sale_type === t).length})`}</button>
+              >
+                {t !== "all" && (() => { const Icon = saleStyle(t).icon; return <Icon size={12} />; })()}
+                {t === "all" ? `All (${initialSales.length})` : `${t} (${initialSales.filter(s => s.sale_type === t).length})`}
+              </button>
             ))}
           </div>
         )}
 
         {filtered.length === 0 ? (
           <div className="text-center py-12 text-slate-400">
-            <p className="text-3xl mb-2">💰</p>
+            <Banknote size={28} className="mx-auto mb-2" />
             <p className="text-sm">No sales recorded yet</p>
             <Link href="/dashboard/smallRuminants/sales/add" className="mt-3 inline-block text-xs font-semibold text-emerald-600 hover:underline">Record first sale →</Link>
           </div>

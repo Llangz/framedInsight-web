@@ -15,6 +15,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { TrendingUp, TrendingDown, Minus, Syringe, Baby, Rabbit, AlertTriangle, Banknote, Trophy, type LucideIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -77,14 +78,14 @@ function MetricCard({
   value, 
   subtitle, 
   trend, 
-  icon,
+  icon: Icon,
   color = "emerald"
 }: {
   title: string;
   value: string | number;
   subtitle: string;
   trend?: "up" | "down" | "neutral";
-  icon: string;
+  icon: LucideIcon;
   color?: "emerald" | "blue" | "amber" | "red" | "purple";
 }) {
   const colorStyles = {
@@ -95,11 +96,8 @@ function MetricCard({
     purple: "bg-purple-50 text-purple-700 border-purple-200",
   };
 
-  const trendIcons = {
-    up: "↑",
-    down: "↓",
-    neutral: "→",
-  };
+  const TrendIcon = { up: TrendingUp, down: TrendingDown, neutral: Minus };
+  const TrendGlyph = trend ? TrendIcon[trend] : null;
 
   return (
     <div className={`rounded-xl border p-4 ${colorStyles[color]}`}>
@@ -109,11 +107,11 @@ function MetricCard({
           <p className="text-2xl font-bold mt-1">{value}</p>
           <p className="text-xs mt-1 opacity-80">{subtitle}</p>
         </div>
-        <span className="text-2xl opacity-50">{icon}</span>
+        <Icon size={20} className="opacity-50" />
       </div>
-      {trend && (
+      {trend && TrendGlyph && (
         <div className="mt-2 pt-2 border-t border-current opacity-30">
-          <span className="text-xs">{trendIcons[trend]} Trend</span>
+          <span className="text-xs flex items-center gap-1"><TrendGlyph size={12} /> Trend</span>
         </div>
       )}
     </div>
@@ -128,7 +126,7 @@ function GrowthRateTable({ animals }: { animals: AnimalGrowth[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3">🏆 Top Growth Performers</h3>
+      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Trophy size={15} /> Top Growth Performers</h3>
       <div className="space-y-2">
         {top5.map((a, i) => (
           <div key={a.animal_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
@@ -165,7 +163,7 @@ function VaccinationCompliance({ animals }: { animals: VaccinationStatus[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3">💉 Vaccination Compliance</h3>
+      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Syringe size={15} /> Vaccination Compliance</h3>
       
       {/* Progress bar */}
       <div className="mb-4">
@@ -186,7 +184,7 @@ function VaccinationCompliance({ animals }: { animals: VaccinationStatus[] }) {
       {/* Non-compliant animals */}
       {animals.filter(a => !a.is_compliant).length > 0 && (
         <div className="border-t border-slate-100 pt-3">
-          <p className="text-xs font-semibold text-slate-500 mb-2">⚠️ Needs Vaccination:</p>
+          <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1"><AlertTriangle size={12} /> Needs Vaccination:</p>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {animals.filter(a => !a.is_compliant).slice(0, 5).map(a => (
               <div key={a.animal_id} className="flex items-center justify-between text-xs py-1">
@@ -213,7 +211,7 @@ function KiddingPerformance({ does }: { does: KiddingPerformance[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3">🐣 Top Producers (Kidding)</h3>
+      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Baby size={15} /> Top Producers (Kidding)</h3>
       <div className="space-y-2">
         {top5.map((d, i) => (
           <div key={d.dam_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
@@ -482,7 +480,7 @@ export default function FlockPerformancePage() {
                 title="Avg Growth Rate"
                 value={`${metrics.avgGrowthRate.toFixed(0)}g`}
                 subtitle="Grams per day"
-                icon="📈"
+                icon={TrendingUp}
                 color="emerald"
                 trend="up"
               />
@@ -491,7 +489,7 @@ export default function FlockPerformancePage() {
                 title="Vaccination Rate"
                 value={`${metrics.vaccinationCompliance.toFixed(0)}%`}
                 subtitle={`Compliant animals`}
-                icon="💉"
+                icon={Syringe}
                 color={metrics.vaccinationCompliance >= 80 ? "emerald" : metrics.vaccinationCompliance >= 50 ? "amber" : "red"}
                 trend={metrics.vaccinationCompliance >= 80 ? "up" : "down"}
               />
@@ -500,7 +498,7 @@ export default function FlockPerformancePage() {
                 title="Kidding Rate"
                 value={metrics.kiddingRate.toFixed(1)}
                 subtitle="Kids per doe (lifetime)"
-                icon="🐣"
+                icon={Baby}
                 color="purple"
                 trend="up"
               />
@@ -511,7 +509,7 @@ export default function FlockPerformancePage() {
                 title="Total Animals"
                 value={metrics.totalAnimals}
                 subtitle="Active in flock"
-                icon="🐐"
+                icon={Rabbit}
                 color="blue"
               />
               
@@ -519,7 +517,7 @@ export default function FlockPerformancePage() {
                 title="Mortality Rate"
                 value={`${metrics.mortalityRate.toFixed(1)}%`}
                 subtitle="All-time deaths"
-                icon="⚠️"
+                icon={AlertTriangle}
                 color={metrics.mortalityRate <= 5 ? "emerald" : metrics.mortalityRate <= 10 ? "amber" : "red"}
                 trend={metrics.mortalityRate <= 5 ? "down" : "up"}
               />
@@ -528,7 +526,7 @@ export default function FlockPerformancePage() {
                 title="Avg Revenue"
                 value={kes(metrics.avgRevenuePerAnimal)}
                 subtitle="Per animal"
-                icon="💰"
+                icon={Banknote}
                 color="emerald"
                 trend="up"
               />

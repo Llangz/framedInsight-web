@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Rabbit, AlertTriangle, Scale, Syringe, Milk, HeartPulse, Banknote } from 'lucide-react'
 
 // ── Exact column names from Supabase schema ───────────────────────────────────
 
@@ -157,7 +158,6 @@ export default function AnimalDetailClient({ animal, weights, healthRecords, bre
   const supabase = createClient()
   const [deleting, setDeleting] = useState(false)
 
-  const emoji = animal.species === 'goat' ? '🐐' : '🐑'
   const displayName = animal.name ?? animal.animal_tag
   const latestWeight = weights[0] ?? null
   const isDairy = animal.species === 'goat' && (animal.purpose === 'dairy' || animal.purpose === 'dual')
@@ -185,7 +185,7 @@ export default function AnimalDetailClient({ animal, weights, healthRecords, bre
               ← Back
             </Link>
             <div className="h-5 w-px bg-neutral-700" />
-            <span className="text-2xl">{emoji}</span>
+            <span className="text-2xl"><Rabbit size={22} /></span>
             <div>
               <h1 className="text-2xl font-bold">{displayName}</h1>
               <p className="text-neutral-400 text-sm">Tag: {animal.animal_tag}</p>
@@ -215,7 +215,7 @@ export default function AnimalDetailClient({ animal, weights, healthRecords, bre
         {(!animal.breed || !animal.name || !animal.purpose || !animal.source) && (
           <div className="bg-amber-950 border border-amber-800 rounded-xl p-3 flex items-center justify-between gap-3">
             <div className="flex items-start gap-2.5">
-              <span className="text-amber-400 text-base flex-shrink-0 mt-0.5">⚠️</span>
+              <span className="text-amber-400 flex-shrink-0 mt-0.5"><AlertTriangle size={16} /></span>
               <div>
                 <p className="text-amber-300 text-sm font-bold">Profile incomplete</p>
                 <p className="text-amber-400/80 text-xs mt-0.5">
@@ -447,23 +447,23 @@ export default function AnimalDetailClient({ animal, weights, healthRecords, bre
               <h2 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Quick Actions</h2>
               <div className="space-y-2">
                 <Link href={`/dashboard/smallRuminants/weights/add?animal=${animal.id}`} className="flex items-center gap-2 w-full px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm transition-colors">
-                  ⚖️ <span>Record Weight</span>
+                  <Scale size={15} /> <span>Record Weight</span>
                 </Link>
                 <Link href={`/dashboard/smallRuminants/health/add?animal=${animal.id}`} className="flex items-center gap-2 w-full px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm transition-colors">
-                  💉 <span>Health Record</span>
+                  <Syringe size={15} /> <span>Health Record</span>
                 </Link>
                 {isDairy && (
                   <Link href={`/dashboard/smallRuminants/milk/add?animal=${animal.id}`} className="flex items-center gap-2 w-full px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm transition-colors">
-                    🥛 <span>Record Milk</span>
+                    <Milk size={15} /> <span>Record Milk</span>
                   </Link>
                 )}
                 {animal.sex === 'female' && (
                   <Link href={`/dashboard/smallRuminants/breeding/service?animal=${animal.id}`} className="flex items-center gap-2 w-full px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm transition-colors">
-                    🐏 <span>Record Breeding</span>
+                    <HeartPulse size={15} /> <span>Record Breeding</span>
                   </Link>
                 )}
                 <Link href={`/dashboard/smallRuminants/sales/add?animal=${animal.id}`} className="flex items-center gap-2 w-full px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm transition-colors">
-                  💰 <span>Record Sale</span>
+                  <Banknote size={15} /> <span>Record Sale</span>
                 </Link>
               </div>
             </div>

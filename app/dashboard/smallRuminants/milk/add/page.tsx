@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { queueSmallRuminantEvent } from '@/lib/offline-db'
 
@@ -189,8 +190,8 @@ export default function AddMilkRecordPage() {
         </div>
 
         {success && (
-          <div className="mb-6 bg-emerald-950/40 border border-emerald-700 rounded-lg p-4 text-emerald-300">
-            {savedOffline ? '✓ Saved offline — will sync when connected.' : '✓ Milk record saved successfully!'}
+          <div className="mb-6 bg-emerald-950/40 border border-emerald-700 rounded-lg p-4 text-emerald-300 flex items-center gap-1.5">
+            <Check size={14} /> {savedOffline ? 'Saved offline — will sync when connected.' : 'Milk record saved successfully!'}
           </div>
         )}
 

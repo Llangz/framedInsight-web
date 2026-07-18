@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Rabbit, ChevronUp, ChevronDown, Sunrise, Sun, Sunset, Milk } from "lucide-react";
 
 interface MilkRecord {
   id: string;
@@ -86,9 +87,9 @@ function TodaySummary({ goats }: { goats: GoatWithMilk[] }) {
       {todayRecords.length > 0 && (
         <div className="mt-3 flex gap-4 text-xs">
           {[
-            ["🌅 Morning", todayRecords.reduce((s, g) => s + (g.todayRecord?.morning_milk ?? 0), 0)],
-            ["☀️ Midday",  todayRecords.reduce((s, g) => s + (g.todayRecord?.midday_milk ?? 0), 0)],
-            ["🌆 Evening", todayRecords.reduce((s, g) => s + (g.todayRecord?.evening_milk ?? 0), 0)],
+            ["Morning", todayRecords.reduce((s, g) => s + (g.todayRecord?.morning_milk ?? 0), 0)],
+            ["Midday",  todayRecords.reduce((s, g) => s + (g.todayRecord?.midday_milk ?? 0), 0)],
+            ["Evening", todayRecords.reduce((s, g) => s + (g.todayRecord?.evening_milk ?? 0), 0)],
           ].filter(([, v]) => (v as number) > 0).map(([label, val]) => (
             <div key={label as string}>
               <p className="text-slate-500">{label}</p>
@@ -138,7 +139,7 @@ function GoatMilkCard({ goat }: { goat: GoatWithMilk }) {
     <div className={`rounded-xl border-2 bg-white overflow-hidden ${hasToday ? "border-blue-200" : "border-slate-200"}`}>
       <button className="w-full text-left p-4" onClick={() => setExpanded(v => !v)}>
         <div className="flex items-start gap-3">
-          <span className="text-xl flex-shrink-0">🐐</span>
+          <span className="text-slate-500 flex-shrink-0"><Rabbit size={18} /></span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-bold text-slate-900">{goat.name ?? goat.animal_tag}</p>
@@ -153,10 +154,10 @@ function GoatMilkCard({ goat }: { goat: GoatWithMilk }) {
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-sm font-bold text-blue-700">{todayTotal.toFixed(2)}L today</span>
                 {goat.todayRecord?.morning_milk != null && (
-                  <span className="text-xs text-slate-400">
-                    🌅{goat.todayRecord.morning_milk.toFixed(1)}
-                    {goat.todayRecord.midday_milk ? ` ☀️${goat.todayRecord.midday_milk.toFixed(1)}` : ""}
-                    {goat.todayRecord.evening_milk ? ` 🌆${goat.todayRecord.evening_milk.toFixed(1)}` : ""}
+                  <span className="text-xs text-slate-400 inline-flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-0.5"><Sunrise size={11} />{goat.todayRecord.morning_milk.toFixed(1)}</span>
+                    {goat.todayRecord.midday_milk ? <span className="inline-flex items-center gap-0.5"><Sun size={11} />{goat.todayRecord.midday_milk.toFixed(1)}</span> : null}
+                    {goat.todayRecord.evening_milk ? <span className="inline-flex items-center gap-0.5"><Sunset size={11} />{goat.todayRecord.evening_milk.toFixed(1)}</span> : null}
                   </span>
                 )}
               </div>
@@ -177,7 +178,7 @@ function GoatMilkCard({ goat }: { goat: GoatWithMilk }) {
           <div className="hidden sm:block flex-shrink-0">
             <MilkSparkline records={goat.records} />
           </div>
-          <span className="text-slate-300 text-xs flex-shrink-0">{expanded ? "▲" : "▼"}</span>
+          <span className="text-slate-300 flex-shrink-0">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
         </div>
       </button>
 
@@ -195,11 +196,16 @@ function GoatMilkCard({ goat }: { goat: GoatWithMilk }) {
                   <div key={r.id} className="flex items-center justify-between text-xs border-b border-slate-50 pb-1">
                     <span className="text-slate-400 w-20">{formatDate(r.record_date)}</span>
                     <span className="font-semibold text-slate-800">{totalMilk(r).toFixed(2)}L</span>
-                    <span className="text-slate-400 text-xs">
-                      {[r.morning_milk, r.midday_milk, r.evening_milk]
-                        .filter(v => v != null)
-                        .map((v, i) => `${["🌅","☀️","🌆"][i]}${(v as number).toFixed(1)}`)
-                        .join(" ")}
+                    <span className="text-slate-400 text-xs inline-flex items-center gap-1.5">
+                      {([
+                        [r.morning_milk, Sunrise],
+                        [r.midday_milk, Sun],
+                        [r.evening_milk, Sunset],
+                      ] as const)
+                        .filter(([v]) => v != null)
+                        .map(([v, Icon], idx) => (
+                          <span key={idx} className="inline-flex items-center gap-0.5"><Icon size={11} />{(v as number).toFixed(1)}</span>
+                        ))}
                     </span>
                     {r.days_in_milk && <span className="text-slate-400">{r.days_in_milk}DIM</span>}
                   </div>
@@ -244,7 +250,7 @@ export default function MilkClient({ initialGoats }: { initialGoats: GoatWithMil
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         {initialGoats.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
-            <p className="text-4xl mb-3">🍼</p>
+            <Milk size={32} className="mx-auto mb-3" />
             <p className="font-semibold text-slate-700">No dairy goats found</p>
             <p className="text-sm text-slate-500 mt-1 mb-4">Register goats with purpose set to "dairy" to track milk production</p>
             <Link href="/dashboard/smallRuminants/add" className="inline-block text-sm font-semibold bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors">+ Add Dairy Goat</Link>

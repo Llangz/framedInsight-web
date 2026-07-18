@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Syringe, Stethoscope, Pill, Search, Check, AlertTriangle, Lightbulb, type LucideIcon } from "lucide-react";
 import { recordHealth } from "../actions";
 import { queueSmallRuminantEvent } from "@/lib/offline-db";
 
@@ -243,11 +244,11 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
     }
   };
 
-  const EVENT_TYPES: { value: EventType; label: string; emoji: string }[] = [
-    { value: "vaccination", label: "Vaccination", emoji: "💉" },
-    { value: "treatment",   label: "Treatment",   emoji: "🩺" },
-    { value: "deworming",   label: "Deworming",   emoji: "🔬" },
-    { value: "checkup",     label: "Checkup",     emoji: "📋" },
+  const EVENT_TYPES: { value: EventType; label: string; Icon: LucideIcon }[] = [
+    { value: "vaccination", label: "Vaccination", Icon: Syringe },
+    { value: "treatment",   label: "Treatment",   Icon: Stethoscope },
+    { value: "deworming",   label: "Deworming",   Icon: Pill },
+    { value: "checkup",     label: "Checkup",     Icon: Search },
   ];
 
   return (
@@ -268,14 +269,15 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         {success && (
-          <div className={`border rounded-xl p-3 text-sm text-center ${
+          <div className={`border rounded-xl p-3 text-sm text-center flex items-center justify-center gap-1.5 ${
             savedOffline
               ? 'bg-amber-950/30 border-amber-700 text-amber-400'
               : 'bg-emerald-900/30 border-emerald-700 text-emerald-400'
           }`}>
+            <Check size={14} />
             {savedOffline
-              ? '✓ Saved offline — will sync automatically when you\'re back online'
-              : '✓ Health event recorded successfully'}
+              ? "Saved offline — will sync automatically when you're back online"
+              : 'Health event recorded successfully'}
           </div>
         )}
 
@@ -292,7 +294,7 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
                       ? "bg-emerald-600 border-emerald-500 text-white"
                       : "bg-[#0D0F14] border-[#2A2D35] text-[#9CA3AF] hover:border-[#3A3D45]"
                   }`}>
-                  <span>{t.emoji}</span>{t.label}
+                  <t.Icon size={15} />{t.label}
                 </button>
               ))}
             </div>
@@ -401,8 +403,8 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
               </div>
               {vaccineType === "PPR" && (
                 <div className="bg-amber-900/20 border border-amber-800/40 rounded-lg px-3 py-2">
-                  <p className="text-xs text-amber-400">
-                    ⚠ PPR is notifiable to DVS. Ensure vaccine is sourced from KEPHIS / DVS-approved suppliers only.
+                  <p className="text-xs text-amber-400 flex items-start gap-1.5">
+                    <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" /> PPR is notifiable to DVS. Ensure vaccine is sourced from KEPHIS / DVS-approved suppliers only.
                   </p>
                 </div>
               )}
@@ -488,10 +490,10 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
               </div>
               {(withdrawalMeat || withdrawalMilk) && (
                 <div className="bg-amber-900/20 border border-amber-800/40 rounded-lg px-3 py-2">
-                  <p className="text-xs text-amber-400">
-                    ⚠ Withdrawal: Do not slaughter for{withdrawalMeat ? ` ${withdrawalMeat} days` : ""}
+                  <p className="text-xs text-amber-400 flex items-start gap-1.5">
+                    <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" /> <span>Withdrawal: Do not slaughter for{withdrawalMeat ? ` ${withdrawalMeat} days` : ""}
                     {withdrawalMeat && withdrawalMilk ? " /" : ""}
-                    {withdrawalMilk ? ` discard milk for ${withdrawalMilk} days` : ""} after last treatment.
+                    {withdrawalMilk ? ` discard milk for ${withdrawalMilk} days` : ""} after last treatment.</span>
                   </p>
                 </div>
               )}
@@ -551,8 +553,8 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
                 </div>
               </div>
               <div className="bg-blue-900/20 border border-blue-800/40 rounded-lg px-3 py-2">
-                <p className="text-xs text-blue-400">
-                  💡 Rotate anthelmintic classes to prevent resistance. Use FAMACHA scoring where possible — avoid blanket treating the whole herd.
+                <p className="text-xs text-blue-400 flex items-start gap-1.5">
+                  <Lightbulb size={13} className="flex-shrink-0 mt-0.5" /> Rotate anthelmintic classes to prevent resistance. Use FAMACHA scoring where possible — avoid blanket treating the whole herd.
                 </p>
               </div>
             </div>
@@ -569,7 +571,7 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
                     <option value="">Select BCS…</option>
                     <option value="1">1 — Emaciated</option>
                     <option value="2">2 — Thin</option>
-                    <option value="3">3 — Moderate ✓</option>
+                    <option value="3">3 — Moderate (ideal)</option>
                     <option value="4">4 — Good</option>
                     <option value="5">5 — Obese</option>
                   </select>

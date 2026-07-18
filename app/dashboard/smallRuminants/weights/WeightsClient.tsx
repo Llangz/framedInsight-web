@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Store, Rabbit, ChevronUp, ChevronDown, Scale } from "lucide-react";
 
 interface WeightRecord {
   id: string;
@@ -96,14 +97,14 @@ function MarketReadinessBanner({ animals }: { animals: AnimalWithWeights[] }) {
 
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-      <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide mb-2">
-        🏪 {ready.length} Animal{ready.length > 1 ? "s" : ""} Market Ready
+      <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+        <Store size={13} /> {ready.length} Animal{ready.length > 1 ? "s" : ""} Market Ready
       </p>
       <div className="space-y-2">
         {ready.map(a => (
           <div key={a.id} className="flex items-center justify-between bg-white border border-emerald-200 rounded-lg px-3 py-2">
             <div className="flex items-center gap-2">
-              <span>{a.species === "goat" ? "🐐" : "🐑"}</span>
+              <span className="text-slate-500"><Rabbit size={14} /></span>
               <div>
                 <p className="text-xs font-semibold text-slate-800">{a.name ?? a.animal_tag}</p>
                 <p className="text-xs text-slate-500">{a.breed} · {a.latestWeight?.weight_kg}kg</p>
@@ -156,7 +157,7 @@ function AnimalWeightCard({ animal }: { animal: AnimalWithWeights }) {
     <div className="rounded-xl border-2 border-slate-200 bg-white overflow-hidden">
       <button className="w-full text-left p-4" onClick={() => setExpanded(v => !v)}>
         <div className="flex items-start gap-3">
-          <span className="text-xl flex-shrink-0">{animal.species === "goat" ? "🐐" : "🐑"}</span>
+          <span className="text-slate-500 flex-shrink-0"><Rabbit size={18} /></span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-bold text-slate-900">{animal.name ?? animal.animal_tag}</p>
@@ -202,7 +203,7 @@ function AnimalWeightCard({ animal }: { animal: AnimalWithWeights }) {
               <WeightSparkline weights={animal.weights} />
             </div>
           )}
-          <span className="text-slate-300 text-xs flex-shrink-0">{expanded ? "▲" : "▼"}</span>
+          <span className="text-slate-300 flex-shrink-0">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
         </div>
       </button>
 
@@ -293,7 +294,7 @@ export default function WeightsClient({ initialAnimals }: { initialAnimals: Anim
         </div>
 
         {sorted.length === 0
-          ? <div className="text-center py-12 text-slate-400"><p className="text-3xl mb-2">⚖️</p><p className="text-sm">No animals found</p></div>
+          ? <div className="text-center py-12 text-slate-400"><Scale size={28} className="mx-auto mb-2" /><p className="text-sm">No animals found</p></div>
           : <div className="space-y-3">{sorted.map(a => <AnimalWeightCard key={a.id} animal={a} />)}</div>
         }
         <div className="h-6" />

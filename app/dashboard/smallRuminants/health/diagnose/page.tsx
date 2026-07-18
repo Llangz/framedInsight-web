@@ -15,6 +15,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Microscope, AlertTriangle, Lightbulb, Camera } from "lucide-react";
 
 interface DiagnosisResult {
   probable_diseases: Array<{
@@ -141,7 +142,7 @@ export default function AIDiagnosePage() {
             </div>
           ) : (
             <label className="block w-full h-64 border-2 border-dashed border-[#3A3D45] rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-950/10 transition-colors">
-              <span className="text-4xl mb-2">📷</span>
+              <Camera size={36} className="mb-2 text-[#6B7280]" />
               <span className="text-sm text-[#9CA3AF]">Tap to upload photo</span>
               <span className="text-xs text-[#6B7280] mt-1">Show affected area clearly</span>
               <input
@@ -173,9 +174,9 @@ export default function AIDiagnosePage() {
         <button
           onClick={analyzeDisease}
           disabled={loading || !selectedImage}
-          className="w-full px-4 py-3 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+          className="w-full px-4 py-3 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
-          {loading ? "Analyzing..." : "🔬 Analyze with AI"}
+          {loading ? "Analyzing..." : (<><Microscope size={15} /> Analyze with AI</>)}
         </button>
 
         {/* Error */}
@@ -191,7 +192,7 @@ export default function AIDiagnosePage() {
             {/* Vet Warning */}
             {diagnosis.vet_recommended && (
               <div className="bg-amber-950/40 border border-amber-700 rounded-xl p-4">
-                <p className="text-sm font-bold text-amber-300 mb-1">⚠️ Veterinary Consultation Recommended</p>
+                <p className="text-sm font-bold text-amber-300 mb-1 flex items-center gap-1.5"><AlertTriangle size={14} /> Veterinary Consultation Recommended</p>
                 <p className="text-xs text-amber-400/80">
                   This condition may require professional veterinary care. Contact a vet as soon as possible.
                 </p>
@@ -252,13 +253,13 @@ export default function AIDiagnosePage() {
 
             {/* General Advice */}
             <div className="bg-blue-950/30 border border-blue-800 rounded-xl p-4">
-              <p className="text-xs font-semibold text-blue-300 mb-1">💡 General Advice</p>
+              <p className="text-xs font-semibold text-blue-300 mb-1 flex items-center gap-1.5"><Lightbulb size={12} /> General Advice</p>
               <p className="text-xs text-blue-200">{diagnosis.general_advice}</p>
             </div>
 
             {/* Disclaimer */}
             <div className="bg-[#17191F] border border-[#2A2D35] rounded-xl p-3 text-xs text-[#9CA3AF]">
-              <p className="font-semibold mb-1">⚠️ Important Disclaimer:</p>
+              <p className="font-semibold mb-1 flex items-center gap-1.5"><AlertTriangle size={12} /> Important Disclaimer:</p>
               <p>
                 This AI diagnosis is for informational purposes only and should not replace professional 
                 veterinary care. Always consult a licensed veterinarian for proper diagnosis and treatment.

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Syringe, Stethoscope, Pill, Search, ClipboardList, Rabbit, AlertTriangle, ChevronUp, ChevronDown, type LucideIcon } from "lucide-react";
 
 type EventType = "vaccination" | "treatment" | "deworming" | "checkup" | "other";
 
@@ -29,12 +30,12 @@ interface HealthEvent {
   notes: string | null;
 }
 
-const EVENT_STYLE: Record<string, { icon: string; color: string; bg: string; border: string }> = {
-  vaccination: { icon: "💉", color: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200" },
-  treatment:   { icon: "🩺", color: "text-red-700",    bg: "bg-red-50",    border: "border-red-200" },
-  deworming:   { icon: "🪱", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200" },
-  checkup:     { icon: "🔍", color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
-  other:       { icon: "📋", color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
+const EVENT_STYLE: Record<string, { icon: LucideIcon; color: string; bg: string; border: string }> = {
+  vaccination: { icon: Syringe,       color: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200" },
+  treatment:   { icon: Stethoscope,   color: "text-red-700",    bg: "bg-red-50",    border: "border-red-200" },
+  deworming:   { icon: Pill,          color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200" },
+  checkup:     { icon: Search,        color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
+  other:       { icon: ClipboardList, color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
 };
 
 function formatDate(d: string | null) {
@@ -102,7 +103,7 @@ function VaccinationCalendar({ events }: { events: HealthEvent[] }) {
             <div key={e.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2.5">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm">{e.species === "goat" ? "🐐" : "🐑"}</span>
+                  <span className="text-slate-500"><Rabbit size={14} /></span>
                   <p className="text-xs font-semibold text-slate-800">{e.animal_name ?? e.animal_tag}</p>
                   <span className="text-xs text-slate-400">{e.animal_tag}</span>
                 </div>
@@ -140,8 +141,8 @@ function WithdrawalTracker({ events }: { events: HealthEvent[] }) {
 
   return (
     <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
-      <p className="text-xs font-bold text-orange-800 uppercase tracking-wide mb-2">
-        ⚠ Withdrawal Periods Active
+      <p className="text-xs font-bold text-orange-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+        <AlertTriangle size={13} /> Withdrawal Periods Active
       </p>
       <div className="space-y-2">
         {active.map(e => {
@@ -169,7 +170,7 @@ function HealthEventRow({ event }: { event: HealthEvent }) {
     <div className={`rounded-xl border overflow-hidden ${style.border} bg-white`}>
       <button className="w-full text-left p-3" onClick={() => setExpanded(v => !v)}>
         <div className="flex items-start gap-3">
-          <span className="text-base flex-shrink-0 mt-0.5">{style.icon}</span>
+          <span className={`flex-shrink-0 mt-0.5 ${style.color}`}><style.icon size={16} /></span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-xs font-bold text-slate-800">{event.animal_name ?? event.animal_tag}</p>
@@ -183,7 +184,7 @@ function HealthEventRow({ event }: { event: HealthEvent }) {
             </p>
             <p className="text-xs text-slate-400">{formatDate(event.event_date)}</p>
           </div>
-          <span className="text-slate-300 text-xs flex-shrink-0">{expanded ? "▲" : "▼"}</span>
+          <span className="text-slate-300 flex-shrink-0">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
         </div>
       </button>
 
@@ -248,18 +249,19 @@ export default function HealthClient({ initialEvents }: { initialEvents: HealthE
         <div className="flex gap-2 flex-wrap">
           {(["all", "vaccination", "treatment", "deworming", "checkup"] as const).map(t => (
             <button key={t} onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1.5 text-xs rounded-full border transition-all capitalize ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border transition-all capitalize ${
                 typeFilter === t ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               }`}
             >
-              {t === "all" ? `All (${initialEvents.length})` : `${EVENT_STYLE[t]?.icon} ${t} (${initialEvents.filter(e => e.event_type === t).length})`}
+              {t !== "all" && (() => { const Icon = EVENT_STYLE[t]?.icon; return Icon ? <Icon size={12} /> : null; })()}
+              {t === "all" ? `All (${initialEvents.length})` : `${t} (${initialEvents.filter(e => e.event_type === t).length})`}
             </button>
           ))}
         </div>
 
         {filtered.length === 0 ? (
           <div className="text-center py-12 text-slate-400">
-            <p className="text-3xl mb-2">💉</p>
+            <Syringe size={28} className="mx-auto mb-2" />
             <p className="text-sm">No health records yet</p>
             <Link href="/dashboard/smallRuminants/health/add" className="mt-3 inline-block text-xs font-semibold text-emerald-600 hover:underline">Record first health event →</Link>
           </div>

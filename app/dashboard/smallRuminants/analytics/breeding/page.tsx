@@ -14,6 +14,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Calendar, Baby, CheckCircle2, Users, Rabbit, Crown, Dna, Lightbulb, type LucideIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -67,13 +68,13 @@ function BreedingMetricCard({
   title, 
   value, 
   subtitle, 
-  icon,
+  icon: Icon,
   color = "purple"
 }: {
   title: string;
   value: string | number;
   subtitle: string;
-  icon: string;
+  icon: LucideIcon;
   color?: "purple" | "blue" | "emerald" | "amber";
 }) {
   const colorStyles = {
@@ -91,7 +92,7 @@ function BreedingMetricCard({
           <p className="text-2xl font-bold mt-1">{value}</p>
           <p className="text-xs mt-1 opacity-80">{subtitle}</p>
         </div>
-        <span className="text-2xl opacity-50">{icon}</span>
+        <Icon size={20} className="opacity-50" />
       </div>
     </div>
   );
@@ -104,7 +105,7 @@ function SirePerformanceTable({ sires }: { sires: SirePerformance[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3">🐏 Sire Performance Comparison</h3>
+      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Rabbit size={15} /> Sire Performance Comparison</h3>
       <div className="space-y-2">
         {sorted.slice(0, 5).map((s, i) => (
           <div key={i} className="border border-slate-100 rounded-lg p-3">
@@ -142,7 +143,7 @@ function TopDamsTable({ dams }: { dams: DamPerformance[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3">👑 Top Producing Does/Ewes</h3>
+      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Crown size={15} /> Top Producing Does/Ewes</h3>
       <div className="space-y-2">
         {sorted.slice(0, 5).map((d, i) => (
           <div key={d.dam_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
@@ -187,7 +188,7 @@ function GeneticProgressChart({ progress }: { progress: GeneticProgress[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3">🧬 Genetic Improvement Progress</h3>
+      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Dna size={15} /> Genetic Improvement Progress</h3>
       <div className="space-y-3">
         {sorted.map((p, i) => (
           <div key={p.upgrade_level}>
@@ -206,8 +207,8 @@ function GeneticProgressChart({ progress }: { progress: GeneticProgress[] }) {
       </div>
       
       <div className="mt-4 pt-3 border-t border-slate-100">
-        <p className="text-xs text-slate-600">
-          💡 <strong>Goal:</strong> Increase Pure & F4 animals through selective breeding
+        <p className="text-xs text-slate-600 flex items-center gap-1.5">
+          <Lightbulb size={13} className="flex-shrink-0" /> <strong>Goal:</strong> Increase Pure & F4 animals through selective breeding
         </p>
       </div>
     </div>
@@ -474,7 +475,7 @@ export default function BreedingAnalyticsPage() {
                 title="Avg Kidding Interval"
                 value={`${Math.round(metrics.avgKiddingInterval)}d`}
                 subtitle="Days between births"
-                icon="📅"
+                icon={Calendar}
                 color="purple"
               />
               
@@ -482,7 +483,7 @@ export default function BreedingAnalyticsPage() {
                 title="Avg Litter Size"
                 value={metrics.avgLitterSize.toFixed(1)}
                 subtitle="Kids per birth"
-                icon="🐣"
+                icon={Baby}
                 color="blue"
               />
             </div>
@@ -492,7 +493,7 @@ export default function BreedingAnalyticsPage() {
                 title="Conception Rate"
                 value={`${metrics.conceptionRate.toFixed(0)}%`}
                 subtitle="Successful services"
-                icon="✓"
+                icon={CheckCircle2}
                 color="emerald"
               />
               
@@ -500,7 +501,7 @@ export default function BreedingAnalyticsPage() {
                 title="Multiples Rate"
                 value={`${metrics.multiplesBirthRate.toFixed(0)}%`}
                 subtitle="Twins/triplets"
-                icon="👯"
+                icon={Users}
                 color="amber"
               />
               
@@ -508,7 +509,7 @@ export default function BreedingAnalyticsPage() {
                 title="Total Offspring"
                 value={metrics.totalOffspring}
                 subtitle="All-time births"
-                icon="🐐"
+                icon={Rabbit}
                 color="purple"
               />
             </div>

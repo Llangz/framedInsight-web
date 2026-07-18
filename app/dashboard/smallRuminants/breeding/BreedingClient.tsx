@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Baby, Rabbit, ChevronUp, ChevronDown, Check, AlertTriangle } from "lucide-react";
 
 interface BreedingEvent {
   id: string;
@@ -89,8 +90,8 @@ function PregnancyBanner({ events }: { events: BreedingEvent[] }) {
 
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-      <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide mb-3">
-        🐣 {pregnant.length} Pregnant {pregnant.length === 1 ? "Animal" : "Animals"}
+      <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+        <Baby size={13} /> {pregnant.length} Pregnant {pregnant.length === 1 ? "Animal" : "Animals"}
       </p>
       <div className="space-y-2">
         {pregnant.map(e => {
@@ -100,7 +101,7 @@ function PregnancyBanner({ events }: { events: BreedingEvent[] }) {
             <div key={e.id} className={`flex items-center justify-between rounded-lg border px-3 py-2.5 bg-white ${isImminent ? "border-orange-300" : "border-emerald-200"}`}>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">{e.dam_species === "goat" ? "🐐" : "🐑"}</span>
+                  <span className="text-slate-500"><Rabbit size={14} /></span>
                   <p className="text-xs font-semibold text-slate-800">{e.dam_name ?? e.dam_tag}</p>
                   {isImminent && <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full">Imminent!</span>}
                 </div>
@@ -143,7 +144,7 @@ function BreedingCard({ event }: { event: BreedingEvent }) {
       <button className="w-full text-left p-4" onClick={() => setExpanded(v => !v)}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2">
-            <span className="text-lg">{event.dam_species === "goat" ? "🐐" : "🐑"}</span>
+            <span className="text-slate-500"><Rabbit size={18} /></span>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-bold text-slate-900">{event.dam_name ?? event.dam_tag}</p>
@@ -167,7 +168,7 @@ function BreedingCard({ event }: { event: BreedingEvent }) {
               )}
             </div>
           </div>
-          <span className="text-slate-300 text-xs flex-shrink-0">{expanded ? "▲" : "▼"}</span>
+          <span className="text-slate-300 flex-shrink-0">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
         </div>
       </button>
 
@@ -208,7 +209,7 @@ function KiddingCard({ record }: { record: KiddingRecord }) {
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-base">🐣</span>
+              <span className="text-slate-500"><Baby size={14} /></span>
               <p className="text-sm font-bold text-slate-900">{record.dam_name ?? record.dam_tag}</p>
               {record.sex && (
                 <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${record.sex === "female" ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"}`}>
@@ -222,9 +223,9 @@ function KiddingCard({ record }: { record: KiddingRecord }) {
             </p>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {record.vigor_score && <span className="text-xs text-slate-500">Vigor: {record.vigor_score}</span>}
-              {record.colostrum_given === true  && <span className="text-xs text-emerald-600">✓ Colostrum given</span>}
-              {record.colostrum_given === false && <span className="text-xs font-semibold text-red-600">⚠ No colostrum</span>}
-              {record.complications && <span className="text-xs text-red-500">⚠ {record.complications}</span>}
+              {record.colostrum_given === true  && <span className="text-xs text-emerald-600 flex items-center gap-1"><Check size={11} /> Colostrum given</span>}
+              {record.colostrum_given === false && <span className="text-xs font-semibold text-red-600 flex items-center gap-1"><AlertTriangle size={11} /> No colostrum</span>}
+              {record.complications && <span className="text-xs text-red-500 flex items-center gap-1"><AlertTriangle size={11} /> {record.complications}</span>}
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -234,7 +235,7 @@ function KiddingCard({ record }: { record: KiddingRecord }) {
                 className="text-xs text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg hover:bg-emerald-100"
               >Profile</Link>
             )}
-            <span className="text-slate-300 text-xs">{expanded ? "▲" : "▼"}</span>
+            <span className="text-slate-300 text-xs">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
           </div>
         </div>
       </button>
@@ -292,7 +293,7 @@ export default function BreedingClient({ initialBreedingEvents, initialKiddingRe
 
         {/* Tab toggle */}
         <div className="flex gap-1 bg-slate-100 rounded-lg p-1 self-start w-fit">
-          {([["breeding", "🐏 Service Records"], ["kidding", "🐣 Births"]] as const).map(([key, label]) => (
+          {([["breeding", "Service Records"], ["kidding", "Births"]] as const).map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)}
               className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${tab === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
             >{label} ({key === "breeding" ? initialBreedingEvents.length : initialKiddingRecords.length})</button>
@@ -301,13 +302,13 @@ export default function BreedingClient({ initialBreedingEvents, initialKiddingRe
 
         {tab === "breeding" && (
           initialBreedingEvents.length === 0
-            ? <div className="text-center py-12 text-slate-400"><p className="text-3xl mb-2">🐏</p><p className="text-sm">No breeding records yet</p></div>
+            ? <div className="text-center py-12 text-slate-400"><Rabbit size={28} className="mx-auto mb-2" /><p className="text-sm">No breeding records yet</p></div>
             : <div className="space-y-3">{initialBreedingEvents.map(e => <BreedingCard key={e.id} event={e} />)}</div>
         )}
 
         {tab === "kidding" && (
           initialKiddingRecords.length === 0
-            ? <div className="text-center py-12 text-slate-400"><p className="text-3xl mb-2">🐣</p><p className="text-sm">No birth records yet</p></div>
+            ? <div className="text-center py-12 text-slate-400"><Baby size={28} className="mx-auto mb-2" /><p className="text-sm">No birth records yet</p></div>
             : <div className="space-y-3">{initialKiddingRecords.map(k => <KiddingCard key={k.id} record={k} />)}</div>
         )}
         <div className="h-6" />

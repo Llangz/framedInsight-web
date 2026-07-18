@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Rabbit, Package, Milk, HeartPulse } from "lucide-react";
 import { recordSale } from "../actions";
 import { queueSmallRuminantEvent } from "@/lib/offline-db";
 
@@ -168,11 +169,11 @@ export default function AddSaleClient({ animals, farmId }: { animals: Animal[], 
             <div className="grid grid-cols-2 gap-2">
               {(["live animal", "meat", "milk", "breeding"] as SaleType[]).map(type => (
                 <button key={type} type="button" onClick={() => setSaleType(type)}
-                  className={`px-4 py-2.5 rounded-lg border text-sm font-medium capitalize transition-all ${
+                  className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg border text-sm font-medium capitalize transition-all ${
                     saleType === type ? "bg-emerald-600 text-white border-emerald-600" : "bg-[#17191F] text-[#9CA3AF] border-[#2A2D35] hover:border-[#4B5563]"
                   }`}
                 >
-                  {type === "live animal" && "🐐"} {type === "meat" && "🥩"} {type === "milk" && "🍼"} {type === "breeding" && "🐏"} {type}
+                  {type === "live animal" && <Rabbit size={14} />} {type === "meat" && <Package size={14} />} {type === "milk" && <Milk size={14} />} {type === "breeding" && <HeartPulse size={14} />} {type}
                 </button>
               ))}
             </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Rabbit, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 
 export interface Animal {
   id: string;
@@ -67,7 +68,10 @@ export function AnimalCard({ animal, latestWeight }: AnimalCardProps) {
       <div className="flex flex-col">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
-            <div className="text-2xl">{animal.species === "goat" ? "🐐" : "🐑"}</div>
+            <div className="flex items-center gap-1 text-slate-700">
+              <Rabbit size={20} />
+              <span className="text-[10px] font-semibold uppercase text-slate-400">{animal.species}</span>
+            </div>
             <div>
               <p className="font-bold text-slate-900">
                 #{animal.animal_tag} {animal.name && <span className="text-slate-500 font-medium">({animal.name})</span>}
@@ -80,7 +84,7 @@ export function AnimalCard({ animal, latestWeight }: AnimalCardProps) {
           <div className="flex flex-col items-end gap-1">
             {purposeBadge(animal.purpose)}
             {hasAlert && (
-              <span className="text-xs text-amber-600 font-semibold">⚠ Check</span>
+              <span className="flex items-center gap-1 text-xs text-amber-600 font-semibold"><AlertTriangle size={11} /> Check</span>
             )}
           </div>
         </div>
@@ -103,8 +107,8 @@ export function AnimalCard({ animal, latestWeight }: AnimalCardProps) {
             </span>
             <span className="text-slate-400 text-xs">{formatDate(latestWeight.record_date)}</span>
             {latestWeight.average_daily_gain !== null && (
-              <span className={`font-medium ${adgAlert ? "text-amber-600" : "text-emerald-600"}`}>
-                {adgAlert ? "↓" : "↑"} {latestWeight.average_daily_gain}g/day
+              <span className={`flex items-center gap-0.5 font-medium ${adgAlert ? "text-amber-600" : "text-emerald-600"}`}>
+                {adgAlert ? <TrendingDown size={12} /> : <TrendingUp size={12} />} {latestWeight.average_daily_gain}g/day
               </span>
             )}
           </div>
