@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
@@ -64,6 +65,7 @@ export default function FinanceClient({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [savedOffline, setSavedOffline] = useState(false)
+  const t = useTranslations('dairyFinance')
 
   const [saleForm, setSaleForm] = useState({
     cow_id: '', sale_date: today(), quantity_liters: '', price_per_liter: '',
@@ -84,18 +86,18 @@ export default function FinanceClient({
   )
 
   const statCards = [
-    { label: 'Revenue (this month)', value: fmtK(currentMonth.total_revenue), sub: `${currentMonth.liters_sold} L sold`, Icon: TrendingUp, color: 'text-emerald-400', border: 'border-emerald-900/40' },
-    { label: 'Expenses (this month)', value: fmtK(currentMonth.total_expenses), sub: 'Feed, vet, labor & more', Icon: TrendingDown, color: 'text-red-400', border: 'border-red-900/40' },
+    { label: t('revenueThisMonth'), value: fmtK(currentMonth.total_revenue), sub: t('litersSold', { count: currentMonth.liters_sold }), Icon: TrendingUp, color: 'text-emerald-400', border: 'border-emerald-900/40' },
+    { label: t('expensesThisMonth'), value: fmtK(currentMonth.total_expenses), sub: 'Feed, vet, labor & more', Icon: TrendingDown, color: 'text-red-400', border: 'border-red-900/40' },
     {
-      label: 'Net profit (this month)', value: fmtK(currentMonth.net_profit),
-      sub: currentMonth.avg_price_per_liter != null ? `KES ${currentMonth.avg_price_per_liter}/L avg` : 'No sales yet',
+      label: t('netProfitThisMonth'), value: fmtK(currentMonth.net_profit),
+      sub: currentMonth.avg_price_per_liter != null ? `KES ${currentMonth.avg_price_per_liter}/L avg` : t('noSalesYet'),
       Icon: Banknote,
       color: currentMonth.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400',
       border: currentMonth.net_profit >= 0 ? 'border-emerald-900/40' : 'border-red-900/40',
     },
     {
-      label: '% of production sold', value: currentMonth.pct_production_sold != null ? `${currentMonth.pct_production_sold}%` : '—',
-      sub: `${currentMonth.liters_produced} L produced`, Icon: Droplets, color: 'text-sky-400', border: 'border-sky-900/40',
+      label: t('pctProductionSold'), value: currentMonth.pct_production_sold != null ? `${currentMonth.pct_production_sold}%` : '—',
+      sub: t('litersProduced', { count: currentMonth.liters_produced }), Icon: Droplets, color: 'text-sky-400', border: 'border-sky-900/40',
     },
   ]
 
@@ -198,14 +200,14 @@ export default function FinanceClient({
       <div className="bg-[#0D0F14] border-b border-[#2A2D35] sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-white leading-none">Dairy Finance</h1>
-            <p className="text-xs text-[#6B7280] mt-0.5">Milk revenue, costs & profitability</p>
+            <h1 className="text-lg font-bold text-white leading-none">{t('title')}</h1>
+            <p className="text-xs text-[#6B7280] mt-0.5">{t('subtitle')}</p>
           </div>
           <a
             href="/api/reports/farm-statement?enterprise=dairy&months=6"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#2A2D35] text-xs font-semibold text-[#D1D5DB] hover:bg-[#17191F] transition-colors"
           >
-            <FileDown size={14} /> Statement
+            <FileDown size={14} /> {t('statement')}
           </a>
         </div>
       </div>
@@ -243,16 +245,16 @@ export default function FinanceClient({
         <div className="flex gap-2">
           <button onClick={() => { setShowSaleForm(v => !v); setShowExpenseForm(false); setError('') }}
             className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 transition-colors">
-            <Plus size={16} /> Record Sale
+            <Plus size={16} /> {t('recordSale')}
           </button>
           <button onClick={() => { setShowExpenseForm(v => !v); setShowSaleForm(false); setError('') }}
             className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg border border-[#2A2D35] text-[#D1D5DB] text-sm font-semibold hover:bg-[#17191F] transition-colors">
-            <Plus size={16} /> Record Expense
+            <Plus size={16} /> {t('recordExpense')}
           </button>
         </div>
 
         {error && <div className="bg-red-950/40 border border-red-700 rounded-xl p-3 text-sm text-red-300">{error}</div>}
-        {savedOffline && <div className="bg-emerald-950/40 border border-emerald-700 rounded-xl p-3 text-sm text-emerald-300">Saved offline — will sync when connected.</div>}
+        {savedOffline && <div className="bg-emerald-950/40 border border-emerald-700 rounded-xl p-3 text-sm text-emerald-300">{t('savedOffline')}</div>}
 
         {showSaleForm && (
           <div className={CARD}>
