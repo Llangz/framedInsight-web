@@ -330,7 +330,11 @@ export default function AnimalDetailClient({ animal, weights, healthRecords, bre
                       {h.disease && <p className="text-xs text-neutral-400 mt-0.5">Disease: {h.disease}</p>}
                       {h.treatment && <p className="text-xs text-neutral-400">Treatment: {h.treatment}</p>}
                       {h.drug_name && <p className="text-xs text-neutral-400">Drug: {h.drug_name}{h.dosage ? ` · ${h.dosage}` : ''}</p>}
-                      {h.vaccine_name && <p className="text-xs text-neutral-400">Vaccine: {h.vaccine_name}</p>}
+                      {h.vaccine_name && (
+                        <p className="text-xs text-neutral-400">
+                          Vaccine: {h.vaccine_name}{h.vaccine_batch_number ? ` · Batch: ${h.vaccine_batch_number}` : ''}
+                        </p>
+                      )}
                       {h.next_vaccination_due && <p className="text-xs text-amber-500/80">Next due: {fmt(h.next_vaccination_due)}</p>}
                       {(h.vet_name || h.cost != null) && (
                         <p className="text-xs text-neutral-500 mt-1">
