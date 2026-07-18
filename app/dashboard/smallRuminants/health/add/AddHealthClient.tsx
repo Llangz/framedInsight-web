@@ -185,6 +185,13 @@ export default function AddHealthClient({ animals, farmId }: { animals: Animal[]
         vaccine_name: eventType === "vaccination"
                         ? (vaccineType === "Other" ? customVaccineName : vaccineType)
                         : null,
+        // Column exists (small_ruminant_health.vaccine_batch_number) and
+        // HealthClient.tsx's detail view already reads and displays it —
+        // the form collects it via `batchNumber` but this payload never
+        // sent it, so every batch/lot number entered was silently
+        // discarded on save. Same silent-data-loss class as the poultry
+        // feed-cost bug, just missing-field instead of wrong-field-name.
+        vaccine_batch_number: eventType === "vaccination" ? (batchNumber || null) : null,
         next_vaccination_due: eventType === "vaccination" ? nextDueDate || null : null,
         disease:      eventType === "treatment" ? resolvedDisease : null,
         treatment:    eventType === "treatment" ? treatment || null : null,
