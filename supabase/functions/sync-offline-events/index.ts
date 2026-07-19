@@ -707,24 +707,34 @@ async function processSmallRuminantEvent(
       /* ───────────── KIDDING / LAMBING (append + breeding-record update) ─────────────
        * Mirrors breeding/kidding/actions.ts's recordKidding (as fixed
        * alongside this sync handler — see actions.ts for the
-       * breeding_id → breeding_event_id column-name correction).
-       * referenceId is the small_ruminant_breeding record id being closed
-       * out; payload carries the kidding_lambing_records fields plus
-       * number_of_offspring, which belongs on the breeding record, not the
-       * kidding record itself. */
+       * breeding_id → breeding_event_id column-name correction, and for
+       * why this now inserts one row per offspring instead of one summary
+       * row). referenceId is the small_ruminant_breeding record id being
+       * closed out; payload carries the shared dam/delivery fields plus
+       * an `offspring` array (sex, birth_weight, vigor_score,
+       * colostrum_given per kid) and number_of_offspring, the last of
+       * which belongs on the breeding record, not the kidding record. */
       case "small_ruminant_kidding": {
-        const { number_of_offspring, ...kiddingFields } = payload
+        const { number_of_offspring, offspring, ...kiddingFields } = payload
 
+        // One kidding_lambing_records insert should exist per breeding
+        // event closed out this way — check by breeding_event_id rather
+        // than a single fabricated `id`, since we now insert N rows (one
+        // per offspring) and can't dedupe N rows against one id.
         const { data: exists } = await supabase
-          .from("kidding_lambing_records").select("id").eq("id", eventId).maybeSingle()
-        if (!exists) {
-          await supabase.from("kidding_lambing_records").insert({
-            id: eventId,
+          .from("kidding_lambing_records").select("id").eq("breeding_event_id", referenceId).limit(1)
+        if (!exists || exists.length === 0) {
+          const rows = (offspring && offspring.length > 0 ? offspring : [{}]).map((kid: any) => ({
             dam_id: kiddingFields.dam_id,
             delivery_date: kiddingFields.delivery_date,
             breeding_event_id: referenceId,
-            ...kiddingFields,
-          })
+            sex: kid?.sex ?? null,
+            birth_weight: kid?.birth_weight ? parseFloat(String(kid.birth_weight)) : null,
+            vigor_score: kid?.vigor_score ?? null,
+            colostrum_given: kid?.colostrum_given ?? null,
+          }))
+
+          await supabase.from("kidding_lambing_records").insert(rows)
 
           await supabase.from("small_ruminant_breeding").update({
             actual_delivery_date: kiddingFields.delivery_date,

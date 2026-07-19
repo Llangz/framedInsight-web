@@ -1,0 +1,135 @@
+diff --git a/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx b/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx
+index 432954d..e4428ff 100644
+--- a/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx
++++ b/app/dashboard/smallRuminants/breeding/kidding/KiddingRecordClient.tsx
+@@ -62,6 +62,11 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
+             dam_id: selected.dam_id,
+             delivery_date: deliveryDate,
+             number_of_offspring: numberOfOffspring,
++            // Per-kid sex/birth_weight/vigor_score/colostrum_given were
++            // being collected in the `offspring` state but never sent
++            // here, so offline-queued births saved only a single summary
++            // row per event with none of the individual kid details.
++            offspring,
+           },
+         });
+         setSavedOffline(true);
+@@ -92,6 +97,7 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
+                 dam_id: selected.dam_id,
+                 delivery_date: deliveryDate,
+                 number_of_offspring: numberOfOffspring,
++                offspring,
+               },
+             });
+             setSavedOffline(true);
+diff --git a/app/dashboard/smallRuminants/breeding/kidding/actions.ts b/app/dashboard/smallRuminants/breeding/kidding/actions.ts
+index 821a37b..e0e0820 100644
+--- a/app/dashboard/smallRuminants/breeding/kidding/actions.ts
++++ b/app/dashboard/smallRuminants/breeding/kidding/actions.ts
+@@ -19,30 +19,44 @@ export async function recordKidding(
+     return { success: false, error: 'Not authenticated' };
+   }
+ 
+-  // BUG FIX: kidding_lambing_records has no `breeding_id` or
+-  // `number_of_offspring` column (confirmed against lib/database.types.ts —
+-  // the real column is `breeding_event_id`, and `number_of_offspring` only
+-  // exists on small_ruminant_breeding, set further below). KiddingRecordClient
+-  // sends both under the wrong/nonexistent names, so this insert had been
+-  // silently failing PostgREST's schema check on every real call — "Record
+-  // Birth" was broken for every farmer, online included, not just offline.
++  // BUG FIX: `offspring` (sex, birth_weight, vigor_score, colostrum_given
++  // per kid/lamb, collected by KiddingRecordClient's per-offspring form
++  // rows) was accepted as a parameter here but never used beyond
++  // `offspring?.length` below — every birth saved exactly one summary row
++  // to kidding_lambing_records with none of the individual kid data,
++  // regardless of how many kids were born. kidding_lambing_records is
++  // shaped as one row per kid (kid_lamb_id, sex, birth_weight, vigor_score,
++  // colostrum_given, colostrum_time, dam_condition_post_delivery are all
++  // per-row columns, confirmed live schema), so this now inserts one row
++  // per offspring, each carrying the shared dam/delivery fields plus its
++  // own kid-specific data.
+   const { breeding_id, number_of_offspring: _unusedOnKiddingRecord, ...kiddingFields } = kiddingData as any;
++  const breedingEventId = breeding_id ?? breedingId;
++
++  const offspringRows = (offspring && offspring.length > 0 ? offspring : [{}]).map((kid: any) => ({
++    ...kiddingFields,
++    breeding_event_id: breedingEventId,
++    sex: kid.sex ?? null,
++    birth_weight: kid.birth_weight ? parseFloat(String(kid.birth_weight)) : null,
++    vigor_score: kid.vigor_score ?? null,
++    colostrum_given: kid.colostrum_given ?? null,
++  }));
+ 
+   // Was `if (kiddingError/updateError) throw ...` — see coffee/activities/
+   // actions.ts's recordActivity for why a thrown error here loses its
+   // message to Next.js's production redaction.
+-  // Create kidding record
++  // Create one kidding record per offspring
+   const { error: kiddingError } = await supabase
+     .from("kidding_lambing_records")
+-    .insert([{ ...kiddingFields, breeding_event_id: breeding_id ?? breedingId }]);
++    .insert(offspringRows);
+ 
+   if (kiddingError) {
+     console.error('recordKidding insert error:', kiddingError);
+     return { success: false, error: kiddingError.message };
+   }
+ 
+-  // Create individual kid/lamb records (as per original logic, though original code seems to have a bug where it inserts multiple kidding records instead of offspring records)
+-  // Let's stick to the intent: update breeding and record the event.
++  // Update the breeding record to close it out with the actual delivery
++  // date and offspring count.
+ 
+   const updateData: SmallRuminantBreedingUpdate = {
+     actual_delivery_date: kiddingData.delivery_date,
+diff --git a/supabase/functions/sync-offline-events/index.ts b/supabase/functions/sync-offline-events/index.ts
+index 333b03b..2484be5 100644
+--- a/supabase/functions/sync-offline-events/index.ts
++++ b/supabase/functions/sync-offline-events/index.ts
+@@ -707,24 +707,34 @@ async function processSmallRuminantEvent(
+       /* ───────────── KIDDING / LAMBING (append + breeding-record update) ─────────────
+        * Mirrors breeding/kidding/actions.ts's recordKidding (as fixed
+        * alongside this sync handler — see actions.ts for the
+-       * breeding_id → breeding_event_id column-name correction).
+-       * referenceId is the small_ruminant_breeding record id being closed
+-       * out; payload carries the kidding_lambing_records fields plus
+-       * number_of_offspring, which belongs on the breeding record, not the
+-       * kidding record itself. */
++       * breeding_id → breeding_event_id column-name correction, and for
++       * why this now inserts one row per offspring instead of one summary
++       * row). referenceId is the small_ruminant_breeding record id being
++       * closed out; payload carries the shared dam/delivery fields plus
++       * an `offspring` array (sex, birth_weight, vigor_score,
++       * colostrum_given per kid) and number_of_offspring, the last of
++       * which belongs on the breeding record, not the kidding record. */
+       case "small_ruminant_kidding": {
+-        const { number_of_offspring, ...kiddingFields } = payload
++        const { number_of_offspring, offspring, ...kiddingFields } = payload
+ 
++        // One kidding_lambing_records insert should exist per breeding
++        // event closed out this way — check by breeding_event_id rather
++        // than a single fabricated `id`, since we now insert N rows (one
++        // per offspring) and can't dedupe N rows against one id.
+         const { data: exists } = await supabase
+-          .from("kidding_lambing_records").select("id").eq("id", eventId).maybeSingle()
+-        if (!exists) {
+-          await supabase.from("kidding_lambing_records").insert({
+-            id: eventId,
++          .from("kidding_lambing_records").select("id").eq("breeding_event_id", referenceId).limit(1)
++        if (!exists || exists.length === 0) {
++          const rows = (offspring && offspring.length > 0 ? offspring : [{}]).map((kid: any) => ({
+             dam_id: kiddingFields.dam_id,
+             delivery_date: kiddingFields.delivery_date,
+             breeding_event_id: referenceId,
+-            ...kiddingFields,
+-          })
++            sex: kid?.sex ?? null,
++            birth_weight: kid?.birth_weight ? parseFloat(String(kid.birth_weight)) : null,
++            vigor_score: kid?.vigor_score ?? null,
++            colostrum_given: kid?.colostrum_given ?? null,
++          }))
++
++          await supabase.from("kidding_lambing_records").insert(rows)
+ 
+           await supabase.from("small_ruminant_breeding").update({
+             actual_delivery_date: kiddingFields.delivery_date,

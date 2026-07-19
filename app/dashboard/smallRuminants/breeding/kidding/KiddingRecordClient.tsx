@@ -62,6 +62,11 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
             dam_id: selected.dam_id,
             delivery_date: deliveryDate,
             number_of_offspring: numberOfOffspring,
+            // Per-kid sex/birth_weight/vigor_score/colostrum_given were
+            // being collected in the `offspring` state but never sent
+            // here, so offline-queued births saved only a single summary
+            // row per event with none of the individual kid details.
+            offspring,
           },
         });
         setSavedOffline(true);
@@ -92,6 +97,7 @@ export default function KiddingRecordClient({ pregnantDams, farmId }: { pregnant
                 dam_id: selected.dam_id,
                 delivery_date: deliveryDate,
                 number_of_offspring: numberOfOffspring,
+                offspring,
               },
             });
             setSavedOffline(true);
