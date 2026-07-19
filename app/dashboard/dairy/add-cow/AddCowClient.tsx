@@ -79,6 +79,7 @@ export default function AddCowClient({ farmId }: { farmId: string }) {
     breed: '',
     date_of_birth: '',
     status: 'active',
+    source: 'born on farm',
     purchase_date: '',
     purchase_price: '',
   })
@@ -115,8 +116,12 @@ export default function AddCowClient({ farmId }: { farmId: string }) {
       cow_tag: (form.tag_number || form.animal_id).trim(),
       breed: form.breed || null,
       birth_date: form.date_of_birth || null,
-      purchase_date: form.purchase_date || null,
-      purchase_price: form.purchase_price ? parseFloat(form.purchase_price) : null,
+      source: form.source || null,
+      purchase_date: form.source === 'purchased' ? form.purchase_date || null : null,
+      purchase_price:
+        form.source === 'purchased' && form.purchase_price
+          ? parseFloat(form.purchase_price)
+          : null,
       status: form.status || 'active',
       name: form.animal_id || null,
     }
@@ -296,49 +301,65 @@ export default function AddCowClient({ farmId }: { farmId: string }) {
                   <option value="deceased">Deceased</option>
                 </select>
               </Field>
-            </div>
-          </section>
 
-          {/* Purchase */}
-          <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] p-5 space-y-4">
-            <div className="flex items-center gap-2 mb-1">
-              <ShoppingCart size={13} className="text-[#6B7280]" />
-              <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Purchase</h2>
-              <span className="text-[10px] text-[#4B5563] ml-1">(optional)</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Purchase date">
-                <div className="relative">
-                  <CalendarDays size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4B5563]" />
-                  <input
-                    type="date"
-                    value={form.purchase_date}
-                    onChange={set('purchase_date')}
-                    max={new Date().toISOString().split('T')[0]}
-                    className={`${inputCls()} pl-8`}
-                    style={{ WebkitTextFillColor: 'white', color: 'white' }}
-                  />
-                </div>
-              </Field>
-
-              <Field label="Price (KES)">
-                <div className="relative">
-                  <Banknote size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4B5563]" />
-                  <input
-                    type="number"
-                    value={form.purchase_price}
-                    onChange={set('purchase_price')}
-                    placeholder="50,000"
-                    min="0"
-                    step="500"
-                    className={`${inputCls()} pl-8`}
-                    style={{ WebkitTextFillColor: 'white', color: 'white' }}
-                  />
-                </div>
+              <Field label="Source">
+                <select
+                  value={form.source}
+                  onChange={set('source')}
+                  className={inputCls()}
+                  style={{ WebkitTextFillColor: 'white', color: 'white' }}
+                >
+                  <option value="born on farm">Born on farm</option>
+                  <option value="purchased">Purchased</option>
+                  <option value="donated">Donated</option>
+                  <option value="other">Other</option>
+                </select>
               </Field>
             </div>
           </section>
+
+          {/* Purchase — only relevant when the cow was bought, not born on farm */}
+          {form.source === 'purchased' && (
+            <section className="rounded-lg border border-[#2A2D35] bg-[#0D0F14] p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <ShoppingCart size={13} className="text-[#6B7280]" />
+                <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Purchase</h2>
+                <span className="text-[10px] text-[#4B5563] ml-1">(optional)</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Purchase date">
+                  <div className="relative">
+                    <CalendarDays size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4B5563]" />
+                    <input
+                      type="date"
+                      value={form.purchase_date}
+                      onChange={set('purchase_date')}
+                      max={new Date().toISOString().split('T')[0]}
+                      className={`${inputCls()} pl-8`}
+                      style={{ WebkitTextFillColor: 'white', color: 'white' }}
+                    />
+                  </div>
+                </Field>
+
+                <Field label="Price (KES)">
+                  <div className="relative">
+                    <Banknote size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4B5563]" />
+                    <input
+                      type="number"
+                      value={form.purchase_price}
+                      onChange={set('purchase_price')}
+                      placeholder="50,000"
+                      min="0"
+                      step="500"
+                      className={`${inputCls()} pl-8`}
+                      style={{ WebkitTextFillColor: 'white', color: 'white' }}
+                    />
+                  </div>
+                </Field>
+              </div>
+            </section>
+          )}
 
           {/* Actions */}
           <div className="flex items-center gap-3">

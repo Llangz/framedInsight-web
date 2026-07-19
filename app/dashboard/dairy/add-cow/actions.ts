@@ -11,6 +11,7 @@ interface AddCowFormData {
   animal_id?: string;
   breed?: string | null;
   date_of_birth?: string | null;
+  source?: string | null;
   purchase_date?: string | null;
   purchase_price?: string | number | null;
   status?: string;
@@ -46,10 +47,12 @@ export async function addCow(formData: AddCowFormData): Promise<
     cow_tag: cowTag,
     breed: formData.breed || null,
     birth_date: formData.date_of_birth || null,
-    purchase_date: formData.purchase_date || null,
-    purchase_price: formData.purchase_price
-      ? parseFloat(String(formData.purchase_price))
-      : null,
+    source: formData.source || null,
+    purchase_date: formData.source === 'purchased' ? formData.purchase_date || null : null,
+    purchase_price:
+      formData.source === 'purchased' && formData.purchase_price
+        ? parseFloat(String(formData.purchase_price))
+        : null,
     status: formData.status || 'active',
     name: formData.animal_id || null,
   };
