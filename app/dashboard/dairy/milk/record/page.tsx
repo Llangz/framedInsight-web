@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Sunrise, Sun, Sunset } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type MilkingSession = 'morning' | 'midday' | 'evening'
@@ -195,9 +196,9 @@ function RecordMilkContent() {
   }
 
   const sessionInfo = {
-    morning: { emoji: '🌅', label: 'Morning', time: '6am-11am', color: 'bg-orange-950/30 border-orange-700 text-orange-200' },
-    midday: { emoji: '☀️', label: 'Midday', time: '11am-3pm', color: 'bg-yellow-950/30 border-yellow-700 text-yellow-200' },
-    evening: { emoji: '🌆', label: 'Evening', time: '3pm-8pm', color: 'bg-blue-950/30 border-blue-700 text-blue-200' },
+    morning: { Icon: Sunrise, label: 'Morning', time: '6am-11am', color: 'bg-orange-950/30 border-orange-700 text-orange-200' },
+    midday: { Icon: Sun, label: 'Midday', time: '11am-3pm', color: 'bg-yellow-950/30 border-yellow-700 text-yellow-200' },
+    evening: { Icon: Sunset, label: 'Evening', time: '3pm-8pm', color: 'bg-blue-950/30 border-blue-700 text-blue-200' },
   }
 
   const grandTotal = milkRecords.reduce((sum, record) => sum + calculateTotal(record), 0)
@@ -240,7 +241,7 @@ function RecordMilkContent() {
                 <label className="block text-sm font-medium text-[#D1D5DB] mb-2">Current Session</label>
                 <div className={`px-4 py-2 rounded-lg border-2 ${sessionInfo[currentSession].color}`}>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">{sessionInfo[currentSession].emoji}</span>
+                    {(() => { const SessionIcon = sessionInfo[currentSession].Icon; return <SessionIcon size={22} strokeWidth={1.5} /> })()}
                     <div>
                       <p className="font-medium text-white">{sessionInfo[currentSession].label}</p>
                       <p className="text-xs opacity-80">{sessionInfo[currentSession].time}</p>
@@ -253,20 +254,23 @@ function RecordMilkContent() {
 
             {/* Session Quick Buttons */}
             <div className="flex gap-2">
-              {(['morning', 'midday', 'evening'] as MilkingSession[]).map(session => (
-                <button
-                  key={session}
-                  type="button"
-                  onClick={() => setCurrentSession(session)}
-                  className={`flex-1 px-3 py-2 rounded-lg border-2 text-sm transition-colors ${
-                    currentSession === session
-                      ? 'border-emerald-600 bg-emerald-950/40 text-emerald-300 font-medium'
-                      : 'border-[#2A2D35] text-[#9CA3AF] hover:bg-[#17191F]'
-                  }`}
-                >
-                  {sessionInfo[session].emoji} {sessionInfo[session].label}
-                </button>
-              ))}
+              {(['morning', 'midday', 'evening'] as MilkingSession[]).map(session => {
+                const SessionIcon = sessionInfo[session].Icon
+                return (
+                  <button
+                    key={session}
+                    type="button"
+                    onClick={() => setCurrentSession(session)}
+                    className={`flex-1 px-3 py-2 rounded-lg border-2 text-sm transition-colors flex items-center justify-center gap-1.5 ${
+                      currentSession === session
+                        ? 'border-emerald-600 bg-emerald-950/40 text-emerald-300 font-medium'
+                        : 'border-[#2A2D35] text-[#9CA3AF] hover:bg-[#17191F]'
+                    }`}
+                  >
+                    <SessionIcon size={13} strokeWidth={1.5} /> {sessionInfo[session].label}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -318,9 +322,15 @@ function RecordMilkContent() {
                   <thead className="bg-[#17191F]">
                     <tr>
                       <th className="px-4 py-3 text-left text-sm font-medium text-[#D1D5DB]">Cow</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">🌅 Morning (L)</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">☀️ Midday (L)</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">🌆 Evening (L)</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">
+                        <span className="inline-flex items-center gap-1"><Sunrise size={13} strokeWidth={1.5} /> Morning (L)</span>
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">
+                        <span className="inline-flex items-center gap-1"><Sun size={13} strokeWidth={1.5} /> Midday (L)</span>
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">
+                        <span className="inline-flex items-center gap-1"><Sunset size={13} strokeWidth={1.5} /> Evening (L)</span>
+                      </th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-[#D1D5DB]">Total</th>
                       <th className="px-4 py-3"></th>
                     </tr>

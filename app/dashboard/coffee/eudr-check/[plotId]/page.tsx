@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import {
+  Turtle, RefreshCw, AlertTriangle, CheckCircle2, XCircle, HelpCircle,
+  TreePine, FileText, Satellite, Map, Wrench, ClipboardList, Camera, Download, MapPin,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/lib/database.types'
 import { EventStore, PhotoEvidenceUploadedEvent, EudrAssessmentRunEvent } from '@/lib/event-sourcing'
@@ -172,11 +176,11 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
       {status === 'timeout' && (
         <div className="absolute inset-0 bg-slate-800 flex items-center justify-center px-4">
           <div className="text-center">
-            <p className="text-3xl mb-2">🐢</p>
+            <Turtle size={32} className="text-slate-400 mx-auto mb-2" strokeWidth={1.5} />
             <p className="text-slate-300 text-sm font-semibold">Taking longer than usual</p>
             <p className="text-slate-500 text-xs mt-1 mb-3">This can happen on a slow connection</p>
-            <button onClick={() => setRetryToken((k) => k + 1)} className="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition">
-              🔄 Retry
+            <button onClick={() => setRetryToken((k) => k + 1)} className="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition">
+              <RefreshCw size={12} strokeWidth={1.5} /> Retry
             </button>
           </div>
         </div>
@@ -184,11 +188,11 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
       {status === 'error' && (
         <div className="absolute inset-0 bg-slate-800 flex items-center justify-center px-4">
           <div className="text-center">
-            <p className="text-3xl mb-2">⚠️</p>
+            <AlertTriangle size={32} className="text-amber-400 mx-auto mb-2" strokeWidth={1.5} />
             <p className="text-slate-300 text-sm font-semibold">Couldn't load the map</p>
             <p className="text-slate-500 text-xs mt-1 mb-3">Check your connection and try again</p>
-            <button onClick={() => setRetryToken((k) => k + 1)} className="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition">
-              🔄 Retry
+            <button onClick={() => setRetryToken((k) => k + 1)} className="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition">
+              <RefreshCw size={12} strokeWidth={1.5} /> Retry
             </button>
           </div>
         </div>
@@ -210,11 +214,13 @@ export default function EUDRPlotDetailPage() {
   const [sat, setSat] = useState<SatData | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState('')
+  const [uploadOk, setUploadOk] = useState(true)
   const [auditTrail, setAuditTrail] = useState<AuditEvent[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showMapper, setShowMapper] = useState(false)
   const [savingBoundary, setSavingBoundary] = useState(false)
   const [boundaryMsg, setBoundaryMsg] = useState('')
+  const [boundaryOk, setBoundaryOk] = useState(true)
 
   async function handleBoundaryComplete(result: BoundaryResult) {
     setSavingBoundary(true)
@@ -255,11 +261,13 @@ export default function EUDRPlotDetailPage() {
         }
       } as any)
 
-      setBoundaryMsg('✅ Plot boundary saved!')
+      setBoundaryOk(true)
+      setBoundaryMsg('Plot boundary saved!')
       setShowMapper(false)
       await loadData()
     } catch (err: any) {
-      setBoundaryMsg(`❌ Failed to save: ${err.message}`)
+      setBoundaryOk(false)
+      setBoundaryMsg(`Failed to save: ${err.message}`)
     } finally {
       setSavingBoundary(false)
     }
@@ -351,10 +359,12 @@ export default function EUDRPlotDetailPage() {
         }
       } as PhotoEvidenceUploadedEvent)
 
-      setUploadMsg('✅ Photo evidence uploaded and recorded in compliance audit trail!')
+      setUploadOk(true)
+      setUploadMsg('Photo evidence uploaded and recorded in compliance audit trail!')
       loadData()
     } catch (err: any) {
-      setUploadMsg(`❌ Upload failed: ${err.message}`)
+      setUploadOk(false)
+      setUploadMsg(`Upload failed: ${err.message}`)
     } finally { setUploading(false) }
   }
 
@@ -396,7 +406,8 @@ export default function EUDRPlotDetailPage() {
       await loadData()
     } catch (e) {
       console.error(e)
-      setUploadMsg(`❌ Revalidation failed: ${(e as Error).message}`)
+      setUploadOk(false)
+      setUploadMsg(`Revalidation failed: ${(e as Error).message}`)
     }
     finally { setValidating(false) }
   }
@@ -440,7 +451,7 @@ export default function EUDRPlotDetailPage() {
   if (loadError || !plot) return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
       <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-xl p-8 text-center">
-        <div className="text-4xl mb-4">⚠️</div>
+        <AlertTriangle size={36} className="text-amber-400 mx-auto mb-4" strokeWidth={1.5} />
         <h1 className="text-lg font-bold text-white mb-2">This plot's compliance data didn't load</h1>
         <p className="text-sm text-slate-400 mb-6">
           {loadError || "We couldn't find this plot."} Your records are safe — this is usually temporary. Please don't re-enter EUDR data until this loads correctly, in case a record already exists.
@@ -469,10 +480,10 @@ export default function EUDRPlotDetailPage() {
   const isSmallPlot = (plot?.area_hectares ?? 999) <= 4
   const hasSufficientGps = hasPolygon || (hasPoint && isSmallPlot)
   const bannerConfig = {
-    green:   { bg: 'bg-green-700',  icon: '✅', title: 'PLOT READY FOR EXPORT',        sub: 'No deforestation detected. All documents clear.' },
-    yellow:  { bg: 'bg-amber-600',  icon: '⚠️', title: 'ACTION REQUIRED',               sub: 'Verify boundary, upload land title, or review forest baseline.' },
-    red:     { bg: 'bg-red-700',    icon: '🚫', title: 'POTENTIAL FOREST CONFLICT',     sub: 'Significant tree-cover loss detected after Jan 1, 2021.' },
-    unknown: { bg: 'bg-slate-700',  icon: '❓', title: 'COMPLIANCE NOT CHECKED YET',    sub: 'Run validation to assess this plot.' },
+    green:   { bg: 'bg-green-700',  Icon: CheckCircle2,  title: 'PLOT READY FOR EXPORT',        sub: 'No deforestation detected. All documents clear.' },
+    yellow:  { bg: 'bg-amber-600',  Icon: AlertTriangle, title: 'ACTION REQUIRED',               sub: 'Verify boundary, upload land title, or review forest baseline.' },
+    red:     { bg: 'bg-red-700',    Icon: XCircle,       title: 'POTENTIAL FOREST CONFLICT',     sub: 'Significant tree-cover loss detected after Jan 1, 2021.' },
+    unknown: { bg: 'bg-slate-700',  Icon: HelpCircle,    title: 'COMPLIANCE NOT CHECKED YET',    sub: 'Run validation to assess this plot.' },
   }[risk]
 
   return (
@@ -490,7 +501,7 @@ export default function EUDRPlotDetailPage() {
       {/* ── Section 1: Status Banner ── */}
       <div className={`${bannerConfig.bg} px-4 py-6`}>
         <div className="max-w-2xl mx-auto flex items-center gap-4">
-          <span className="text-5xl">{bannerConfig.icon}</span>
+          <bannerConfig.Icon size={44} className="text-white flex-shrink-0" strokeWidth={1.5} />
           <div>
             <p className="text-xs font-bold uppercase tracking-widest opacity-80">Deforestation Risk</p>
             <h1 className="text-xl font-black mt-0.5">{bannerConfig.title}</h1>
@@ -503,7 +514,7 @@ export default function EUDRPlotDetailPage() {
 
         {/* ── Section 2: Plot Map ── */}
         <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">📍 Plot Boundary Map</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><MapPin size={13} strokeWidth={1.5} /> Plot Boundary Map</p>
 
           {/* Mapper active */}
           {showMapper && (
@@ -538,7 +549,7 @@ export default function EUDRPlotDetailPage() {
           {/* No GPS yet — actionable empty state */}
           {!showMapper && !hasPolygon && !hasPoint && (
             <div className="h-auto bg-slate-800 rounded-xl border-2 border-dashed border-slate-600 px-6 py-8 flex flex-col items-center text-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center text-2xl">📍</div>
+              <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center"><MapPin size={22} className="text-slate-400" strokeWidth={1.5} /></div>
               <div>
                 <p className="text-white font-semibold text-sm">No GPS boundary recorded</p>
                 <p className="text-slate-400 text-xs mt-1 max-w-xs">
@@ -549,7 +560,7 @@ export default function EUDRPlotDetailPage() {
                 onClick={() => setShowMapper(true)}
                 className="mt-1 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white text-sm font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 transition"
               >
-                <span>🗺️</span> Map this plot now
+                <Map size={14} strokeWidth={1.5} /> Map this plot now
               </button>
               <p className="text-slate-600 text-xs">You can also do this from the plot edit page</p>
             </div>
@@ -561,8 +572,8 @@ export default function EUDRPlotDetailPage() {
           )}
 
           {boundaryMsg && (
-            <p className={`text-xs mt-2 font-semibold ${boundaryMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'}`}>
-              {boundaryMsg}
+            <p className={`text-xs mt-2 font-semibold flex items-center gap-1 ${boundaryOk ? 'text-green-400' : 'text-red-400'}`}>
+              {boundaryOk ? <CheckCircle2 size={13} strokeWidth={1.5} /> : <XCircle size={13} strokeWidth={1.5} />} {boundaryMsg}
             </p>
           )}
 
@@ -596,17 +607,17 @@ export default function EUDRPlotDetailPage() {
                 ? eudr.risk_level === 'low' ? 'bg-green-950 border-green-600' : 'bg-red-950 border-red-600'
                 : 'bg-slate-800 border-slate-600'
             }`}>
-              <span className="text-2xl flex-shrink-0">🌳</span>
+              <TreePine size={22} className="text-white flex-shrink-0" strokeWidth={1.5} />
               <div className="flex-1">
                 <p className="font-bold text-white text-sm">Forest Baseline — Dec 31, 2020</p>
             {eudr && eudr.forest_cover_pct !== null ? (
-                  <p className={`text-sm mt-0.5 font-semibold ${eudr.risk_level === 'low' ? 'text-green-400' : 'text-red-400'}`}>
+                  <p className={`text-sm mt-0.5 font-semibold flex items-center gap-1 ${eudr.risk_level === 'low' ? 'text-green-400' : 'text-red-400'}`}>
                     {eudr.risk_level === 'low'
-                      ? `✅ No forest detected. Forest cover: ${eudr.forest_cover_pct}%`
-                      : `🚫 Forest detected. Risk: ${eudr.risk_level?.toUpperCase()}. Cover: ${eudr.forest_cover_pct}%`}
+                      ? <><CheckCircle2 size={13} strokeWidth={1.5} /> No forest detected. Forest cover: {eudr.forest_cover_pct}%</>
+                      : <><XCircle size={13} strokeWidth={1.5} /> Forest detected. Risk: {eudr.risk_level?.toUpperCase()}. Cover: {eudr.forest_cover_pct}%</>}
                   </p>
                 ) : (
-                  <p className="text-amber-400 text-sm mt-0.5 font-semibold">❓ Not yet assessed — run validation below</p>
+                  <p className="text-amber-400 text-sm mt-0.5 font-semibold flex items-center gap-1"><HelpCircle size={13} strokeWidth={1.5} /> Not yet assessed — run validation below</p>
                 )}
               </div>
             </div>
@@ -615,19 +626,19 @@ export default function EUDRPlotDetailPage() {
             <div className={`rounded-xl border-2 p-4 flex items-start gap-3 ${
               eudr?.notes ? 'bg-green-950 border-green-600' : 'bg-amber-950 border-amber-600'
             }`}>
-              <span className="text-2xl flex-shrink-0">📄</span>
+              <FileText size={22} className="text-white flex-shrink-0" strokeWidth={1.5} />
               <div className="flex-1">
                 <p className="font-bold text-white text-sm">Legality Check — Land Title</p>
                 {eudr?.notes ? (
-                  <p className="text-green-400 text-sm mt-0.5 font-semibold">✅ Land ownership document uploaded</p>
+                  <p className="text-green-400 text-sm mt-0.5 font-semibold flex items-center gap-1"><CheckCircle2 size={13} strokeWidth={1.5} /> Land ownership document uploaded</p>
                 ) : (
                   <div>
-                    <p className="text-amber-400 text-sm mt-0.5 font-semibold">⚠️ Land title document missing</p>
+                    <p className="text-amber-400 text-sm mt-0.5 font-semibold flex items-center gap-1"><AlertTriangle size={13} strokeWidth={1.5} /> Land title document missing</p>
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="mt-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                      className="mt-2 inline-flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
                     >
-                      📎 Upload Land Title Now
+                      <FileText size={12} strokeWidth={1.5} /> Upload Land Title Now
                     </button>
                   </div>
                 )}
@@ -638,27 +649,27 @@ export default function EUDRPlotDetailPage() {
             <div className={`rounded-xl border-2 p-4 flex items-start gap-3 ${
               hasSufficientGps ? 'bg-green-950 border-green-600' : hasPoint ? 'bg-amber-950 border-amber-600' : 'bg-red-950 border-red-600'
             }`}>
-              <span className="text-2xl flex-shrink-0">📡</span>
+              <Satellite size={22} className="text-white flex-shrink-0" strokeWidth={1.5} />
               <div className="flex-1">
                 <p className="font-bold text-white text-sm">GPS Coordinates</p>
                 {hasPolygon ? (
-                  <p className="text-green-400 text-sm mt-0.5 font-semibold">
-                    ✅ GPS recorded · Polygon boundary available
+                  <p className="text-green-400 text-sm mt-0.5 font-semibold flex items-center gap-1">
+                    <CheckCircle2 size={13} strokeWidth={1.5} /> GPS recorded · Polygon boundary available
                   </p>
                 ) : hasPoint ? (
-                  <p className={`text-sm mt-0.5 font-semibold ${isSmallPlot ? 'text-green-400' : 'text-amber-400'}`}>
+                  <p className={`text-sm mt-0.5 font-semibold flex items-center gap-1 ${isSmallPlot ? 'text-green-400' : 'text-amber-400'}`}>
                     {isSmallPlot
-                      ? '✅ Point coordinate recorded · sufficient for this plot size'
-                      : '⚠️ Point coordinate only · polygon boundary required for this plot size'}
+                      ? <><CheckCircle2 size={13} strokeWidth={1.5} /> Point coordinate recorded · sufficient for this plot size</>
+                      : <><AlertTriangle size={13} strokeWidth={1.5} /> Point coordinate only · polygon boundary required for this plot size</>}
                   </p>
                 ) : (
                   <div>
-                    <p className="text-red-400 text-sm mt-0.5 font-semibold">🚫 No GPS data — plot boundary required for EUDR</p>
+                    <p className="text-red-400 text-sm mt-0.5 font-semibold flex items-center gap-1"><XCircle size={13} strokeWidth={1.5} /> No GPS data — plot boundary required for EUDR</p>
                     <button
                       onClick={() => { setShowMapper(true); document.getElementById('plot-map-section')?.scrollIntoView({ behavior: 'smooth' }) }}
-                      className="mt-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                      className="mt-2 inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
                     >
-                      🗺️ Map boundary now
+                      <Map size={12} strokeWidth={1.5} /> Map boundary now
                     </button>
                   </div>
                 )}
@@ -674,11 +685,11 @@ export default function EUDRPlotDetailPage() {
         {/* ── Section 4: Resolution Steps (if not green) ── */}
         {risk !== 'green' && (
           <div className="bg-slate-800 border-2 border-slate-600 rounded-xl p-4">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">🔧 Resolution Steps</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5"><Wrench size={13} strokeWidth={1.5} /> Resolution Steps</p>
             <div className="space-y-3">
               {!hasSufficientGps && (
                 <div className="flex items-start gap-3 bg-slate-700 rounded-lg p-3">
-                  <span className="text-xl">1️⃣</span>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-600 text-white text-xs font-bold flex items-center justify-center">1</span>
                   <div className="flex-1">
                     <p className="text-white text-sm font-bold">Record GPS Boundary</p>
                     <p className="text-slate-400 text-xs mt-0.5">
@@ -688,16 +699,16 @@ export default function EUDRPlotDetailPage() {
                     </p>
                     <button
                       onClick={() => { setShowMapper(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                      className="mt-2 bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                      className="mt-2 inline-flex items-center gap-1.5 bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
                     >
-                      🗺️ Open map now
+                      <Map size={12} strokeWidth={1.5} /> Open map now
                     </button>
                   </div>
                 </div>
               )}
               {!eudr?.notes && (
                 <div className="flex items-start gap-3 bg-slate-700 rounded-lg p-3">
-                  <span className="text-xl">2️⃣</span>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-600 text-white text-xs font-bold flex items-center justify-center">2</span>
                   <div>
                     <p className="text-white text-sm font-bold">Upload Land Title / Ownership Document</p>
                     <p className="text-slate-400 text-xs mt-0.5">Scan or photograph your land title deed and upload it using the button on Card B above.</p>
@@ -706,7 +717,7 @@ export default function EUDRPlotDetailPage() {
               )}
               {risk === 'red' && (
                 <div className="flex items-start gap-3 bg-red-900 rounded-lg p-3">
-                  <span className="text-xl">3️⃣</span>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-red-700 text-white text-xs font-bold flex items-center justify-center">3</span>
                   <div>
                     <p className="text-white text-sm font-bold">Upload Photo Evidence</p>
                     <p className="text-slate-400 text-xs mt-0.5">Take a photo of the coffee trees facing North to prove the land is coffee, not forest. The camera button below will capture evidence with GPS & timestamp.</p>
@@ -721,23 +732,25 @@ export default function EUDRPlotDetailPage() {
         {/* Note: evidence_photos field needs to be added to database schema if needed */}
 
         {uploadMsg && (
-          <div className={`rounded-xl p-3 text-sm font-semibold ${uploadMsg.startsWith('✅') ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
-            {uploadMsg}
+          <div className={`rounded-xl p-3 text-sm font-semibold flex items-center gap-1.5 ${uploadOk ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+            {uploadOk ? <CheckCircle2 size={14} strokeWidth={1.5} /> : <XCircle size={14} strokeWidth={1.5} />} {uploadMsg}
           </div>
         )}
 
         {/* ── Compliance Audit Trail ── */}
         {auditTrail.length > 0 && (
           <div className="bg-slate-800 border-2 border-slate-600 rounded-xl p-4">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">📋 Compliance Audit Trail</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5"><ClipboardList size={13} strokeWidth={1.5} /> Compliance Audit Trail</p>
             <div className="space-y-2 max-h-40 overflow-y-auto">
-              {auditTrail.map((event, idx) => (
+              {auditTrail.map((event, idx) => {
+                const EventIcon = event.event_type === 'photo_evidence_uploaded' ? Camera :
+                       event.event_type === 'eudr_assessment_run' ? RefreshCw :
+                       event.event_type === 'plot_boundary_recorded' ? MapPin : FileText
+                return (
                 <div key={idx} className="bg-slate-700 rounded-lg p-2.5 text-xs">
                   <div className="flex items-start gap-2">
                     <span className="text-slate-400 flex-shrink-0 mt-0.5">
-                      {event.event_type === 'photo_evidence_uploaded' ? '📷' :
-                       event.event_type === 'eudr_assessment_run' ? '🔄' :
-                       event.event_type === 'plot_boundary_recorded' ? '📍' : '📝'}
+                      <EventIcon size={14} strokeWidth={1.5} />
                     </span>
                     <div className="flex-1">
                       <p className="text-slate-300 font-semibold capitalize">
@@ -759,7 +772,8 @@ export default function EUDRPlotDetailPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
             <p className="text-xs text-slate-500 mt-2">Events recorded for compliance verification and dispute resolution</p>
           </div>
@@ -775,15 +789,15 @@ export default function EUDRPlotDetailPage() {
             {validating ? (
               <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Running satellite check...</>
             ) : (
-              '🔄 Re-Validate Plot (Satellite)'
+              <><RefreshCw size={16} strokeWidth={1.5} /> Re-Validate Plot (Satellite)</>
             )}
           </button>
 
           <button
             onClick={exportGeoJSON}
-            className="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-xl text-base transition"
+            className="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-xl text-base transition flex items-center justify-center gap-2"
           >
-            📤 Export GeoJSON for Co-op / Buyer
+            <Download size={16} strokeWidth={1.5} /> Export GeoJSON for Co-op / Buyer
           </button>
         </div>
 
@@ -804,7 +818,7 @@ export default function EUDRPlotDetailPage() {
           className="w-16 h-16 bg-indigo-600 hover:bg-indigo-500 shadow-xl rounded-full flex items-center justify-center text-2xl transition active:scale-95 disabled:bg-slate-600"
           title="Add photo evidence"
         >
-          {uploading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '📷'}
+          {uploading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Camera size={20} strokeWidth={1.5} />}
         </button>
         <p className="text-center text-xs text-slate-400 mt-1 whitespace-nowrap">Evidence</p>
       </div>

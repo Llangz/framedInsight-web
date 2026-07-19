@@ -4,6 +4,12 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Bug, Leaf, HelpCircle, CheckCircle2,
+  ClipboardList, Droplets, CalendarClock,
+  AlertTriangle, Siren,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { recordScouting } from "../actions";
 import { queueCoffeeEvent } from "@/lib/offline-db";
 import { createClient } from "@/lib/supabase/client";
@@ -68,17 +74,17 @@ const FIELD = "w-full px-3 py-2.5 rounded-lg border border-[#2A2D35] bg-[#17191F
 const LABEL = "block text-xs font-bold text-[#D1D5DB] uppercase tracking-wide mb-1.5";
 const CARD  = "bg-[#17191F] rounded-xl border border-[#2A2D35] p-4";
 
-const PEST_OPTIONS: { type: ObservationType; emoji: string; label: string; sublabel: string; category: string }[] = [
-  { type: "cbd",        emoji: "🟤", label: "CBD",          sublabel: "Coffee Berry Disease — dark rotting berries", category: "disease" },
-  { type: "clr",        emoji: "🟡", label: "Leaf Rust",    sublabel: "Yellow powdery spots on leaf underside",      category: "disease" },
-  { type: "antestia",   emoji: "🐛", label: "Antestia Bug", sublabel: "Shield-shaped bug — causes star-bean defect", category: "pest"    },
-  { type: "thrips",     emoji: "🔴", label: "Thrips",       sublabel: "Tiny insects on flowers and young berries",   category: "pest"    },
-  { type: "mealybugs",  emoji: "⚪", label: "Mealybugs",    sublabel: "White cottony clusters on stems / berries",   category: "pest"    },
-  { type: "stem_borer", emoji: "🟠", label: "Stem Borer",   sublabel: "Holes + sawdust trails on main stem",         category: "pest"    },
-  { type: "leaf_miner", emoji: "🍃", label: "Leaf Miner",   sublabel: "Pale serpentine tunnels in leaf tissue",      category: "pest"    },
-  { type: "root_disease",emoji:"🟣", label: "Root Disease", sublabel: "Wilting, yellowing — possible root rot",      category: "disease" },
-  { type: "other_pest", emoji: "❓", label: "Other",        sublabel: "Something else — describe below",             category: "pest"    },
-  { type: "healthy",    emoji: "", label: "All Clear",    sublabel: "No problems found on this plot",              category: "clean"   },
+const PEST_OPTIONS: { type: ObservationType; Icon?: LucideIcon; dotColor?: string; label: string; sublabel: string; category: string }[] = [
+  { type: "cbd",         dotColor: "#92400E", label: "CBD",          sublabel: "Coffee Berry Disease — dark rotting berries", category: "disease" },
+  { type: "clr",         dotColor: "#EAB308", label: "Leaf Rust",    sublabel: "Yellow powdery spots on leaf underside",      category: "disease" },
+  { type: "antestia",    Icon: Bug,           label: "Antestia Bug", sublabel: "Shield-shaped bug — causes star-bean defect", category: "pest"    },
+  { type: "thrips",      dotColor: "#EF4444", label: "Thrips",       sublabel: "Tiny insects on flowers and young berries",   category: "pest"    },
+  { type: "mealybugs",   dotColor: "#E5E7EB", label: "Mealybugs",    sublabel: "White cottony clusters on stems / berries",   category: "pest"    },
+  { type: "stem_borer",  dotColor: "#F97316", label: "Stem Borer",   sublabel: "Holes + sawdust trails on main stem",         category: "pest"    },
+  { type: "leaf_miner",  Icon: Leaf,          label: "Leaf Miner",   sublabel: "Pale serpentine tunnels in leaf tissue",      category: "pest"    },
+  { type: "root_disease",dotColor: "#A855F7", label: "Root Disease", sublabel: "Wilting, yellowing — possible root rot",      category: "disease" },
+  { type: "other_pest",  Icon: HelpCircle,    label: "Other",        sublabel: "Something else — describe below",             category: "pest"    },
+  { type: "healthy",     Icon: CheckCircle2,  label: "All Clear",    sublabel: "No problems found on this plot",              category: "clean"   },
 ];
 
 const SEVERITY_OPTIONS: { value: SeverityLevel; label: string; desc: string; borderActive: string; bgActive: string; textActive: string }[] = [
@@ -94,11 +100,11 @@ const WEATHER_OPTIONS: { value: WeatherContext; label: string; emoji: string; de
   { value: "mixed",        label: "Mixed",          emoji: "🌤️", desc: "Variable — monitor all"            },
 ];
 
-const ACTION_OPTIONS: { value: ActionTaken; label: string; desc: string; emoji: string }[] = [
-  { value: "none",                        label: "Just recording",              desc: "No action yet — monitoring only",  emoji: "📝" },
-  { value: "sprayed_immediately",         label: "Sprayed today",               desc: "Emergency spray already done",      emoji: "🚿" },
-  { value: "scheduled_spray",             label: "Will spray in 2–3 days",      desc: "Spray scheduled and upcoming",      emoji: "📅" },
-  { value: "calendar_spray_sufficient",   label: "Already on calendar spray",   desc: "Routine spray schedule covers this", emoji: "" },
+const ACTION_OPTIONS: { value: ActionTaken; label: string; desc: string; Icon: LucideIcon }[] = [
+  { value: "none",                        label: "Just recording",              desc: "No action yet — monitoring only",  Icon: ClipboardList },
+  { value: "sprayed_immediately",         label: "Sprayed today",               desc: "Emergency spray already done",      Icon: Droplets },
+  { value: "scheduled_spray",             label: "Will spray in 2–3 days",      desc: "Spray scheduled and upcoming",      Icon: CalendarClock },
+  { value: "calendar_spray_sufficient",   label: "Already on calendar spray",   desc: "Routine spray schedule covers this", Icon: CheckCircle2 },
 ];
 
 const STEPS = ["Plot & Scout", "What did you see?", "How severe?", "Action taken", "Confirm & save"];
@@ -142,13 +148,13 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
 function AlertBanner({ level, threshold }: { level: "none" | "watch" | "action_required" | "emergency"; threshold: RegionalThreshold | null }) {
   if (level === "none") return null;
   const cfg = {
-    watch:           { bg: "bg-amber-900/20", border: "border-amber-700", text: "text-amber-400", icon: "", label: "Watch threshold reached" },
-    action_required: { bg: "bg-orange-900/20", border: "border-orange-700", text: "text-orange-400", icon: "", label: "Action threshold breached — spray recommended" },
-    emergency:       { bg: "bg-red-900/20",   border: "border-red-700",   text: "text-red-400",   icon: "🆘", label: "Emergency threshold — immediate spray required" },
+    watch:           { bg: "bg-amber-900/20", border: "border-amber-700", text: "text-amber-400", Icon: AlertTriangle, label: "Watch threshold reached" },
+    action_required: { bg: "bg-orange-900/20", border: "border-orange-700", text: "text-orange-400", Icon: AlertTriangle, label: "Action threshold breached — spray recommended" },
+    emergency:       { bg: "bg-red-900/20",   border: "border-red-700",   text: "text-red-400",   Icon: Siren,          label: "Emergency threshold — immediate spray required" },
   }[level];
   return (
     <div className={`rounded-xl border ${cfg.border} ${cfg.bg} px-4 py-3 space-y-1`}>
-      <p className={`text-sm font-semibold ${cfg.text}`}>{cfg.icon} {cfg.label}</p>
+      <p className={`text-sm font-semibold ${cfg.text} flex items-center gap-1.5`}><cfg.Icon size={14} strokeWidth={1.5} /> {cfg.label}</p>
       {threshold?.recommended_product && (
         <p className="text-xs text-[#9CA3AF]">Recommended: <span className="text-white">{threshold.recommended_product}</span></p>
       )}
@@ -446,7 +452,9 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                       ? "border-emerald-500 bg-emerald-900/20"
                       : "border-[#2A2D35] bg-[#17191F] hover:border-[#3A3D45]"
                   }`}>
-                  <span className="text-2xl block mb-1">{opt.emoji}</span>
+                  {opt.Icon
+                    ? <opt.Icon size={22} className="text-[#9CA3AF] mb-1.5" strokeWidth={1.5} />
+                    : <span className="block w-3.5 h-3.5 rounded-full mb-1.5" style={{ backgroundColor: opt.dotColor }} />}
                   <p className="font-bold text-sm text-white leading-tight">{opt.label}</p>
                   <p className="text-xs text-[#6B7280] mt-0.5 leading-tight">{opt.sublabel}</p>
                 </button>
@@ -525,7 +533,7 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                     <>
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className={LABEL}>🟢 Green berries<br/>affected</label>
+                          <label className={LABEL}><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />Green berries<br/>affected</label>
                           <input type="number" step="1" min="0"
                             value={form.cbd_green_berries_affected}
                             onChange={e => set("cbd_green_berries_affected", e.target.value)}
@@ -533,7 +541,7 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                             className={FIELD} />
                         </div>
                         <div>
-                          <label className={LABEL}>🟡 Yellow berries<br/>affected</label>
+                          <label className={LABEL}><span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1" />Yellow berries<br/>affected</label>
                           <input type="number" step="1" min="0"
                             value={form.cbd_yellow_berries_affected}
                             onChange={e => set("cbd_yellow_berries_affected", e.target.value)}
@@ -541,7 +549,7 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                             className={FIELD} />
                         </div>
                         <div>
-                          <label className={LABEL}>🔴 Red berries<br/>affected</label>
+                          <label className={LABEL}><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1" />Red berries<br/>affected</label>
                           <input type="number" step="1" min="0"
                             value={form.cbd_red_berries_affected}
                             onChange={e => set("cbd_red_berries_affected", e.target.value)}
@@ -582,7 +590,7 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                         <span className="text-sm text-[#D1D5DB]">Defoliation (leaf drop) observed</span>
                       </label>
                       {form.clr_defoliation_observed && (
-                        <p className="text-xs text-red-400">⚠ Defoliation indicates severe CLR — consider emergency spray with copper-based fungicide.</p>
+                        <p className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle size={12} strokeWidth={1.5} className="flex-shrink-0" /> Defoliation indicates severe CLR — consider emergency spray with copper-based fungicide.</p>
                       )}
                     </>
                   )}
@@ -643,7 +651,7 @@ function ScoutingForm({ plots, farmId }: { plots: Plot[]; farmId: string }) {
                       : "border-[#2A2D35] bg-[#17191F] hover:border-[#3A3D45]"
                   }`}>
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{o.emoji}</span>
+                    <o.Icon size={18} className="text-[#9CA3AF] flex-shrink-0" strokeWidth={1.5} />
                     <div>
                       <p className={`font-semibold text-sm ${form.action_taken === o.value ? "text-emerald-300" : "text-white"}`}>
                         {o.label}

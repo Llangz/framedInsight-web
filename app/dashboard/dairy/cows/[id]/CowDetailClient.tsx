@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Milk, Stethoscope, HeartPulse } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface CowDetailClientProps {
@@ -202,21 +203,21 @@ export default function CowDetailClient({ initialCow }: CowDetailClientProps) {
             <div className="space-y-2">
               <Link
                 href={`/dashboard/dairy/milk/record?cow=${cow.id}`}
-                className="block w-full px-4 py-2 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700"
+                className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700"
               >
-                🥛 Record Milk
+                <Milk size={14} strokeWidth={1.5} /> Record Milk
               </Link>
               <Link
                 href="/dashboard/dairy/health"
-                className="block w-full px-4 py-2 bg-red-600 text-white text-center rounded-lg hover:bg-red-700"
+                className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-red-600 text-white text-center rounded-lg hover:bg-red-700"
               >
-                💉 Add Health Record
+                <Stethoscope size={14} strokeWidth={1.5} /> Add Health Record
               </Link>
               <Link
                 href="/dashboard/dairy/breeding"
-                className="block w-full px-4 py-2 bg-pink-600 text-white text-center rounded-lg hover:bg-pink-700"
+                className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-pink-600 text-white text-center rounded-lg hover:bg-pink-700"
               >
-                🐂 Record Breeding
+                <HeartPulse size={14} strokeWidth={1.5} /> Record Breeding
               </Link>
             </div>
           </div>
