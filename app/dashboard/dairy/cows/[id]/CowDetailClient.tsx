@@ -184,6 +184,48 @@ export default function CowDetailClient({ initialCow }: CowDetailClientProps) {
             </div>
           )}
 
+          {/* Exit / Sale Information */}
+          {(cow.exit_date || cow.exit_value != null || cow.exit_reason) && (
+            <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">Exit / Sale Information</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {cow.exit_date && (
+                  <div>
+                    <span className="text-sm text-[#6B7280]">Exit Date</span>
+                    <p className="font-medium text-white">
+                      {new Date(cow.exit_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+                {cow.exit_value != null && (
+                  <div>
+                    <span className="text-sm text-[#6B7280]">Sale / Exit Value</span>
+                    <p className="font-medium text-white">
+                      KES {cow.exit_value.toLocaleString()}
+                    </p>
+                  </div>
+                )}
+                {cow.exit_reason && (
+                  <div className="col-span-2">
+                    <span className="text-sm text-[#6B7280]">Exit Reason</span>
+                    <p className="font-medium text-white capitalize">{cow.exit_reason}</p>
+                  </div>
+                )}
+                {cow.exit_value != null && cow.purchase_price != null && (
+                  <div className="col-span-2 pt-2 border-t border-[#2A2D35]">
+                    <span className="text-sm text-[#6B7280]">Profit on Sale</span>
+                    <p className={`font-semibold ${cow.exit_value - cow.purchase_price >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      KES {(cow.exit_value - cow.purchase_price).toLocaleString()}
+                      <span className="text-xs text-[#6B7280] font-normal ml-1">
+                        (sold for {cow.exit_value.toLocaleString()} − bought for {cow.purchase_price.toLocaleString()})
+                      </span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Notes */}
           {cow.notes && (
             <div className="bg-[#0D0F14] rounded-lg border border-[#2A2D35] p-6">

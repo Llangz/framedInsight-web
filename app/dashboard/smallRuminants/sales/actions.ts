@@ -35,11 +35,21 @@ export async function recordSale(saleData: SaleData): Promise<
     return { success: false, error: insertError.message };
   }
 
-  // If animal was sold (not milk), update animal status
+  // If animal was sold (not milk), update animal status AND its exit
+  // fields. Previously this only flipped status to "sold" — exit_value
+  // stayed null forever unless a farmer separately opened the animal's
+  // edit page and re-entered the same sale price by hand. That silently
+  // orphaned every recorded sale from profit calculations (sale price
+  // minus purchase price), the same gap dairy had for cows.
   if (saleData.sale_type !== "milk" && saleData.animal_id) {
     const { error: updateError } = await supabase
       .from("small_ruminants")
-      .update({ status: "sold" })
+      .update({
+        status: "sold",
+        exit_date: saleData.sale_date,
+        exit_value: saleData.total_price,
+        exit_reason: saleData.sale_type,
+      })
       .eq("id", saleData.animal_id);
 
     if (updateError) {

@@ -280,6 +280,17 @@ export default function AnimalDetailClient({ animal, weights, healthRecords, bre
                   {animal.exit_reason && <div><p className="text-xs text-neutral-500">Exit Reason</p><p className="text-sm font-medium capitalize">{animal.exit_reason}</p></div>}
                   {animal.exit_value != null && <div><p className="text-xs text-neutral-500">Exit Value</p><p className="text-sm font-medium">KES {animal.exit_value.toLocaleString()}</p></div>}
                 </div>
+                {animal.exit_value != null && animal.purchase_price != null && (
+                  <div className="mt-3 pt-3 border-t border-neutral-800">
+                    <p className="text-xs text-neutral-500">Profit on Sale</p>
+                    <p className={`text-sm font-semibold ${animal.exit_value - animal.purchase_price >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      KES {(animal.exit_value - animal.purchase_price).toLocaleString()}
+                      <span className="text-xs text-neutral-500 font-normal ml-1">
+                        (sold for {animal.exit_value.toLocaleString()} − bought for {animal.purchase_price.toLocaleString()})
+                      </span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

@@ -77,6 +77,7 @@ export default function AddBatchClient({ farmId }: Props) {
       initial_count:          count,
       current_count:          count,
       source:                 form.source || null,
+      purchase_price_per_bird: form.purchase_price_per_bird ? parseFloat(form.purchase_price_per_bird) : null,
       status:                 'active',
       notes:                  form.notes || null,
     })

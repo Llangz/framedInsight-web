@@ -55,6 +55,9 @@
     "litersSold": "Lita {count} zimeuzwa",
     "litersProduced": "Lita {count} zimezalishwa",
     "noSalesYet": "Hakuna mauzo bado",
+    "livestockSalesProfit": "Faida ya mauzo ya mifugo",
+    "soldAnimalsCount": "{count} zimeuzwa",
+    "noAnimalsSoldYet": "Hakuna mnyama aliyeuzwa bado",
     "savedOffline": "Imehifadhiwa nje ya mtandao \u2014 itasawazishwa ukiunganishwa."
   }
 }

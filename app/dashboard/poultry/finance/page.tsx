@@ -21,7 +21,7 @@ export default async function PoultryFinancePage() {
   // Fetch all batches (active + closed) to show historical P&L
   const { data: batches } = await (supabase as any)
     .from('poultry_batches')
-    .select('id, batch_name, bird_type, initial_count, current_count, date_of_placement, status, house_number')
+    .select('id, batch_name, bird_type, initial_count, current_count, date_of_placement, status, house_number, purchase_price_per_bird')
     .eq('farm_id', farmId)
     .order('date_of_placement', { ascending: false })
 

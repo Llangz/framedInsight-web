@@ -8,7 +8,7 @@ import {
   ResponsiveContainer, Legend,
 } from 'recharts'
 import {
-  TrendingUp, TrendingDown, Banknote, Droplets, Plus, X, FileDown,
+  TrendingUp, TrendingDown, Banknote, Droplets, Plus, X, FileDown, PiggyBank,
 } from 'lucide-react'
 import { recordMilkSale, recordDairyExpense } from './actions'
 import { queueDairyEvent } from '@/lib/offline-db'
@@ -32,6 +32,11 @@ interface Sale {
 interface Expense {
   id: string; expense_date: string; category: string; amount: number; description: string | null
 }
+interface SoldCow {
+  id: string; cow_tag: string; breed: string | null
+  exit_date: string | null; exit_value: number; exit_reason: string | null
+  purchase_price: number | null; profit: number | null
+}
 
 function fmtK(n: number) {
   return `KES ${Math.abs(n) >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toLocaleString()}`
@@ -50,7 +55,7 @@ const CARD = 'bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4'
 const today = () => new Date().toISOString().split('T')[0]
 
 export default function FinanceClient({
-  farmId, cows, monthly, currentMonth, sales, expenses,
+  farmId, cows, monthly, currentMonth, sales, expenses, soldCows, totalLivestockProfit,
 }: {
   farmId: string
   cows: Cow[]
@@ -58,6 +63,8 @@ export default function FinanceClient({
   currentMonth: MonthlyRow
   sales: Sale[]
   expenses: Expense[]
+  soldCows: SoldCow[]
+  totalLivestockProfit: number
 }) {
   const [tab, setTab] = useState<'overview' | 'sales' | 'expenses'>('overview')
   const [showSaleForm, setShowSaleForm] = useState(false)
@@ -98,6 +105,13 @@ export default function FinanceClient({
     {
       label: t('pctProductionSold'), value: currentMonth.pct_production_sold != null ? `${currentMonth.pct_production_sold}%` : '—',
       sub: t('litersProduced', { count: currentMonth.liters_produced }), Icon: Droplets, color: 'text-sky-400', border: 'border-sky-900/40',
+    },
+    {
+      label: t('livestockSalesProfit'), value: fmtK(totalLivestockProfit),
+      sub: soldCows.length > 0 ? t('soldAnimalsCount', { count: soldCows.length }) : t('noAnimalsSoldYet'),
+      Icon: PiggyBank,
+      color: totalLivestockProfit >= 0 ? 'text-emerald-400' : 'text-red-400',
+      border: totalLivestockProfit >= 0 ? 'border-emerald-900/40' : 'border-red-900/40',
     },
   ]
 
@@ -213,7 +227,7 @@ export default function FinanceClient({
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-4 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {statCards.map(({ label, value, sub, Icon, color, border }) => (
             <div key={label} className={`${CARD} ${border}`}>
               <Icon size={16} className={color} />
@@ -380,12 +394,49 @@ export default function FinanceClient({
         </div>
 
         {tab === 'overview' && (
-          <div className={CARD}>
-            <p className="text-sm text-[#9CA3AF]">
-              {monthly.length === 0
-                ? 'No milk sales or expenses recorded yet. Record a sale above to start building your profitability picture.'
-                : `Showing ${monthly.length} month${monthly.length === 1 ? '' : 's'} of dairy finance history.`}
-            </p>
+          <div className="space-y-4">
+            <div className={CARD}>
+              <p className="text-sm text-[#9CA3AF]">
+                {monthly.length === 0
+                  ? 'No milk sales or expenses recorded yet. Record a sale above to start building your profitability picture.'
+                  : `Showing ${monthly.length} month${monthly.length === 1 ? '' : 's'} of dairy finance history.`}
+              </p>
+            </div>
+
+            {soldCows.length > 0 && (
+              <div className={`${CARD} p-0 overflow-hidden`}>
+                <div className="px-4 py-3 border-b border-[#2A2D35] flex items-center gap-2">
+                  <PiggyBank size={14} className="text-emerald-400" />
+                  <p className="text-sm font-semibold text-white">{t('livestockSalesProfit')}</p>
+                </div>
+                <table className="w-full text-sm">
+                  <thead className="bg-[#17191F] text-[#6B7280] text-xs uppercase">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-medium">Cow</th>
+                      <th className="text-left px-4 py-2 font-medium">Exit Date</th>
+                      <th className="text-right px-4 py-2 font-medium">Sold For</th>
+                      <th className="text-right px-4 py-2 font-medium">Bought For</th>
+                      <th className="text-right px-4 py-2 font-medium">Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2A2D35]">
+                    {soldCows.map(c => (
+                      <tr key={c.id}>
+                        <td className="px-4 py-2 text-white">{c.cow_tag}{c.breed ? ` · ${c.breed}` : ''}</td>
+                        <td className="px-4 py-2 text-[#9CA3AF]">{c.exit_date ? fmtDate(c.exit_date) : '—'}</td>
+                        <td className="px-4 py-2 text-right text-[#D1D5DB]">{fmtK(c.exit_value)}</td>
+                        <td className="px-4 py-2 text-right text-[#D1D5DB]">{c.purchase_price != null ? fmtK(c.purchase_price) : '—'}</td>
+                        <td className={`px-4 py-2 text-right font-semibold ${
+                          c.profit == null ? 'text-[#6B7280]' : c.profit >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        }`}>
+                          {c.profit != null ? fmtK(c.profit) : 'Missing purchase price'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

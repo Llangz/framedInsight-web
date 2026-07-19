@@ -55,6 +55,9 @@
     "litersSold": "{count} L sold",
     "litersProduced": "{count} L produced",
     "noSalesYet": "No sales yet",
+    "livestockSalesProfit": "Livestock sales profit",
+    "soldAnimalsCount": "{count} sold",
+    "noAnimalsSoldYet": "No animals sold yet",
     "savedOffline": "Saved offline \u2014 will sync when connected."
   }
 }

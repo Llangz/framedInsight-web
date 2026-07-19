@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, TrendingUp, TrendingDown, DollarSign,
   Wheat, Syringe, Skull, ShoppingCart, BarChart3,
-  AlertTriangle, ChevronDown, Info, FileDown,
+  AlertTriangle, ChevronDown, Info, FileDown, PiggyBank,
 } from 'lucide-react'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -20,6 +20,7 @@ interface Batch {
   date_of_placement: string
   status: 'active' | 'sold' | 'culled'
   house_number?: string
+  purchase_price_per_bird?: number | null
 }
 
 interface Sale {
@@ -92,6 +93,18 @@ interface BatchPnL {
   netProfit: number
   margin: number
   profitable: boolean
+}
+
+// A no-longer-productive batch (sold off / culled) sold for meat is a
+// disposal event, same as selling a cow or a goat — sale price minus what
+// the batch cost to acquire is profit, distinct from the ongoing feed/health
+// operating P&L above. Computed all-time (not period-filtered) since
+// disposal is a one-off event, not a recurring monthly figure.
+interface BatchSaleProfit {
+  batch: Batch
+  totalSales: number
+  acquisitionCost: number | null
+  profit: number | null
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────
@@ -198,6 +211,24 @@ export default function FinanceClientComponent({
       batchBreakdown,
     }
   }, [sales, feedRecords, healthRecords, mortalityRecords, activeBatchIds, batches, cutoff])
+
+  // ── Batch sale profit (retired batches only — sale revenue minus what
+  // the batch cost to acquire). All-time, not period-filtered.
+  const batchSaleProfit = useMemo(() => {
+    const retired = batches.filter(b => b.status !== 'active')
+    const rows: BatchSaleProfit[] = retired.map(batch => {
+      const totalSales = sales
+        .filter(s => s.batch_id === batch.id)
+        .reduce((sum, s) => sum + s.total_price, 0)
+      const acquisitionCost = batch.purchase_price_per_bird != null
+        ? batch.initial_count * batch.purchase_price_per_bird
+        : null
+      const profit = acquisitionCost != null ? totalSales - acquisitionCost : null
+      return { batch, totalSales, acquisitionCost, profit }
+    })
+    const total = rows.reduce((sum, r) => sum + (r.profit ?? 0), 0)
+    return { rows, total }
+  }, [batches, sales])
 
   if (!batches.length) {
     return (
@@ -351,6 +382,52 @@ export default function FinanceClientComponent({
           </p>
         </div>
       </div>
+
+      {/* ── Batch Sale Profit (retired batches — sale revenue minus acquisition cost) ── */}
+      {batchSaleProfit.rows.length > 0 && (
+        <div className={`rounded-xl p-4 border ${batchSaleProfit.total >= 0 ? 'bg-emerald-950/20 border-emerald-900/40' : 'bg-red-950/20 border-red-900/40'}`}>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1.5">
+              <PiggyBank className={`w-4 h-4 ${batchSaleProfit.total >= 0 ? 'text-emerald-400' : 'text-red-400'}`} />
+              <span className="text-sm font-semibold text-white">Batch Sale Profit</span>
+            </div>
+            <p className={`text-lg font-bold ${batchSaleProfit.total >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {KES(batchSaleProfit.total)}
+            </p>
+          </div>
+          <p className="text-xs text-[#6B7280] mb-3">
+            Retired batches — total sales minus what each batch cost to acquire. Separate from Net Profit above, so acquisition cost isn't counted twice.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="text-[#6B7280] uppercase">
+                <tr>
+                  <th className="text-left py-1.5 pr-3 font-medium">Batch</th>
+                  <th className="text-left py-1.5 pr-3 font-medium">Status</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">Sales</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">Acquisition Cost</th>
+                  <th className="text-right py-1.5 font-medium">Profit</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#2A2D35]">
+                {batchSaleProfit.rows.map(r => (
+                  <tr key={r.batch.id}>
+                    <td className="py-1.5 pr-3 text-white">{r.batch.batch_name}</td>
+                    <td className="py-1.5 pr-3 text-[#9CA3AF] capitalize">{r.batch.status}</td>
+                    <td className="py-1.5 pr-3 text-right text-[#D1D5DB]">{KES(r.totalSales)}</td>
+                    <td className="py-1.5 pr-3 text-right text-[#D1D5DB]">{r.acquisitionCost != null ? KES(r.acquisitionCost) : '—'}</td>
+                    <td className={`py-1.5 text-right font-semibold ${
+                      r.profit == null ? 'text-[#6B7280]' : r.profit >= 0 ? 'text-emerald-400' : 'text-red-400'
+                    }`}>
+                      {r.profit != null ? KES(r.profit) : 'No acquisition cost recorded'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── Cost structure bar */}
       {pnl.totalRevenue > 0 && (

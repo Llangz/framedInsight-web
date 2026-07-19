@@ -49,7 +49,7 @@ export default async function DairyFinancePage() {
       .limit(30),
     supabase
       .from("cows")
-      .select("id, cow_tag, breed")
+      .select("id, cow_tag, breed, status, purchase_price, exit_date, exit_value, exit_reason")
       .eq("farm_id", farmId)
       .order("cow_tag"),
   ]);
@@ -58,6 +58,26 @@ export default async function DairyFinancePage() {
   const sales = unwrapOr(salesRes as any, [] as any[], "milk_sales");
   const expenses = unwrapOr(expensesRes as any, [] as any[], "dairy_expenses");
   const cows = unwrapOr(cowsRes as any, [] as any[], "cows");
+
+  // Livestock (animal) sales are a separate income stream from milk sales —
+  // a cow sold for KES 40,000 that was bought for KES 25,000 is a KES 15,000
+  // profit, distinct from and additive to the milk P&L in v_dairy_monthly_finance.
+  // Only cows with both a recorded exit value and a recorded purchase price
+  // can have a profit computed; cows missing either are still listed so the
+  // farmer can see the gap, but aren't counted in the total.
+  const soldCows = cows
+    .filter((c: any) => c.exit_value != null)
+    .map((c: any) => ({
+      id: c.id,
+      cow_tag: c.cow_tag,
+      breed: c.breed,
+      exit_date: c.exit_date,
+      exit_value: c.exit_value,
+      exit_reason: c.exit_reason,
+      purchase_price: c.purchase_price,
+      profit: c.purchase_price != null ? c.exit_value - c.purchase_price : null,
+    }))
+  const totalLivestockProfit = soldCows.reduce((sum: number, c: any) => sum + (c.profit ?? 0), 0)
 
   // Enrich sales with the cow tag for display, same lookup-map pattern
   // small ruminants' sales page uses for animal_tag.
@@ -87,6 +107,8 @@ export default async function DairyFinancePage() {
       currentMonth={currentMonth}
       sales={salesWithCowTag}
       expenses={expenses}
+      soldCows={soldCows}
+      totalLivestockProfit={totalLivestockProfit}
     />
   );
 }

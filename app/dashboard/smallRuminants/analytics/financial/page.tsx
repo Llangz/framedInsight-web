@@ -43,6 +43,16 @@ interface CostBreakdown {
   percentage: number;
 }
 
+interface SoldAnimal {
+  id: string;
+  tag: string | null;
+  purpose: string | null;
+  exit_date: string | null;
+  exit_value: number;
+  purchase_price: number | null;
+  profit: number | null;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function kes(n: number) { 
@@ -198,6 +208,8 @@ export default function FinancialOverviewPage() {
   const [metrics, setMetrics] = useState<FinancialMetrics | null>(null);
   const [profitByPurpose, setProfitByPurpose] = useState<ProfitByPurpose[]>([]);
   const [costBreakdown, setCostBreakdown] = useState<CostBreakdown[]>([]);
+  const [soldAnimals, setSoldAnimals] = useState<SoldAnimal[]>([]);
+  const [livestockSaleProfit, setLivestockSaleProfit] = useState(0);
 
   const loadData = useCallback(async (fId: string) => {
     setLoading(true);
@@ -228,6 +240,32 @@ export default function FinancialOverviewPage() {
         .eq("farm_id", fId);
 
       const totalRevenue = (sales || []).reduce((sum, s) => sum + s.total_price, 0);
+
+      // Livestock sale profit is a distinct figure from totalRevenue above:
+      // totalRevenue is gross sale proceeds (what operating revenue looks
+      // like), while this is sale price minus the animal's own purchase
+      // price — the capital gain/loss on disposing of the animal itself.
+      // Mixing the two into "Net Profit" would double-count the same
+      // shilling as both operating revenue and disposal profit, so it's
+      // kept as its own metric, same treatment as the dairy cows fix.
+      const { data: exitedAnimals } = await supabase
+        .from("small_ruminants")
+        .select("id, animal_tag, purpose, exit_date, exit_value, purchase_price")
+        .eq("farm_id", fId)
+        .not("exit_value", "is", null);
+
+      const soldAnimalsData: SoldAnimal[] = (exitedAnimals || []).map(a => ({
+        id: a.id,
+        tag: a.animal_tag,
+        purpose: a.purpose,
+        exit_date: a.exit_date,
+        exit_value: a.exit_value as number,
+        purchase_price: a.purchase_price,
+        profit: a.purchase_price != null ? (a.exit_value as number) - a.purchase_price : null,
+      }));
+      const totalLivestockSaleProfit = soldAnimalsData.reduce((sum, a) => sum + (a.profit ?? 0), 0);
+      setSoldAnimals(soldAnimalsData);
+      setLivestockSaleProfit(totalLivestockSaleProfit);
 
       // Load costs (health events with costs)
 const animalIds = activeAnimals.map(a => a.id);
@@ -430,6 +468,49 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
               color="slate"
             />
 
+            <FinancialCard
+              title="Livestock Sale Profit"
+              value={kes(livestockSaleProfit)}
+              subtitle={soldAnimals.length > 0 ? `${soldAnimals.length} animal${soldAnimals.length === 1 ? '' : 's'} sold — sale price minus purchase price` : 'No animals sold yet'}
+              icon={PiggyBank}
+              color={livestockSaleProfit >= 0 ? "emerald" : "red"}
+              trend={livestockSaleProfit >= 0 ? "positive" : "negative"}
+            />
+
+            {soldAnimals.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><PiggyBank size={15} /> Sold Animals — Profit Breakdown</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-slate-500 uppercase">
+                      <tr>
+                        <th className="text-left py-1.5 pr-3 font-semibold">Animal</th>
+                        <th className="text-left py-1.5 pr-3 font-semibold">Purpose</th>
+                        <th className="text-right py-1.5 pr-3 font-semibold">Sold For</th>
+                        <th className="text-right py-1.5 pr-3 font-semibold">Bought For</th>
+                        <th className="text-right py-1.5 font-semibold">Profit</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {soldAnimals.map(a => (
+                        <tr key={a.id}>
+                          <td className="py-1.5 pr-3 text-slate-900 font-medium">{a.tag ?? '—'}</td>
+                          <td className="py-1.5 pr-3 text-slate-600 capitalize">{a.purpose ?? '—'}</td>
+                          <td className="py-1.5 pr-3 text-right text-slate-700">{kes(a.exit_value)}</td>
+                          <td className="py-1.5 pr-3 text-right text-slate-700">{a.purchase_price != null ? kes(a.purchase_price) : '—'}</td>
+                          <td className={`py-1.5 text-right font-semibold ${
+                            a.profit == null ? 'text-slate-400' : a.profit >= 0 ? 'text-emerald-700' : 'text-red-700'
+                          }`}>
+                            {a.profit != null ? kes(a.profit) : 'Missing purchase price'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Detailed Analytics */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ProfitByPurposeTable data={profitByPurpose} />
@@ -444,6 +525,7 @@ const totalHealthCosts = (healthCosts || []).reduce((sum, h) => sum + (h.cost ||
                 <li>• Feed costs estimated at KES 50/day per animal (adjust based on your actuals)</li>
                 <li>• Health costs from recorded veterinary expenses</li>
                 <li>• ROI = (Revenue - Costs) / Costs × 100</li>
+                <li>• Livestock Sale Profit (sale price − purchase price) is separate from Total Revenue / Net Profit above, to avoid double-counting the same sale as both operating income and disposal profit</li>
               </ul>
             </div>
           </>
