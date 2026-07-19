@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import HerdClient from './HerdClient'
+import CowsClient from '../cows/CowsClient'
 
 export default async function HerdPage() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  
+
   if (!user) {
     redirect('/auth/login')
   }
@@ -22,7 +22,9 @@ export default async function HerdPage() {
     redirect('/onboarding')
   }
 
-  // Get all cows
+  // CowsClient reads real column names directly (name, cow_tag, breed,
+  // birth_date, status, created_at) — no more remapping into a stale
+  // DairyAnimal shape the way the retired HerdClient needed.
   const { data: cows, error: cowsError } = await supabase
     .from('cows')
     .select('*')
@@ -33,26 +35,9 @@ export default async function HerdPage() {
     console.error('Error loading cows:', cowsError.message)
   }
 
-  // Map cows data to the expected interface
-  const animals = (cows || []).map(cow => ({
-    id: cow.id,
-    animal_id: cow.name || cow.cow_tag,
-    breed: cow.breed || 'Unknown',
-    date_of_birth: cow.birth_date || new Date().toISOString().split('T')[0],
-    status: cow.status || 'active',
-    purchase_price: cow.purchase_price || 0
-  }))
-
-  const stats = {
-    total: animals.length,
-    active: animals.filter(c => c.status === 'active').length,
-    dry: animals.filter(c => c.status === 'dry').length,
-    heifers: animals.filter(c => c.status === 'heifer').length
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HerdClient initialAnimals={animals} initialStats={stats} />
+    <div className="min-h-screen bg-obsidian">
+      <CowsClient initialCows={cows || []} />
     </div>
   )
 }

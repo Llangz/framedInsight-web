@@ -15,14 +15,26 @@ export default async function DairyDashboardPage() {
 
   const supabase = await createClient()
 
-  // Fetch cows
+  // Fetch cows. Sold/deceased cows are excluded from the herd entirely, but
+  // dry/heifer cows must stay in — the old .eq('status','active') here meant
+  // dry_cows could never be non-zero below, since dry cows were filtered out
+  // before the count ever ran.
   const { data: cows } = await supabase
     .from('cows')
     .select('id, cow_tag, name, purpose, status')
     .eq('farm_id', access.farmId!)
-    .eq('status', 'active')
+    .not('status', 'in', '(sold,deceased)')
 
-  const allCows = cows ?? []
+  const allCowsRaw = cows ?? []
+  // dam_id scoping for calves below needs every cow this farm has ever
+  // owned (including sold/deceased dams), not just the still-present ones.
+  const { data: allFarmCowIdsRows } = await supabase
+    .from('cows')
+    .select('id')
+    .eq('farm_id', access.farmId!)
+  const allFarmCowIds = (allFarmCowIdsRows ?? []).map(c => c.id)
+
+  const allCows = allCowsRaw
   const cowIds = allCows.map(c => c.id)
 
   const today = new Date().toISOString().split('T')[0]
@@ -47,7 +59,7 @@ export default async function DairyDashboardPage() {
     )
   }
 
-  const [milkRes, breedingRes, vetRes, healthRes] = await Promise.all([
+  const [milkRes, breedingRes, vetRes, healthRes, calvesRes] = await Promise.all([
     supabase
       .from('milk_records')
       .select('record_date, total_milk')
@@ -73,12 +85,21 @@ export default async function DairyDashboardPage() {
       .in('cow_id', cowIds)
       .gte('treatment_date', ninetyDaysAgo)
       .order('treatment_date', { ascending: false }),
+    // calves has no farm_id column and no tracked RLS migration in this
+    // repo — scope explicitly by dam_id membership rather than trusting
+    // an unverified RLS policy to do it.
+    allFarmCowIds.length > 0
+      ? supabase.from('calves').select('id, status').in('dam_id', allFarmCowIds)
+      : Promise.resolve({ data: [] as { id: string; status: string | null }[] }),
   ])
 
   const milkRecords = milkRes.data ?? []
   const breedingEvents = breedingRes.data ?? []
   const vetVisits = vetRes.data ?? []
   const healthRecords = healthRes.data ?? []
+  const calvesInDevelopment = (calvesRes.data ?? []).filter(
+    c => c.status !== 'promoted' && c.status !== 'sold' && c.status !== 'deceased'
+  )
 
   // Stats
   const todayMilk = milkRecords
@@ -98,11 +119,11 @@ export default async function DairyDashboardPage() {
 
   const stats = {
     total_cows: allCows.length,
-    producing_cows: allCows.filter(c => c.purpose === 'dairy').length,
-    dry_cows: allCows.filter(c => c.purpose === 'dry').length,
+    producing_cows: allCows.filter(c => c.status === 'active').length,
+    dry_cows: allCows.filter(c => c.status === 'dry').length,
     today_milk: parseFloat(todayMilk.toFixed(1)),
     avg_daily_milk: avgDailyMilk,
-    calves: allCows.filter(c => c.purpose === 'calf' || c.purpose === 'heifer').length,
+    calves: calvesInDevelopment.length,
   }
 
   // Alerts from health records

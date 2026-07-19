@@ -78,6 +78,7 @@ const ENTERPRISES: EnterpriseConfig[] = [
     icon: Milk,
     navItems: [
       { label: 'Herd',     href: '/dashboard/dairy',         labelKey: 'dairy_herd' },
+      { label: 'Calves',   href: '/dashboard/dairy/calves',  labelKey: 'dairy_calves' },
       { label: 'Milk',     href: '/dashboard/dairy/milk',    labelKey: 'dairy_milk' },
       { label: 'Finance',  href: '/dashboard/dairy/finance', labelKey: 'dairy_finance' },
       { label: 'Health',   href: '/dashboard/dairy/health',  labelKey: 'dairy_health' },
@@ -90,6 +91,7 @@ const ENTERPRISES: EnterpriseConfig[] = [
       labelKey: 'dairy_recordActivity',
       options: [
         { label: 'Add cow',        Icon: PawPrint,    href: '/dashboard/dairy/add-cow' },
+        { label: 'Record calf birth', Icon: Baby,     href: '/dashboard/dairy/calves/add' },
         { label: 'Record milk',    Icon: Milk,        href: '/dashboard/dairy/milk/record' },
         { label: 'Health check',   Icon: Stethoscope, href: '/dashboard/dairy/health' },
         { label: 'Record breeding', Icon: HeartPulse, href: '/dashboard/dairy/breeding' },

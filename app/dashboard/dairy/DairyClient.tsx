@@ -61,7 +61,7 @@ export default function DairyClient({ stats, alerts, upcoming }: Props) {
       value: stats.calves,
       sub: 'in development',
       Icon: Milk,
-      href: '/dashboard/dairy/herd',
+      href: '/dashboard/dairy/calves',
     },
   ]
 
@@ -125,6 +125,7 @@ export default function DairyClient({ stats, alerts, upcoming }: Props) {
               {[
                 { label: 'Record milk',  Icon: Droplets,    href: '/dashboard/dairy/milk/record'  },
                 { label: 'Add cow',      Icon: PlusCircle,  href: '/dashboard/dairy/add-cow'      },
+                { label: 'Record calf birth', Icon: Milk,   href: '/dashboard/dairy/calves/add'   },
                 { label: 'Health check', Icon: Stethoscope, href: '/dashboard/dairy/health'       },
                 { label: 'Breeding',     Icon: Heart,       href: '/dashboard/dairy/breeding'     },
               ].map(({ label, Icon, href }) => (
