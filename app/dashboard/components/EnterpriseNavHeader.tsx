@@ -140,6 +140,7 @@ const ENTERPRISES: EnterpriseConfig[] = [
       { label: 'Weights',   href: '/dashboard/smallRuminants/weights' },
       { label: 'Milk',      href: '/dashboard/smallRuminants/milk' },
       { label: 'Sales',     href: '/dashboard/smallRuminants/sales' },
+      { label: 'Finance',   href: '/dashboard/smallRuminants/analytics/financial' },
     ],
     primaryAction: {
       type: 'dropdown',
