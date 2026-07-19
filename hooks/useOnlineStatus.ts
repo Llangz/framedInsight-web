@@ -16,7 +16,9 @@ import { useState, useEffect, useRef } from 'react'
  * already falls back to the offline queue on its own failed request.
  */
 export function useOnlineStatus(): boolean {
-  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  // Start optimistic rather than trusting navigator.onLine's initial value
+  // outright — see the mount-time verification below for why.
+  const [isOnline, setIsOnline] = useState<boolean>(true)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -40,6 +42,17 @@ export function useOnlineStatus(): boolean {
       } catch {
         if (!cancelled) setIsOnline(false)
       }
+    }
+
+    // navigator.onLine's *initial* value (unlike the 'offline' event) was
+    // never verified — it was trusted outright, so a browser reporting it
+    // incorrectly at page-load time (tab resumed from background, VPN/proxy
+    // quirks, some network drivers) left the banner stuck on "offline" with
+    // no 'online' event ever coming along to fix it, since nothing actually
+    // transitioned from the browser's point of view. Run it through the same
+    // real-request check used everywhere else here before believing it.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      verifyOffline()
     }
 
     function handleOnline() {
