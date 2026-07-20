@@ -13,7 +13,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Calendar, Baby, CheckCircle2, Users, Rabbit, Crown, Dna, Lightbulb, type LucideIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -78,21 +77,21 @@ function BreedingMetricCard({
   color?: "purple" | "blue" | "emerald" | "amber";
 }) {
   const colorStyles = {
-    purple: "bg-purple-50 text-purple-700 border-purple-200",
-    blue: "bg-blue-50 text-blue-700 border-blue-200",
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    amber: "bg-amber-50 text-amber-700 border-amber-200",
+    purple: "border-purple-900/40 text-purple-400",
+    blue: "border-blue-900/40 text-blue-400",
+    emerald: "border-emerald-900/40 text-emerald-400",
+    amber: "border-amber-900/40 text-amber-400",
   };
 
   return (
-    <div className={`rounded-xl border p-4 ${colorStyles[color]}`}>
+    <div className={`rounded-xl border bg-[#0D0F14] p-4 ${colorStyles[color]}`}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-xs font-bold uppercase tracking-wide opacity-70">{title}</p>
-          <p className="text-2xl font-bold mt-1">{value}</p>
-          <p className="text-xs mt-1 opacity-80">{subtitle}</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">{title}</p>
+          <p className="text-2xl font-bold mt-1 text-white">{value}</p>
+          <p className="text-xs mt-1 text-[#6B7280]">{subtitle}</p>
         </div>
-        <Icon size={20} className="opacity-50" />
+        <Icon size={20} className="opacity-70" />
       </div>
     </div>
   );
@@ -104,29 +103,29 @@ function SirePerformanceTable({ sires }: { sires: SirePerformance[] }) {
   const sorted = [...sires].sort((a, b) => b.total_offspring - a.total_offspring);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Rabbit size={15} /> Sire Performance Comparison</h3>
+    <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5"><Rabbit size={15} /> Sire Performance Comparison</h3>
       <div className="space-y-2">
         {sorted.slice(0, 5).map((s, i) => (
-          <div key={i} className="border border-slate-100 rounded-lg p-3">
+          <div key={i} className="border border-[#2A2D35] rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex-1">
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold text-white">
                   {s.sire_tag || "External Sire"} {s.sire_breed && `(${s.sire_breed})`}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#6B7280]">
                   {s.services} services • {s.successful_births} births
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold text-purple-600">{s.total_offspring} kids</p>
-                <p className="text-xs text-slate-400">{s.conception_rate.toFixed(0)}% success</p>
+                <p className="text-sm font-bold text-purple-400">{s.total_offspring} kids</p>
+                <p className="text-xs text-[#4B5563]">{s.conception_rate.toFixed(0)}% success</p>
               </div>
             </div>
             <div className="flex items-center gap-4 text-xs">
               <div>
-                <span className="text-slate-500">Avg litter: </span>
-                <span className="font-semibold text-slate-700">{s.avg_litter_size.toFixed(1)}</span>
+                <span className="text-[#6B7280]">Avg litter: </span>
+                <span className="font-semibold text-[#D1D5DB]">{s.avg_litter_size.toFixed(1)}</span>
               </div>
             </div>
           </div>
@@ -142,23 +141,23 @@ function TopDamsTable({ dams }: { dams: DamPerformance[] }) {
   const sorted = [...dams].sort((a, b) => b.total_offspring - a.total_offspring);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Crown size={15} /> Top Producing Does/Ewes</h3>
+    <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5"><Crown size={15} /> Top Producing Does/Ewes</h3>
       <div className="space-y-2">
         {sorted.slice(0, 5).map((d, i) => (
-          <div key={d.dam_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
-            <span className="text-lg font-bold text-slate-300 w-6">{i + 1}</span>
+          <div key={d.dam_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#17191F]">
+            <span className="text-lg font-bold text-[#4B5563] w-6">{i + 1}</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-900 truncate">
+              <p className="text-sm font-semibold text-white truncate">
                 {d.dam_tag} {d.dam_name && `(${d.dam_name})`}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[#6B7280]">
                 {d.total_kiddings} births • Last: {d.last_kidding_date ? formatDate(d.last_kidding_date) : "Never"}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold text-emerald-600">{d.total_offspring} kids</p>
-              <p className="text-xs text-slate-400">
+              <p className="text-sm font-bold text-emerald-400">{d.total_offspring} kids</p>
+              <p className="text-xs text-[#4B5563]">
                 {d.avg_kidding_interval ? `${Math.round(d.avg_kidding_interval)}d interval` : "—"}
               </p>
             </div>
@@ -183,20 +182,20 @@ function GeneticProgressChart({ progress }: { progress: GeneticProgress[] }) {
     "bg-purple-500",
     "bg-amber-500",
     "bg-orange-500",
-    "bg-slate-400"
+    "bg-[#3f3f46]"
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Dna size={15} /> Genetic Improvement Progress</h3>
+    <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5"><Dna size={15} /> Genetic Improvement Progress</h3>
       <div className="space-y-3">
         {sorted.map((p, i) => (
           <div key={p.upgrade_level}>
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-medium text-slate-700">{p.upgrade_level}</span>
-              <span className="text-slate-900 font-bold">{p.count} animals ({p.percentage.toFixed(0)}%)</span>
+              <span className="font-medium text-[#D1D5DB]">{p.upgrade_level}</span>
+              <span className="text-white font-bold">{p.count} animals ({p.percentage.toFixed(0)}%)</span>
             </div>
-            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-[#17191F] rounded-full overflow-hidden">
               <div 
                 className={`h-full ${colors[i]} transition-all duration-500`}
                 style={{ width: `${p.percentage}%` }}
@@ -206,8 +205,8 @@ function GeneticProgressChart({ progress }: { progress: GeneticProgress[] }) {
         ))}
       </div>
       
-      <div className="mt-4 pt-3 border-t border-slate-100">
-        <p className="text-xs text-slate-600 flex items-center gap-1.5">
+      <div className="mt-4 pt-3 border-t border-[#2A2D35]">
+        <p className="text-xs text-[#9CA3AF] flex items-center gap-1.5">
           <Lightbulb size={13} className="flex-shrink-0" /> <strong>Goal:</strong> Increase Pure & F4 animals through selective breeding
         </p>
       </div>
@@ -433,21 +432,14 @@ export default function BreedingAnalyticsPage() {
   }, [router, loadData]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-[#0A0C10]">
+      {/* EnterpriseNavHeader (DashboardShell) already renders the module's
+          tabs above every route, so this is a title strip, not a second
+          nav — see the financial analytics page for the same convention. */}
+      <div className="bg-[#0D0F14] border-b border-[#2A2D35] sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/smallRuminants"
-              className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200"
-            >
-              ←
-            </Link>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900">Breeding Analytics</h1>
-              <p className="text-xs text-slate-500 mt-0.5">Sire performance, genetics & intervals</p>
-            </div>
-          </div>
+          <h1 className="text-lg font-bold text-white leading-none">Breeding Analytics</h1>
+          <p className="text-xs text-[#6B7280] mt-0.5">Sire performance, genetics & intervals</p>
         </div>
       </div>
 
@@ -456,13 +448,13 @@ export default function BreedingAnalyticsPage() {
         {loading && (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-32 bg-white rounded-xl border animate-pulse" />
+              <div key={i} className="h-32 bg-[#0D0F14] rounded-xl border border-[#2A2D35] animate-pulse" />
             ))}
           </div>
         )}
 
         {error && (
-          <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+          <div className="rounded-xl bg-red-950/30 border border-red-900/40 p-4 text-sm text-red-300">
             {error}
           </div>
         )}

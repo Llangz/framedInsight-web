@@ -33,12 +33,16 @@ function formatDate(d: string | null) {
 
 function kes(n: number) { return `KES ${n.toLocaleString("en-KE")}`; }
 
+// Dark-card chip convention (text-*-400 on bg-*-950/40 with a matching
+// low-opacity border) — same treatment as the stat-card borders in
+// FinancialCard and the sale-type badges on the dairy/poultry finance
+// pages, replacing the light pastel-fill chips this page used before.
 const SALE_TYPE_STYLE: Record<string, { icon: LucideIcon; color: string; bg: string; border: string }> = {
-  "live animal": { icon: Rabbit,    color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
-  "meat":        { icon: Package,   color: "text-orange-700",  bg: "bg-orange-50",  border: "border-orange-200" },
-  "milk":        { icon: Milk,      color: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200" },
-  "breeding":    { icon: HeartPulse, color: "text-purple-700",  bg: "bg-purple-50",  border: "border-purple-200" },
-  "default":     { icon: Banknote,  color: "text-slate-700",   bg: "bg-slate-50",   border: "border-slate-200" },
+  "live animal": { icon: Rabbit,     color: "text-emerald-400", bg: "bg-emerald-950/40", border: "border-emerald-900/40" },
+  "meat":        { icon: Package,    color: "text-orange-400",  bg: "bg-orange-950/40",  border: "border-orange-900/40" },
+  "milk":        { icon: Milk,       color: "text-blue-400",    bg: "bg-blue-950/40",    border: "border-blue-900/40" },
+  "breeding":    { icon: HeartPulse, color: "text-purple-400",  bg: "bg-purple-950/40",  border: "border-purple-900/40" },
+  "default":     { icon: Banknote,   color: "text-[#9CA3AF]",   bg: "bg-[#17191F]",      border: "border-[#2A2D35]" },
 };
 
 function saleStyle(type: string | null) {
@@ -48,31 +52,10 @@ function saleStyle(type: string | null) {
 }
 
 const PAYMENT_BADGE: Record<string, string> = {
-  paid:    "bg-emerald-100 text-emerald-700",
-  pending: "bg-yellow-100 text-yellow-700",
-  partial: "bg-orange-100 text-orange-700",
+  paid:    "bg-emerald-950/50 text-emerald-300",
+  pending: "bg-amber-950/50 text-amber-300",
+  partial: "bg-orange-950/50 text-orange-300",
 };
-
-function SubNav({ active }: { active: string }) {
-  return (
-    <div className="flex gap-1 mt-3 overflow-x-auto pb-0.5">
-      {[
-        { label: "Flock",    href: "/dashboard/smallRuminants" },
-        { label: "Health",   href: "/dashboard/smallRuminants/health" },
-        { label: "Breeding", href: "/dashboard/smallRuminants/breeding" },
-        { label: "Weights",  href: "/dashboard/smallRuminants/weights" },
-        { label: "Milk",     href: "/dashboard/smallRuminants/milk" },
-        { label: "Sales",    href: "/dashboard/smallRuminants/sales" },
-      ].map(l => (
-        <Link key={l.href} href={l.href}
-          className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-            l.href === active ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700"
-          }`}
-        >{l.label}</Link>
-      ))}
-    </div>
-  );
-}
 
 function RevenueBanner({ sales }: { sales: SaleRecord[] }) {
   const now = new Date();
@@ -91,20 +74,20 @@ function RevenueBanner({ sales }: { sales: SaleRecord[] }) {
   });
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Revenue Summary</p>
+    <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-4">
+      <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wide mb-3">Revenue Summary</p>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <p className="text-xl font-bold text-slate-900">{kes(totalMonth)}</p>
-          <p className="text-xs text-slate-500">This month</p>
+          <p className="text-xl font-bold text-white">{kes(totalMonth)}</p>
+          <p className="text-xs text-[#6B7280]">This month</p>
         </div>
         <div>
-          <p className="text-xl font-bold text-slate-900">{kes(totalAll)}</p>
-          <p className="text-xs text-slate-500">All time</p>
+          <p className="text-xl font-bold text-white">{kes(totalAll)}</p>
+          <p className="text-xs text-[#6B7280]">All time</p>
         </div>
         <div>
-          <p className={`text-xl font-bold ${pending > 0 ? "text-amber-600" : "text-emerald-600"}`}>{kes(pending)}</p>
-          <p className="text-xs text-slate-500">Pending payment</p>
+          <p className={`text-xl font-bold ${pending > 0 ? "text-amber-400" : "text-emerald-400"}`}>{kes(pending)}</p>
+          <p className="text-xs text-[#6B7280]">Pending payment</p>
         </div>
       </div>
 
@@ -128,18 +111,18 @@ function SaleCard({ sale }: { sale: SaleRecord }) {
   const [expanded, setExpanded] = useState(false);
   const style = saleStyle(sale.sale_type);
   const paymentBadge = sale.payment_status
-    ? PAYMENT_BADGE[sale.payment_status.toLowerCase()] ?? "bg-slate-100 text-slate-500"
+    ? PAYMENT_BADGE[sale.payment_status.toLowerCase()] ?? "bg-[#17191F] text-[#6B7280]"
     : null;
 
   return (
-    <div className={`rounded-xl border bg-white overflow-hidden ${style.border}`}>
+    <div className={`rounded-xl border bg-[#0D0F14] overflow-hidden ${style.border}`}>
       <button className="w-full text-left p-4" onClick={() => setExpanded(v => !v)}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2">
             <span className={`flex-shrink-0 ${style.color}`}><style.icon size={18} /></span>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-bold text-slate-900">{kes(sale.total_price)}</p>
+                <p className="text-sm font-bold text-white">{kes(sale.total_price)}</p>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${style.bg} ${style.color}`}>
                   {sale.sale_type}
                 </span>
@@ -149,11 +132,11 @@ function SaleCard({ sale }: { sale: SaleRecord }) {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-[#6B7280] mt-0.5">
                 {sale.animal_name ?? sale.animal_tag ?? "Flock sale"}
-                {sale.buyer_name && <span className="text-slate-400"> · {sale.buyer_name}</span>}
+                {sale.buyer_name && <span className="text-[#4B5563]"> · {sale.buyer_name}</span>}
               </p>
-              <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs text-slate-400">
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs text-[#4B5563]">
                 <span>{formatDate(sale.sale_date)}</span>
                 {sale.live_weight_kg && <span>· {sale.live_weight_kg}kg live</span>}
                 {sale.price_per_kg && <span>· KES {sale.price_per_kg}/kg</span>}
@@ -161,12 +144,12 @@ function SaleCard({ sale }: { sale: SaleRecord }) {
               </div>
             </div>
           </div>
-          <span className="text-slate-300 flex-shrink-0">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
+          <span className="text-[#4B5563] flex-shrink-0">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
         </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-100 px-4 pb-3 pt-2 space-y-1.5">
+        <div className="border-t border-[#2A2D35] px-4 pb-3 pt-2 space-y-1.5">
           {[
             ["Buyer",           sale.buyer_name],
             ["Buyer contact",   sale.buyer_contact],
@@ -180,8 +163,8 @@ function SaleCard({ sale }: { sale: SaleRecord }) {
             ["Notes",           sale.notes],
           ].filter(([, v]) => v).map(([label, value]) => (
             <div key={label as string} className="flex gap-2 text-xs">
-              <span className="text-slate-400 w-28 flex-shrink-0">{label}</span>
-              <span className="text-slate-700">{value}</span>
+              <span className="text-[#4B5563] w-28 flex-shrink-0">{label}</span>
+              <span className="text-[#D1D5DB]">{value}</span>
             </div>
           ))}
         </div>
@@ -200,23 +183,22 @@ export default function SalesClient({ initialSales }: { initialSales: SaleRecord
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard/smallRuminants" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors">←</Link>
-              <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-none">Sales & Revenue</h1>
-                <p className="text-xs text-slate-500 mt-0.5">Live sales · Meat · Milk · Breeding stock</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <a href="/api/reports/farm-statement?enterprise=small_ruminants&months=6" className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">Statement</a>
-              <Link href="/dashboard/smallRuminants/sales/add" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record Sale</Link>
-            </div>
+    <div className="min-h-screen bg-[#0A0C10]">
+      {/* EnterpriseNavHeader (DashboardShell) already renders the Flock/
+          Health/Breeding/Weights/Milk/Sales tabs above every route in this
+          module, so this bar is a title strip + page actions, not a second
+          nav — matches the pattern used by the dairy/poultry/coffee finance
+          pages and the small-ruminants Flock page. */}
+      <div className="bg-[#0D0F14] border-b border-[#2A2D35] sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-white leading-none">Sales & Revenue</h1>
+            <p className="text-xs text-[#6B7280] mt-0.5">Live sales · Meat · Milk · Breeding stock</p>
           </div>
-          <SubNav active="/dashboard/smallRuminants/sales" />
+          <div className="flex items-center gap-2">
+            <a href="/api/reports/farm-statement?enterprise=small_ruminants&months=6" className="text-xs font-semibold px-3 py-2 rounded-lg border border-[#2A2D35] text-[#D1D5DB] hover:bg-[#17191F] transition-colors">Statement</a>
+            <Link href="/dashboard/smallRuminants/sales/add" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record Sale</Link>
+          </div>
         </div>
       </div>
 
@@ -229,7 +211,7 @@ export default function SalesClient({ initialSales }: { initialSales: SaleRecord
             {saleTypes.map(t => (
               <button key={t} onClick={() => setTypeFilter(t)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border transition-all capitalize ${
-                  typeFilter === t ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  typeFilter === t ? "bg-emerald-600 text-white border-emerald-600" : "bg-[#0D0F14] text-[#9CA3AF] border-[#2A2D35] hover:bg-[#17191F] hover:text-white"
                 }`}
               >
                 {t !== "all" && (() => { const Icon = saleStyle(t).icon; return <Icon size={12} />; })()}
@@ -240,10 +222,10 @@ export default function SalesClient({ initialSales }: { initialSales: SaleRecord
         )}
 
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-slate-400">
+          <div className="text-center py-12 text-[#4B5563]">
             <Banknote size={28} className="mx-auto mb-2" />
             <p className="text-sm">No sales recorded yet</p>
-            <Link href="/dashboard/smallRuminants/sales/add" className="mt-3 inline-block text-xs font-semibold text-emerald-600 hover:underline">Record first sale →</Link>
+            <Link href="/dashboard/smallRuminants/sales/add" className="mt-3 inline-block text-xs font-semibold text-emerald-400 hover:underline">Record first sale →</Link>
           </div>
         ) : (
           <div className="space-y-3">{filtered.map(s => <SaleCard key={s.id} sale={s} />)}</div>

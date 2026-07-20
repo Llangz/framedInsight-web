@@ -14,7 +14,6 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { TrendingUp, TrendingDown, Minus, Syringe, Baby, Rabbit, AlertTriangle, Banknote, Trophy, type LucideIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -89,25 +88,25 @@ function MetricCard({
   color?: "emerald" | "blue" | "amber" | "red" | "purple";
 }) {
   const colorStyles = {
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    blue: "bg-blue-50 text-blue-700 border-blue-200",
-    amber: "bg-amber-50 text-amber-700 border-amber-200",
-    red: "bg-red-50 text-red-700 border-red-200",
-    purple: "bg-purple-50 text-purple-700 border-purple-200",
+    emerald: "border-emerald-900/40 text-emerald-400",
+    blue: "border-blue-900/40 text-blue-400",
+    amber: "border-amber-900/40 text-amber-400",
+    red: "border-red-900/40 text-red-400",
+    purple: "border-purple-900/40 text-purple-400",
   };
 
   const TrendIcon = { up: TrendingUp, down: TrendingDown, neutral: Minus };
   const TrendGlyph = trend ? TrendIcon[trend] : null;
 
   return (
-    <div className={`rounded-xl border p-4 ${colorStyles[color]}`}>
+    <div className={`rounded-xl border bg-[#0D0F14] p-4 ${colorStyles[color]}`}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-xs font-bold uppercase tracking-wide opacity-70">{title}</p>
-          <p className="text-2xl font-bold mt-1">{value}</p>
-          <p className="text-xs mt-1 opacity-80">{subtitle}</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">{title}</p>
+          <p className="text-2xl font-bold mt-1 text-white">{value}</p>
+          <p className="text-xs mt-1 text-[#6B7280]">{subtitle}</p>
         </div>
-        <Icon size={20} className="opacity-50" />
+        <Icon size={20} className="opacity-70" />
       </div>
       {trend && TrendGlyph && (
         <div className="mt-2 pt-2 border-t border-current opacity-30">
@@ -125,25 +124,25 @@ function GrowthRateTable({ animals }: { animals: AnimalGrowth[] }) {
   const top5 = sorted.slice(0, 5);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Trophy size={15} /> Top Growth Performers</h3>
+    <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5"><Trophy size={15} /> Top Growth Performers</h3>
       <div className="space-y-2">
         {top5.map((a, i) => (
-          <div key={a.animal_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
-            <span className="text-lg font-bold text-slate-300 w-6">{i + 1}</span>
+          <div key={a.animal_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#17191F]">
+            <span className="text-lg font-bold text-[#4B5563] w-6">{i + 1}</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-900 truncate">
+              <p className="text-sm font-semibold text-white truncate">
                 {a.animal_tag} {a.name && `(${a.name})`}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[#6B7280]">
                 {a.species} · {a.breed} · {Math.floor(a.days_alive / 30)}mo old
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold text-emerald-600">
+              <p className="text-sm font-bold text-emerald-400">
                 {a.avg_daily_gain ? `${a.avg_daily_gain.toFixed(0)}g/day` : "—"}
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#4B5563]">
                 {a.latest_weight ? `${a.latest_weight.toFixed(1)}kg` : "No weight"}
               </p>
             </div>
@@ -162,16 +161,16 @@ function VaccinationCompliance({ animals }: { animals: VaccinationStatus[] }) {
   const percentage = total > 0 ? (compliant / total) * 100 : 0;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Syringe size={15} /> Vaccination Compliance</h3>
+    <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5"><Syringe size={15} /> Vaccination Compliance</h3>
       
       {/* Progress bar */}
       <div className="mb-4">
         <div className="flex items-center justify-between text-xs mb-1">
-          <span className="text-slate-600">Compliant: {compliant}/{total}</span>
-          <span className="font-bold text-slate-900">{percentage.toFixed(0)}%</span>
+          <span className="text-[#9CA3AF]">Compliant: {compliant}/{total}</span>
+          <span className="font-bold text-white">{percentage.toFixed(0)}%</span>
         </div>
-        <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-3 bg-[#17191F] rounded-full overflow-hidden">
           <div 
             className={`h-full transition-all duration-500 ${
               percentage >= 80 ? "bg-emerald-500" : percentage >= 50 ? "bg-amber-500" : "bg-red-500"
@@ -183,13 +182,13 @@ function VaccinationCompliance({ animals }: { animals: VaccinationStatus[] }) {
 
       {/* Non-compliant animals */}
       {animals.filter(a => !a.is_compliant).length > 0 && (
-        <div className="border-t border-slate-100 pt-3">
-          <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1"><AlertTriangle size={12} /> Needs Vaccination:</p>
+        <div className="border-t border-[#2A2D35] pt-3">
+          <p className="text-xs font-semibold text-[#6B7280] mb-2 flex items-center gap-1"><AlertTriangle size={12} /> Needs Vaccination:</p>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {animals.filter(a => !a.is_compliant).slice(0, 5).map(a => (
               <div key={a.animal_id} className="flex items-center justify-between text-xs py-1">
-                <span className="text-slate-700">{a.animal_tag}</span>
-                <span className="text-slate-400">
+                <span className="text-[#D1D5DB]">{a.animal_tag}</span>
+                <span className="text-[#4B5563]">
                   {a.days_since_vaccination 
                     ? `${a.days_since_vaccination}d overdue` 
                     : "Never vaccinated"}
@@ -210,25 +209,25 @@ function KiddingPerformance({ does }: { does: KiddingPerformance[] }) {
   const top5 = sorted.slice(0, 5);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><Baby size={15} /> Top Producers (Kidding)</h3>
+    <div className="bg-[#0D0F14] rounded-xl border border-[#2A2D35] p-4">
+      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5"><Baby size={15} /> Top Producers (Kidding)</h3>
       <div className="space-y-2">
         {top5.map((d, i) => (
-          <div key={d.dam_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
-            <span className="text-lg font-bold text-slate-300 w-6">{i + 1}</span>
+          <div key={d.dam_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#17191F]">
+            <span className="text-lg font-bold text-[#4B5563] w-6">{i + 1}</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-900 truncate">
+              <p className="text-sm font-semibold text-white truncate">
                 {d.dam_tag} {d.dam_name && `(${d.dam_name})`}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[#6B7280]">
                 Last kidding: {d.last_kidding_date ? formatDate(d.last_kidding_date) : "Never"}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold text-purple-600">
+              <p className="text-sm font-bold text-purple-400">
                 {d.total_offspring} kids
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#4B5563]">
                 Avg {d.avg_litter_size.toFixed(1)} per birth
               </p>
             </div>
@@ -436,22 +435,14 @@ export default function FlockPerformancePage() {
   }, [router, loadData]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-[#0A0C10]">
+      {/* EnterpriseNavHeader (DashboardShell) already renders the module's
+          tabs above every route, so this is a title strip, not a second
+          nav — see the financial analytics page for the same convention. */}
+      <div className="bg-[#0D0F14] border-b border-[#2A2D35] sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/smallRuminants"
-              className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
-            >
-              ←
-            </Link>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900 leading-none">Flock Performance</h1>
-              <p className="text-xs text-slate-500 mt-0.5">Analytics & insights</p>
-            </div>
-          </div>
+          <h1 className="text-lg font-bold text-white leading-none">Flock Performance</h1>
+          <p className="text-xs text-[#6B7280] mt-0.5">Analytics & insights</p>
         </div>
       </div>
 
@@ -461,13 +452,13 @@ export default function FlockPerformancePage() {
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="h-32 bg-white rounded-xl border border-slate-200 animate-pulse" />
+              <div key={i} className="h-32 bg-[#0D0F14] rounded-xl border border-[#2A2D35] animate-pulse" />
             ))}
           </div>
         )}
 
         {error && (
-          <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+          <div className="rounded-xl bg-red-950/30 border border-red-900/40 p-4 text-sm text-red-300">
             {error}
           </div>
         )}

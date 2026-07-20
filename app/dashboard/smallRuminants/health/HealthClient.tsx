@@ -31,11 +31,11 @@ interface HealthEvent {
 }
 
 const EVENT_STYLE: Record<string, { icon: LucideIcon; color: string; bg: string; border: string }> = {
-  vaccination: { icon: Syringe,       color: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200" },
-  treatment:   { icon: Stethoscope,   color: "text-red-700",    bg: "bg-red-50",    border: "border-red-200" },
-  deworming:   { icon: Pill,          color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200" },
-  checkup:     { icon: Search,        color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
-  other:       { icon: ClipboardList, color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
+  vaccination: { icon: Syringe,       color: "text-blue-400",   bg: "bg-blue-950/40",   border: "border-blue-900/40" },
+  treatment:   { icon: Stethoscope,   color: "text-red-400",    bg: "bg-red-950/40",    border: "border-red-900/40" },
+  deworming:   { icon: Pill,          color: "text-purple-400", bg: "bg-purple-950/40", border: "border-purple-900/40" },
+  checkup:     { icon: Search,        color: "text-[#9CA3AF]",  bg: "bg-[#17191F]",     border: "border-[#2A2D35]" },
+  other:       { icon: ClipboardList, color: "text-[#9CA3AF]",  bg: "bg-[#17191F]",     border: "border-[#2A2D35]" },
 };
 
 function formatDate(d: string | null) {
@@ -50,35 +50,11 @@ function daysFromToday(dateStr: string): number {
 }
 
 function urgencyChip(days: number) {
-  if (days < 0)  return <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Overdue {Math.abs(days)}d</span>;
-  if (days === 0) return <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Due today</span>;
-  if (days <= 7)  return <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">In {days}d</span>;
-  if (days <= 14) return <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">In {days}d</span>;
-  return               <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">In {days}d</span>;
-}
-
-function SubNav({ active }: { active: string }) {
-  const links = [
-    { label: "Flock",    href: "/dashboard/smallRuminants" },
-    { label: "Health",   href: "/dashboard/smallRuminants/health" },
-    { label: "Breeding", href: "/dashboard/smallRuminants/breeding" },
-    { label: "Weights",  href: "/dashboard/smallRuminants/weights" },
-    { label: "Milk",     href: "/dashboard/smallRuminants/milk" },
-    { label: "Sales",    href: "/dashboard/smallRuminants/sales" },
-  ];
-  return (
-    <div className="flex gap-1 mt-3 overflow-x-auto pb-0.5">
-      {links.map(l => (
-        <Link key={l.href} href={l.href}
-          className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-            l.href === active
-              ? "bg-emerald-600 text-white"
-              : "bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700"
-          }`}
-        >{l.label}</Link>
-      ))}
-    </div>
-  );
+  if (days < 0)  return <span className="text-xs font-bold text-red-400 bg-red-950/40 px-2 py-0.5 rounded-full">Overdue {Math.abs(days)}d</span>;
+  if (days === 0) return <span className="text-xs font-bold text-red-400 bg-red-950/40 px-2 py-0.5 rounded-full">Due today</span>;
+  if (days <= 7)  return <span className="text-xs font-semibold text-orange-400 bg-orange-950/40 px-2 py-0.5 rounded-full">In {days}d</span>;
+  if (days <= 14) return <span className="text-xs text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded-full">In {days}d</span>;
+  return               <span className="text-xs text-[#6B7280] bg-[#17191F] px-2 py-0.5 rounded-full">In {days}d</span>;
 }
 
 function VaccinationCalendar({ events }: { events: HealthEvent[] }) {
@@ -100,14 +76,14 @@ function VaccinationCalendar({ events }: { events: HealthEvent[] }) {
         <p className={`text-xs font-bold uppercase tracking-wide mb-2 ${accent}`}>{title}</p>
         <div className="space-y-2">
           {items.map(e => (
-            <div key={e.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2.5">
+            <div key={e.id} className="flex items-center justify-between bg-[#0D0F14] border border-[#2A2D35] rounded-lg px-3 py-2.5">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-slate-500"><Rabbit size={14} /></span>
-                  <p className="text-xs font-semibold text-slate-800">{e.animal_name ?? e.animal_tag}</p>
-                  <span className="text-xs text-slate-400">{e.animal_tag}</span>
+                  <span className="text-[#6B7280]"><Rabbit size={14} /></span>
+                  <p className="text-xs font-semibold text-[#D1D5DB]">{e.animal_name ?? e.animal_tag}</p>
+                  <span className="text-xs text-[#4B5563]">{e.animal_tag}</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   {e.vaccine_name ?? e.vaccine_type ?? "Vaccination"}
                   {" · Due "}{formatDate(e.next_vaccination_due)}
                 </p>
@@ -123,11 +99,11 @@ function VaccinationCalendar({ events }: { events: HealthEvent[] }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
-      <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Vaccination Calendar</p>
-      <Section title="Overdue"       items={overdue} accent="text-red-600" />
-      <Section title="Next 30 days"  items={due30}   accent="text-amber-600" />
-      <Section title="Later"         items={later}   accent="text-slate-500" />
+    <div className="rounded-xl border border-[#2A2D35] bg-[#0D0F14] p-4 space-y-4">
+      <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">Vaccination Calendar</p>
+      <Section title="Overdue"       items={overdue} accent="text-red-400" />
+      <Section title="Next 30 days"  items={due30}   accent="text-amber-400" />
+      <Section title="Later"         items={later}   accent="text-[#6B7280]" />
     </div>
   );
 }
@@ -140,20 +116,20 @@ function WithdrawalTracker({ events }: { events: HealthEvent[] }) {
   if (active.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
-      <p className="text-xs font-bold text-orange-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+    <div className="rounded-xl border border-orange-900/40 bg-orange-950/30 p-4">
+      <p className="text-xs font-bold text-orange-300 uppercase tracking-wide mb-2 flex items-center gap-1.5">
         <AlertTriangle size={13} /> Withdrawal Periods Active
       </p>
       <div className="space-y-2">
         {active.map(e => {
           const days = daysFromToday(e.safe_consumption_date!);
           return (
-            <div key={e.id} className="flex items-center justify-between bg-white border border-orange-200 rounded-lg px-3 py-2">
+            <div key={e.id} className="flex items-center justify-between bg-[#0D0F14] border border-orange-900/40 rounded-lg px-3 py-2">
               <div>
-                <p className="text-xs font-semibold text-slate-800">{e.animal_name ?? e.animal_tag}</p>
-                <p className="text-xs text-slate-500">{e.drug_name ?? e.treatment} · Safe: {formatDate(e.safe_consumption_date)}</p>
+                <p className="text-xs font-semibold text-[#D1D5DB]">{e.animal_name ?? e.animal_tag}</p>
+                <p className="text-xs text-[#6B7280]">{e.drug_name ?? e.treatment} · Safe: {formatDate(e.safe_consumption_date)}</p>
               </div>
-              <span className="text-xs font-bold text-orange-700 ml-3">{days}d left</span>
+              <span className="text-xs font-bold text-orange-400 ml-3">{days}d left</span>
             </div>
           );
         })}
@@ -167,29 +143,29 @@ function HealthEventRow({ event }: { event: HealthEvent }) {
   const style = EVENT_STYLE[event.event_type] ?? EVENT_STYLE.other;
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${style.border} bg-white`}>
+    <div className={`rounded-xl border overflow-hidden ${style.border} bg-[#0D0F14]`}>
       <button className="w-full text-left p-3" onClick={() => setExpanded(v => !v)}>
         <div className="flex items-start gap-3">
           <span className={`flex-shrink-0 mt-0.5 ${style.color}`}><style.icon size={16} /></span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-xs font-bold text-slate-800">{event.animal_name ?? event.animal_tag}</p>
-              <span className="text-xs text-slate-400">{event.animal_tag}</span>
+              <p className="text-xs font-bold text-[#D1D5DB]">{event.animal_name ?? event.animal_tag}</p>
+              <span className="text-xs text-[#4B5563]">{event.animal_tag}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${style.bg} ${style.color}`}>
                 {event.event_type}
               </span>
             </div>
-            <p className="text-xs text-slate-600 mt-0.5">
+            <p className="text-xs text-[#9CA3AF] mt-0.5">
               {event.vaccine_name ?? event.drug_name ?? event.disease ?? event.treatment ?? "—"}
             </p>
-            <p className="text-xs text-slate-400">{formatDate(event.event_date)}</p>
+            <p className="text-xs text-[#4B5563]">{formatDate(event.event_date)}</p>
           </div>
-          <span className="text-slate-300 flex-shrink-0">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
+          <span className="text-[#4B5563] flex-shrink-0">{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</span>
         </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-100 px-4 pb-3 pt-2 space-y-1.5">
+        <div className="border-t border-[#2A2D35] px-4 pb-3 pt-2 space-y-1.5">
           {[
             ["Vaccine / Drug",  event.vaccine_name ?? event.drug_name],
             ["Vaccine type",    event.vaccine_type],
@@ -205,8 +181,8 @@ function HealthEventRow({ event }: { event: HealthEvent }) {
             ["Notes",           event.notes],
           ].filter(([, v]) => v).map(([label, value]) => (
             <div key={label as string} className="flex gap-2 text-xs">
-              <span className="text-slate-400 w-28 flex-shrink-0">{label}</span>
-              <span className="text-slate-700">{value}</span>
+              <span className="text-[#4B5563] w-28 flex-shrink-0">{label}</span>
+              <span className="text-[#D1D5DB]">{value}</span>
             </div>
           ))}
         </div>
@@ -224,20 +200,17 @@ export default function HealthClient({ initialEvents }: { initialEvents: HealthE
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard/smallRuminants" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors">←</Link>
-              <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-none">Health Records</h1>
-                <p className="text-xs text-slate-500 mt-0.5">Vaccinations · Treatments · Deworming</p>
-              </div>
-            </div>
-            <Link href="/dashboard/smallRuminants/health/add" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record</Link>
+    <div className="min-h-screen bg-[#0A0C10]">
+      {/* EnterpriseNavHeader (DashboardShell) already renders the module's
+          tabs above every route — see SalesClient.tsx for the same
+          convention. */}
+      <div className="bg-[#0D0F14] border-b border-[#2A2D35] sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-white leading-none">Health Records</h1>
+            <p className="text-xs text-[#6B7280] mt-0.5">Vaccinations · Treatments · Deworming</p>
           </div>
-          <SubNav active="/dashboard/smallRuminants/health" />
+          <Link href="/dashboard/smallRuminants/health/add" className="text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">+ Record</Link>
         </div>
       </div>
 
@@ -250,7 +223,7 @@ export default function HealthClient({ initialEvents }: { initialEvents: HealthE
           {(["all", "vaccination", "treatment", "deworming", "checkup"] as const).map(t => (
             <button key={t} onClick={() => setTypeFilter(t)}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border transition-all capitalize ${
-                typeFilter === t ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                typeFilter === t ? "bg-emerald-600 text-white border-emerald-600" : "bg-[#0D0F14] text-[#9CA3AF] border-[#2A2D35] hover:bg-[#17191F] hover:text-white"
               }`}
             >
               {t !== "all" && (() => { const Icon = EVENT_STYLE[t]?.icon; return Icon ? <Icon size={12} /> : null; })()}
@@ -260,10 +233,10 @@ export default function HealthClient({ initialEvents }: { initialEvents: HealthE
         </div>
 
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-slate-400">
+          <div className="text-center py-12 text-[#4B5563]">
             <Syringe size={28} className="mx-auto mb-2" />
             <p className="text-sm">No health records yet</p>
-            <Link href="/dashboard/smallRuminants/health/add" className="mt-3 inline-block text-xs font-semibold text-emerald-600 hover:underline">Record first health event →</Link>
+            <Link href="/dashboard/smallRuminants/health/add" className="mt-3 inline-block text-xs font-semibold text-emerald-400 hover:underline">Record first health event →</Link>
           </div>
         ) : (
           <div className="space-y-2">

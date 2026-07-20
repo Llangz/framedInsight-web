@@ -26,7 +26,7 @@ export function FilterBar({ filters, onChange, total }: FilterBarProps) {
         className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
           active
             ? "bg-emerald-600 text-white border-emerald-600"
-            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+            : "bg-[#0D0F14] text-[#9CA3AF] border-[#2A2D35] hover:bg-[#17191F] hover:text-white"
         }`}
       >
         {label}
@@ -41,7 +41,7 @@ export function FilterBar({ filters, onChange, total }: FilterBarProps) {
         placeholder="Search by tag, name, breed…"
         value={filters.search}
         onChange={e => onChange({ ...filters, search: e.target.value })}
-        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+        className="w-full text-sm border border-[#2A2D35] rounded-lg px-3 py-2 bg-[#0A0C10] text-white placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40"
       />
 
       <div className="flex gap-2 flex-wrap">
@@ -52,7 +52,7 @@ export function FilterBar({ filters, onChange, total }: FilterBarProps) {
             () => onChange({ ...filters, species: s })
           )
         )}
-        <span className="text-slate-200 self-center">|</span>
+        <span className="text-[#2A2D35] self-center">|</span>
         {(["all", "female", "male"] as FilterSex[]).map(s =>
           pill(
             filters.sex === s,
