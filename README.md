@@ -49,14 +49,14 @@ This isn't a toy CRUD app — it holds farmer PII, cooperative financial data, a
 - **Session security.** Auth sessions live in HTTP-only cookies (not `localStorage`), are re-validated server-side on every request to a protected route (not just trusted from a client-held token), and protected pages are marked non-cacheable so a signed-out session can't be replayed via browser back/forward.
 - **Buyer access tokens** are 256-bit random values, individually revocable and rotatable per export lot — never sequential or guessable.
 - **Cross-site request forgery** is mitigated at the session layer today — Supabase auth cookies are `HttpOnly`/`SameSite`, re-validated server-side on every request. A standalone HMAC CSRF-token layer (`lib/csrf.ts`, `lib/security.ts`) exists in the codebase but is not currently wired into any route; treat it as removed until it's either connected or deleted.
-- **Rate limiting** (Redis/Upstash-backed via `checkRateLimit` in `lib/security.ts`, with in-memory fallback if `KV_REST_API_URL` is unset) is applied to OTP and login. It is **not** currently applied to general API routes or payment endpoints — `lib/rate-limit.ts`'s `apiLimiter`/`paymentLimiter` are defined but unused. This is a known gap, not a design choice.
+- **Rate limiting** (Redis/Upstash-backed via `checkRateLimit` in `lib/security.ts`, with in-memory fallback if `KV_REST_API_URL` is unset) is layered: `proxy.ts` applies a blanket 60 req/min per-IP limit to every `/api/*` route, which covers OTP, login, and payments. On top of that, `app/api/payments/stkpush/route.ts` applies a stricter 3-per-5-minutes limit keyed by farm (not IP), since M-Pesa STK pushes cost the initiator nothing per attempt but spam the recipient's phone — the blanket limit alone wasn't tight enough to stop that. `lib/rate-limit.ts`'s `apiLimiter`/`paymentLimiter` are a separate, unused implementation of the same idea; nothing imports them, and they should be deleted rather than wired in, to avoid two parallel rate-limiting systems.
 - **Input validation** via Zod schemas with explicit field allow-lists (`.strict()`) on write endpoints.
 - **Security headers**: HSTS with preload, strict Content-Security-Policy, `X-Frame-Options: DENY`, restrictive Permissions-Policy.
 - **EUDR compliance logic** centralized in a single source of truth (`lib/eudr-constants.ts`) rather than scattered across features, so regulatory deadline/threshold changes are a one-file update.
 
 A full security & data handling overview document (for buyer compliance questionnaires) and an internal incident response plan are maintained alongside this codebase — ask the maintainer for the current versions.
 
-> **Note for reviewers:** the two gaps above (unwired CSRF layer, missing rate limiting on payment/general API routes) are open items, not settled decisions. Flag whether they need to be closed before launch.
+> **Note for reviewers:** the unwired CSRF layer above is an open item, not a settled decision. Flag whether it needs to be closed before launch. (Payment/general API rate limiting, previously listed here as a gap, is now covered — see above.)
 
 ---
 
