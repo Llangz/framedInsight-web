@@ -94,3 +94,7 @@ next-env.d.ts
 
 # Vercel
 .vercel
+
+# Ad-hoc diff artifacts and DB dumps — keep out of the repo root
+*.diff
+Supabase*.csv
