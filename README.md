@@ -48,11 +48,15 @@ This isn't a toy CRUD app — it holds farmer PII, cooperative financial data, a
 - **Defense in depth on data access.** Every table is scoped by database-level Row Level Security *and* every API route independently re-verifies resource ownership before reading or writing — a bug in one layer doesn't expose the other.
 - **Session security.** Auth sessions live in HTTP-only cookies (not `localStorage`), are re-validated server-side on every request to a protected route (not just trusted from a client-held token), and protected pages are marked non-cacheable so a signed-out session can't be replayed via browser back/forward.
 - **Buyer access tokens** are 256-bit random values, individually revocable and rotatable per export lot — never sequential or guessable.
-- **CSRF protection** (HMAC-signed, session-bound tokens) on all state-changing API routes; **rate limiting** (Redis-backed) on authentication flows; **input validation** via Zod schemas with explicit field allow-lists.
+- **Cross-site request forgery** is mitigated at the session layer today — Supabase auth cookies are `HttpOnly`/`SameSite`, re-validated server-side on every request. A standalone HMAC CSRF-token layer (`lib/csrf.ts`, `lib/security.ts`) exists in the codebase but is not currently wired into any route; treat it as removed until it's either connected or deleted.
+- **Rate limiting** (Redis/Upstash-backed via `checkRateLimit` in `lib/security.ts`, with in-memory fallback if `KV_REST_API_URL` is unset) is applied to OTP and login. It is **not** currently applied to general API routes or payment endpoints — `lib/rate-limit.ts`'s `apiLimiter`/`paymentLimiter` are defined but unused. This is a known gap, not a design choice.
+- **Input validation** via Zod schemas with explicit field allow-lists (`.strict()`) on write endpoints.
 - **Security headers**: HSTS with preload, strict Content-Security-Policy, `X-Frame-Options: DENY`, restrictive Permissions-Policy.
 - **EUDR compliance logic** centralized in a single source of truth (`lib/eudr-constants.ts`) rather than scattered across features, so regulatory deadline/threshold changes are a one-file update.
 
 A full security & data handling overview document (for buyer compliance questionnaires) and an internal incident response plan are maintained alongside this codebase — ask the maintainer for the current versions.
+
+> **Note for reviewers:** the two gaps above (unwired CSRF layer, missing rate limiting on payment/general API routes) are open items, not settled decisions. Flag whether they need to be closed before launch.
 
 ---
 
