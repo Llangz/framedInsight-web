@@ -4,9 +4,15 @@ import Link from 'next/link'
 
 export interface AccountIssueAction {
   label: string
-  // Provide exactly one of href / onClick.
+  // Provide exactly one of href / onClick / formAction.
   href?: string
   onClick?: () => void
+  // A Server Action ('use server' function), typically pre-bound with
+  // .bind(null, someId) by the caller. Renders as its own <form> so the
+  // action gets a real POST submit — and with it, Next.js's automatic
+  // Origin-header CSRF check — rather than a GET navigation via <Link>.
+  // Use this instead of href for any action that mutates state.
+  formAction?: (formData: FormData) => void | Promise<void>
   variant?: 'primary' | 'secondary'
 }
 
@@ -59,6 +65,16 @@ export function AccountIssueScreen({
             const className = isPrimary
               ? 'w-full inline-block px-6 py-3 bg-white text-neutral-950 font-bold rounded-xl hover:bg-neutral-200 transition-all'
               : 'w-full inline-block px-6 py-3 bg-transparent border border-neutral-700 text-neutral-300 font-semibold rounded-xl hover:border-neutral-500 hover:text-white transition-all'
+
+            if (action.formAction) {
+              return (
+                <form key={i} action={action.formAction} className="w-full">
+                  <button type="submit" className={className}>
+                    {action.label}
+                  </button>
+                </form>
+              )
+            }
 
             if (action.href) {
               return (

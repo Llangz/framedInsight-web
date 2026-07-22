@@ -46,9 +46,9 @@ framedInsight is a multi-enterprise farm management platform and coffee traceabi
 This isn't a toy CRUD app — it holds farmer PII, cooperative financial data, and buyer-facing commercial data, so the security model is layered deliberately:
 
 - **Defense in depth on data access.** Every table is scoped by database-level Row Level Security *and* every API route independently re-verifies resource ownership before reading or writing — a bug in one layer doesn't expose the other.
-- **Session security.** Auth sessions live in HTTP-only cookies (not `localStorage`), are re-validated server-side on every request to a protected route (not just trusted from a client-held token), and protected pages are marked non-cacheable so a signed-out session can't be replayed via browser back/forward.
+- **Session security.** Auth sessions are re-validated server-side on every request to a protected route (not just trusted from a client-held token), and protected pages are marked non-cacheable so a signed-out session can't be replayed via browser back/forward. The session cookie itself is *not* `HttpOnly` — that's the `@supabase/ssr` default, not an oversight, because the browser client reads/writes it directly via `document.cookie` to keep client-side auth state in sync; an earlier version of this doc claimed `HttpOnly` incorrectly.
 - **Buyer access tokens** are 256-bit random values, individually revocable and rotatable per export lot — never sequential or guessable.
-- **Cross-site request forgery** is mitigated at the session layer today — Supabase auth cookies are `HttpOnly`/`SameSite`, re-validated server-side on every request. A standalone HMAC CSRF-token layer (`lib/csrf.ts`, `lib/security.ts`) exists in the codebase but is not currently wired into any route; treat it as removed until it's either connected or deleted.
+- **Cross-site request forgery** is mitigated without a standalone token layer: Server Actions get Next.js's automatic Origin-vs-Host header check for free, cookie-authenticated API routes rely on `SameSite=Lax` (which blocks the cookie on cross-site POST/PUT/PATCH/DELETE — see `docs/api/backend-reference.md` §2 for the one GET-based exception this doesn't cover, since fixed), and Bearer-token routes have no ambient credential for a cross-site page to ride on at all. A previous HMAC CSRF-token layer (`lib/csrf.ts`) was removed — it was never actually wired into any route, and its boot-time `CSRF_SECRET` assertion ran on nearly every request via `proxy.ts`, so an unset `CSRF_SECRET` in any environment would have taken the entire app down to protect nothing.
 - **Rate limiting** (Redis/Upstash-backed via `checkRateLimit` in `lib/security.ts`, with in-memory fallback if `KV_REST_API_URL` is unset) is layered: `proxy.ts` applies a blanket 60 req/min per-IP limit to every `/api/*` route, which covers OTP, login, and payments. On top of that, `app/api/payments/stkpush/route.ts` applies a stricter 3-per-5-minutes limit keyed by farm (not IP), since M-Pesa STK pushes cost the initiator nothing per attempt but spam the recipient's phone — the blanket limit alone wasn't tight enough to stop that. `lib/rate-limit.ts`'s `apiLimiter`/`paymentLimiter` are a separate, unused implementation of the same idea; nothing imports them, and they should be deleted rather than wired in, to avoid two parallel rate-limiting systems.
 - **Input validation** via Zod schemas with explicit field allow-lists (`.strict()`) on write endpoints.
 - **Security headers**: HSTS with preload, strict Content-Security-Policy, `X-Frame-Options: DENY`, restrictive Permissions-Policy.
@@ -56,7 +56,7 @@ This isn't a toy CRUD app — it holds farmer PII, cooperative financial data, a
 
 A full security & data handling overview document (for buyer compliance questionnaires) and an internal incident response plan are maintained alongside this codebase — ask the maintainer for the current versions.
 
-> **Note for reviewers:** the unwired CSRF layer above is an open item, not a settled decision. Flag whether it needs to be closed before launch. (Payment/general API rate limiting, previously listed here as a gap, is now covered — see above.)
+> **Note for reviewers:** the CSRF and rate-limiting gaps previously flagged here are both now resolved — see above for what actually protects each route type. Nothing currently open in this section pending review.
 
 ---
 
@@ -91,9 +91,6 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 # App
 NEXT_PUBLIC_APP_URL=
-
-# Auth / security
-CSRF_SECRET=
 
 # Rate limiting (Upstash Redis / Vercel KV — falls back to in-memory if unset)
 KV_REST_API_URL=
@@ -143,7 +140,8 @@ app/
 lib/
   passport/                     Passport & traceability ledger business logic
   eudr-constants.ts             Single source of truth for EUDR thresholds/deadlines
-  security.ts, csrf.ts, rate-limit.ts   Security utilities
+  security.ts                   Security utilities (rate limiting, audit logging, input sanitization)
+  rate-limit.ts                 Unused — dead code, see Security & Compliance Posture above
   validate-farm-access.ts, validate-coop-access.ts   Ownership/access-control helpers
   supabase/                     Server, browser, and middleware Supabase clients
 

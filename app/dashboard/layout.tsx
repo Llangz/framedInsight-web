@@ -4,6 +4,7 @@ import { getSubscriptionInfo } from '@/lib/subscription'
 import { getFarmStatus } from '@/lib/get-farm-status'
 import { validateAdminAccess } from '@/lib/validate-admin-access'
 import { AccountIssueScreen } from '@/components/ui/AccountIssueScreen'
+import { linkExistingFarm } from './actions'
 import DashboardShell from './components/DashboardShell'
 import CoopDashboardShell from './components/CoopDashboardShell'
 
@@ -139,7 +140,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         message={`We found an existing farm — ${farmStatus.farmName || 'unnamed farm'} — that matches your phone or email, but it isn't linked to this account yet. If this is yours, link it now instead of setting up a new one.`}
         tone="notice"
         actions={[
-          { label: 'Yes, this is my farm', href: `/api/farm/link-existing/${farmStatus.farmId}`, variant: 'primary' },
+          { label: 'Yes, this is my farm', formAction: linkExistingFarm.bind(null, farmStatus.farmId), variant: 'primary' },
           { label: 'No, set up a new farm', href: '/onboarding', variant: 'secondary' },
         ]}
       />

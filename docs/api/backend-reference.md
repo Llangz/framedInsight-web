@@ -24,9 +24,14 @@ Used by `app/api/poultry/batches-secure/route.ts` (the name itself signals this 
 
 **Practical implication**: Pattern A requires the client to explicitly attach `Authorization: Bearer <token>` on every request; Pattern B relies on Supabase's SSR cookie helpers and works with the browser's session cookie directly. A frontend client built generically against "the API" needs to know which pattern a given route expects — they are not interchangeable, and a request built for one pattern will simply 401 against a route expecting the other. When adding new routes, prefer Pattern B (`lib/supabase/server`) — it's the direction the codebase has been moving, and it removes the need for the frontend to manually manage and attach bearer tokens.
 
-## 2. CSRF Protection — Not Applied Uniformly
+## 2. CSRF Protection
 
-`lib/csrf.ts` (`validateCsrfRequest`, `getSessionId`) is called explicitly at the top of mutating routes that have been hardened — confirmed present in `app/api/farms/route.ts` and `app/api/payments/stkpush/route.ts`. It is **not** a global middleware applied to every POST/PUT/DELETE route automatically — each route has to opt in by calling it. Before assuming a given mutating endpoint is CSRF-protected, check for an explicit `validateCsrfRequest` call near the top of its handler rather than assuming it's covered by some blanket protection.
+There is no standalone CSRF-token layer in this codebase (a `lib/csrf.ts` with `validateCsrfRequest`/`getSessionId` existed at one point, but verification found it was never actually imported or called by any route — including `app/api/farms/route.ts` and `app/api/payments/stkpush/route.ts`, which an earlier version of this doc incorrectly listed as using it; both were checked directly and neither imports it. It's been removed rather than left as unreferenced dead code, since its module-level `if (!CSRF_SECRET) throw` in `lib/security.ts` ran on nearly every request via `proxy.ts` — an unset `CSRF_SECRET` in any environment would have taken the whole app down to protect nothing).
+
+Actual CSRF protection is layered by route type, and doesn't require per-route opt-in:
+- **Server Actions** (`'use server'` functions, used throughout onboarding, admin, and farm-provisioning flows) get Next.js's built-in Origin-vs-Host header check automatically.
+- **Pattern B routes** (cookie-session auth, above) rely on `SameSite=Lax` on the Supabase session cookie — the `@supabase/ssr` default, not overridden anywhere in this codebase — which withholds the cookie on cross-site POST/PUT/PATCH/DELETE. The one gap this doesn't cover is a route that mutates state on **GET** (Lax still allows the cookie on a cross-site top-level GET navigation); the one route in this codebase that did that (`/api/farm/link-existing/[farmId]`) has been converted to a Server Action for exactly this reason.
+- **Pattern A routes** (manual Bearer token, above) have no ambient credential for a cross-site page to attach in the first place, so CSRF doesn't apply to them regardless of cookie settings.
 
 ## 3. Authentication
 

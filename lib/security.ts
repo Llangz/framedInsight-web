@@ -272,42 +272,29 @@ export async function auditLog(entry: Omit<AuditLogEntry, 'timestamp'>): Promise
 }
 
 // ============================================================================
-// CSRF TOKEN GENERATION & VALIDATION
+// CSRF
 // ============================================================================
-
-import crypto from 'crypto'
-
-// 🔴 CRITICAL: Assert CSRF_SECRET is set
-if (!process.env.CSRF_SECRET || process.env.CSRF_SECRET === 'change-me-in-production') {
-  throw new Error('CSRF_SECRET must be set in environment variables.')
-}
-
-export function generateCsrfToken(sessionId: string): string {
-  const secret = process.env.CSRF_SECRET!
-  const payload = `${sessionId}:${Date.now()}`
-  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex')
-  return `${Buffer.from(payload).toString('base64')}.${hmac}`
-}
-
-export function validateCsrfToken(token: string, sessionId: string): boolean {
-  try {
-    const [encodedPayload, signature] = token.split('.')
-    const payload = Buffer.from(encodedPayload, 'base64').toString()
-    const [sid] = payload.split(':')
-    
-    if (sid !== sessionId) return false
-    
-    const secret = process.env.CSRF_SECRET!
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(payload)
-      .digest('hex')
-    
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))
-  } catch {
-    return false
-  }
-}
+// No standalone CSRF-token layer here — this app's actual CSRF protection
+// is layered elsewhere and doesn't need one:
+//   - Server Actions (39+ call sites) get Next.js's built-in Origin-vs-Host
+//     header check automatically.
+//   - Cookie-authenticated API routes rely on SameSite=Lax on the Supabase
+//     session cookie (the @supabase/ssr default, not overridden anywhere),
+//     which withholds the cookie on cross-site POST/PUT/PATCH/DELETE.
+//   - Bearer-token API routes (stkpush, farms, ai/*, etc.) have no ambient
+//     credential for a cross-site page to ride on in the first place.
+// A prior HMAC token layer (generateCsrfToken/validateCsrfToken, lib/csrf.ts)
+// was removed: nothing ever called it, and its boot-time
+// `if (!CSRF_SECRET) throw` ran on every request via proxy.ts importing this
+// file — so an unset CSRF_SECRET in any environment took the entire app
+// down, to protect nothing. See README's Security & Compliance Posture
+// section for the full writeup.
+//
+// The one real CSRF-shaped gap found in the codebase — a GET route
+// (app/api/farm/link-existing/[farmId]/route.ts) that mutated state, which
+// bypasses SameSite=Lax entirely since Lax still allows the cookie on a
+// cross-site top-level GET — has been fixed by converting it to a Server
+// Action (app/dashboard/actions.ts).
 
 // ============================================================================
 // SQL INJECTION PREVENTION HELPERS
