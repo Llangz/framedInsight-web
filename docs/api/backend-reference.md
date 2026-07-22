@@ -70,9 +70,9 @@ Farm/cooperative provisioning itself happens via Server Actions (`app/auth/verif
 
 | Route | Method | Purpose |
 |---|---|---|
-| `/api/poultry/batches-secure` | GET | The hardened, Pattern-B-auth batch-listing route. |
-| `/api/poultry/batches/[id]` | — | Older single-batch route — the `-secure` suffix on the other route strongly implies this one (or an earlier version of batch listing) had a security gap that prompted the rewrite; worth confirming this older route has equivalent protections before treating it as safe to keep using interchangeably with `batches-secure`. |
-| `/api/poultry/batches/eggs/[id]`, `/api/poultry/eggs/[id]`, `/api/poultry/feed/[id]`, `/api/poultry/health/[id]`, `/api/poultry/mortality/[id]`, `/api/poultry/sales/[id]` | — | Per-record CRUD for each child table. |
+| `/api/poultry/batches-secure` | GET, POST | The Pattern-B-auth batch **list + create** route. |
+| `/api/poultry/batches/[id]` | PUT, DELETE | Single-batch **update/delete**. Checked directly — has the same cookie-session auth, farm-ownership guard, and Zod-validated/sanitized body as every other route in this table. The `-secure` suffix on the other route refers to it covering a different operation (list/create), not to this one being unpatched; an earlier version of this doc flagged the relationship between the two as unconfirmed. |
+| `/api/poultry/eggs/[id]`, `/api/poultry/feed/[id]`, `/api/poultry/health/[id]`, `/api/poultry/mortality/[id]`, `/api/poultry/sales/[id]` | — | Per-record CRUD for each child table. (`/api/poultry/batches/eggs/[id]`, a duplicate of `/api/poultry/eggs/[id]` that skipped Zod validation/sanitization entirely — raw `req.json()` straight into `.update()` — has been removed; RLS's `WITH CHECK` on `batch_id` bounded it to same-tenant damage, but it had no business being live regardless.) |
 | `/api/ai/livestock-warnings/poultry` | POST | LLM-generated early-warning analysis. Full detail in `docs/poultry/poultry-module.md` §3. |
 
 ## 8. Small Ruminants
