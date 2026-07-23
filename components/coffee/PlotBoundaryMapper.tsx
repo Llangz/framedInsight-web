@@ -197,11 +197,26 @@ export default function PlotBoundaryMapper({
   const [locating, setLocating] = useState(false)
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null)
   const [gpsError, setGpsError] = useState<string | null>(null)
+  // Walk mode records a vertex per GPS fix, so weak accuracy doesn't just
+  // look bad on a badge — it directly corrupts the polygon (a plot walked at
+  // ±100m can come out wildly mis-shaped, or wrong enough to fail an EUDR
+  // geolocation check). We ask for confirmation instead of blocking outright,
+  // since some farmers may only ever get 20-30m fixes under tree canopy and
+  // still need a way forward.
+  const WEAK_GPS_THRESHOLD_M = 30
+  const [walkGpsWarning, setWalkGpsWarning] = useState(false)
   const [zoom, setZoom] = useState(17)
   const [snapActive, setSnapActive] = useState(false) // near first point?
   const [result, setResult] = useState<BoundaryResult | null>(null)
   const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite')
   const [tilesRendered, setTilesRendered] = useState(false)
+  const tilesRenderedRef = useRef(false)
+  // Distinct from `!tilesRendered` — this only flips true once the 8s grace
+  // period has passed with nothing on screen, so we can stop saying "loading"
+  // (which implies it'll finish any second) and instead give the farmer a
+  // real choice, since on throttled rural data the tiles may just hang
+  // indefinitely without ever firing `tileerror`.
+  const [tilesStalled, setTilesStalled] = useState(false)
   const esriLayerRef = useRef<any>(null)
   const osmLayerRef = useRef<any>(null)
   const labelsLayerRef = useRef<any>(null)
@@ -219,6 +234,7 @@ export default function PlotBoundaryMapper({
 
   useEffect(() => { pointsRef.current = points }, [points])
   useEffect(() => { modeRef.current = mode }, [mode])
+  useEffect(() => { tilesRenderedRef.current = tilesRendered }, [tilesRendered])
 
   // ── Init Leaflet ────────────────────────────────────────────────────────────
 
@@ -279,14 +295,17 @@ export default function PlotBoundaryMapper({
           esriSat.remove(); esriLabels.remove(); osm.addTo(map); setMapType('street')
         }
         esriSat.on('tileerror', () => { if (++satErrors > 5) fallBackToOsm() })
-        esriSat.on('tileload', () => { setTilesRendered(true); if (slowTileTimerRef.current) clearTimeout(slowTileTimerRef.current) })
-        osm.on('tileload', () => setTilesRendered(true))
+        esriSat.on('tileload', () => { setTilesRendered(true); setTilesStalled(false); if (slowTileTimerRef.current) clearTimeout(slowTileTimerRef.current) })
+        osm.on('tileload', () => { setTilesRendered(true); setTilesStalled(false) })
         // A throttled-but-working connection never fires tileerror — tiles just
-        // sit pending — so a farmer on weak rural data sees a plain black map
-        // with no explanation. If nothing has rendered within 8s, try OSM (its
-        // tiles are typically smaller); either way `tilesRendered` drives a
-        // "still loading" banner instead of leaving the map looking broken.
-        slowTileTimerRef.current = setTimeout(() => { if (!fellBack) fallBackToOsm() }, 8000)
+        // sit pending, request after request, with no failure to react to —
+        // so a farmer on weak rural data sees a plain gray map with a banner
+        // that says "loading" forever. We don't auto-switch away from
+        // satellite here (that decision belongs to the farmer, since OSM's
+        // street map is often useless for spotting a plot's actual tree
+        // rows), we just stop pretending it's about to finish and surface
+        // real choices once 8s pass with nothing rendered.
+        slowTileTimerRef.current = setTimeout(() => { if (!tilesRenderedRef.current) setTilesStalled(true) }, 8000)
 
         // Sync zoom state to React for our custom buttons
         map.on('zoom', () => setZoom(map.getZoom()))
@@ -324,6 +343,20 @@ export default function PlotBoundaryMapper({
       if (labelsLayerRef.current) labelsLayerRef.current.addTo(map)
       setMapType('satellite')
     }
+  }
+
+  // ── Retry tile loading (after a stall) ─────────────────────────────────────
+
+  function retryTiles() {
+    const map = mapRef.current
+    if (!map) return
+    setTilesStalled(false)
+    if (slowTileTimerRef.current) clearTimeout(slowTileTimerRef.current)
+    // Nudge Leaflet to re-request the currently-visible tiles rather than
+    // waiting on whatever half-finished requests are still in flight.
+    if (esriLayerRef.current && map.hasLayer(esriLayerRef.current)) esriLayerRef.current.redraw()
+    if (osmLayerRef.current && map.hasLayer(osmLayerRef.current)) osmLayerRef.current.redraw()
+    slowTileTimerRef.current = setTimeout(() => { if (!tilesRenderedRef.current) setTilesStalled(true) }, 8000)
   }
 
   // ── Zoom buttons ────────────────────────────────────────────────────────────
@@ -516,8 +549,20 @@ export default function PlotBoundaryMapper({
 
   // ── Start walk mode ─────────────────────────────────────────────────────────
 
+  // Gate for the "Walk Boundary" button: if we don't have a GPS fix yet, or
+  // the last known fix is too coarse to trust for tracing an edge, ask
+  // before committing the farmer to a walk that may produce a useless shape.
+  function handleWalkClick() {
+    if (gpsAccuracy === null || gpsAccuracy > WEAK_GPS_THRESHOLD_M) {
+      setWalkGpsWarning(true)
+      return
+    }
+    startWalk()
+  }
+
   function startWalk() {
     if (!navigator.geolocation) { setGpsError('GPS not available'); return }
+    setWalkGpsWarning(false)
     clearAll()
     setMode('walking')
     setGpsError(null)
@@ -733,10 +778,43 @@ export default function PlotBoundaryMapper({
               </div>
             )}
 
-            {!tilesRendered && (
+            {!tilesRendered && !tilesStalled && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-black/70 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 pointer-events-none">
                 <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
                 Loading satellite imagery — slow on weak signal, corners still save fine
+              </div>
+            )}
+
+            {/* Tiles genuinely stalled — stop implying it's about to finish
+                and give the farmer something to act on instead of a blank
+                gray map. Tapping/walking still works underneath this. */}
+            {!tilesRendered && tilesStalled && (
+              <div className="absolute top-3 left-3 right-3 z-[1000] bg-slate-900/95 border border-amber-500/40 rounded-xl px-3.5 py-3 shadow-lg">
+                <div className="flex items-start gap-2">
+                  <svg className="h-4 w-4 mt-0.5 shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  <p className="text-xs text-amber-200 leading-relaxed">
+                    Satellite imagery hasn't loaded — your connection may be too weak for it right now.
+                    You can still tap or walk the boundary without it, or try one of these:
+                  </p>
+                </div>
+                <div className="flex gap-2 mt-2.5">
+                  <button
+                    type="button"
+                    onPointerDown={e => { e.stopPropagation(); e.preventDefault() }}
+                    onClick={retryTiles}
+                    className="flex-1 py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-lg transition-colors"
+                  >
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    onPointerDown={e => { e.stopPropagation(); e.preventDefault() }}
+                    onClick={() => { toggleMapType(); retryTiles() }}
+                    className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-bold rounded-lg transition-colors"
+                  >
+                    {mapType === 'satellite' ? 'Switch to lightweight map' : 'Try satellite again'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -815,7 +893,7 @@ export default function PlotBoundaryMapper({
         )}
 
         {/* Idle: mode selection */}
-        {isIdle && !result && (
+        {isIdle && !result && !walkGpsWarning && (
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button" onClick={startDraw}
@@ -826,13 +904,44 @@ export default function PlotBoundaryMapper({
               <span className="text-xs text-slate-400 leading-tight">Tap corners on the satellite image</span>
             </button>
             <button
-              type="button" onClick={startWalk}
+              type="button" onClick={handleWalkClick}
               className="flex flex-col items-center gap-1.5 p-4 bg-sky-900/30 border-2 border-sky-700/50 rounded-xl hover:border-sky-500 hover:bg-sky-900/50 transition-all text-center"
             >
               <svg className="h-7 w-7 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
               <span className="font-semibold text-sky-300 text-sm">Walk Boundary</span>
               <span className="text-xs text-slate-400 leading-tight">Walk the plot edge, GPS records</span>
             </button>
+          </div>
+        )}
+
+        {/* Walk mode requested but GPS is missing or too coarse (>30m) to
+            trust for tracing an edge — confirm before recording a shape
+            that may come out unusable. */}
+        {isIdle && !result && walkGpsWarning && (
+          <div className="p-4 bg-amber-900/20 border border-amber-500/30 rounded-xl space-y-3">
+            <div className="flex items-start gap-2">
+              <svg className="h-4 w-4 mt-0.5 shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <p className="text-xs text-amber-200 leading-relaxed">
+                {gpsAccuracy === null
+                  ? "We don't have a GPS fix yet, so walking now could record a badly distorted shape."
+                  : `Your GPS is only accurate to about ${gpsAccuracy}m right now — walking the boundary at this accuracy can shift corners by that much.`}
+                {' '}Stepping into the open, away from trees or buildings, usually helps. Tap Corners doesn't need GPS accuracy at all if satellite imagery is visible.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button" onClick={() => setWalkGpsWarning(false)}
+                className="flex-1 py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-lg transition-colors"
+              >
+                Wait / use Tap Corners
+              </button>
+              <button
+                type="button" onClick={startWalk}
+                className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-bold rounded-lg transition-colors"
+              >
+                Walk anyway
+              </button>
+            </div>
           </div>
         )}
 

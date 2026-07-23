@@ -803,19 +803,28 @@ export default function EUDRPlotDetailPage() {
         )}
       </div>
 
-      {/* ── FAB: Add Photo Evidence ── */}
-      <div className="fixed bottom-6 right-6 z-30">
-        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoEvidence} />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="w-16 h-16 bg-indigo-600 hover:bg-indigo-500 shadow-xl rounded-full flex items-center justify-center text-2xl transition active:scale-95 disabled:bg-slate-600"
-          title="Add photo evidence"
-        >
-          {uploading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Camera size={20} strokeWidth={1.5} />}
-        </button>
-        <p className="text-center text-xs text-slate-400 mt-1 whitespace-nowrap">Evidence</p>
-      </div>
+      {/* ── FAB: Add Photo Evidence ──
+          Hidden while the boundary mapper is open. This FAB is `fixed` to
+          the viewport (not scoped to the scroll container), so it used to
+          sit permanently on top of the mapper's own bottom controls
+          (Tap Corners / Walk Boundary, and the finalize bar) regardless of
+          scroll position — two independently-built floating layers with no
+          shared awareness of each other. Evidence photos aren't relevant
+          mid-mapping anyway; the FAB reappears once the mapper closes. */}
+      {!showMapper && (
+        <div className="fixed bottom-6 right-6 z-30">
+          <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoEvidence} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="w-16 h-16 bg-indigo-600 hover:bg-indigo-500 shadow-xl rounded-full flex items-center justify-center text-2xl transition active:scale-95 disabled:bg-slate-600"
+            title="Add photo evidence"
+          >
+            {uploading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Camera size={20} strokeWidth={1.5} />}
+          </button>
+          <p className="text-center text-xs text-slate-400 mt-1 whitespace-nowrap">Evidence</p>
+        </div>
+      )}
     </div>
   )
 }
