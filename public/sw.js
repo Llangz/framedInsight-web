@@ -1,4 +1,21 @@
-const CACHE_NAME = 'framedinsight-cache-v3';
+// v4: fixes a real production bug, not just routine housekeeping — see the
+// fetch handler below for the full explanation. v3's cached '/' had gone
+// stale relative to every deploy since 2026-07-10 (the last time this file
+// itself changed), because a service worker only re-installs when its own
+// script bytes differ, never just because the app changed. Any browser
+// that had installed v3 kept serving that one frozen HTML snapshot forever
+// — cache-first, no revalidation — whose CSS/JS <link>/<script> tags
+// pointed at that old build's content-hashed filenames. Vercel's
+// production alias only serves the current deployment's files, so those
+// old hashed paths return nothing usable: the page loads, structurally
+// intact, with zero styling. This version bump is what actually unsticks
+// already-affected browsers, by being a byte-different file the browser
+// will notice; the activate handler below already tears down any cache
+// that doesn't match the current CACHE_NAME, so v3's stale snapshot gets
+// deleted automatically on next visit. (This does not touch IndexedDB —
+// a farmer's pending offline-queued records live in a completely separate
+// storage API and are untouched by this.)
+const CACHE_NAME = 'framedinsight-cache-v4';
 const OFFLINE_URL = '/offline';
 
 const DB_NAME = 'framedInsightSync';
@@ -250,7 +267,56 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets and page loads: Cache first
+  // Page navigations: network-first. This is the fix for the staleness bug
+  // described above — always prefer whatever the live network returns
+  // (which necessarily matches the currently-deployed build, including its
+  // correct CSS/JS references) and only fall back to a cached copy if the
+  // network genuinely fails. Cache a fresh copy of every successful
+  // response as we go, so the offline fallback keeps itself current
+  // automatically instead of being frozen at whatever `install` last ran —
+  // no future deploy should ever require touching this file again just to
+  // stay correct.
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          return response;
+        })
+        .catch(() => caches.match(req).then((cached) => cached || caches.match(OFFLINE_URL)))
+    );
+    return;
+  }
+
+  // Next.js static assets (/_next/static/...) are safe to cache-first:
+  // their filenames are content-hashed, so a given URL's bytes never
+  // change — there's no staleness risk, only an availability upside. But
+  // rather than relying on a fixed precache list (which is exactly what
+  // went stale above, and would go stale again on the next deploy since
+  // every deploy changes these hashes), cache each one the first time it's
+  // actually requested. A cold cache just means the first load after a
+  // fresh install fetches from network like normal and populates itself
+  // from there.
+  if (new URL(req.url).pathname.startsWith('/_next/static/')) {
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        if (cached) return cached;
+        return fetch(req).then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Everything else (icons, manifest, other public/ files): cache-first
+  // with network fallback, same as before — these are small, rarely
+  // change, and low-stakes if briefly stale.
   event.respondWith(
     caches.match(req)
       .then((response) => {
