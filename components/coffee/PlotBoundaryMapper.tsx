@@ -290,7 +290,18 @@ export default function PlotBoundaryMapper({
           scrollWheelZoom: true,
           touchZoom: true,
           attributionControl: false, // we add a minimal one
+          fadeAnimation: false,      // avoids a brief flash of Leaflet's default
+                                      // pane background showing through during
+                                      // the opacity fade-in of the first tiles
         })
+
+        // Leaflet's default `.leaflet-container` background is a light gray
+        // (#ddd) meant for a white page chrome. Dropped into our dark theme —
+        // and combined with a tile that's still loading, or one that failed —
+        // that light gray reads as "broken", not "loading". Match the dark
+        // wrapper behind the map so the map area looks intentional at every
+        // stage, not just once tiles are in.
+        map.getContainer().style.background = '#0f172a'
 
         // Satellite tiles — routed through the offline-aware tile layer so a
         // plot that's been viewed once with signal renders from cache when
@@ -322,15 +333,43 @@ export default function PlotBoundaryMapper({
         osmLayerRef.current = osm
         labelsLayerRef.current = esriLabels
 
-        // Auto-fallback to OSM if satellite tiles keep failing (rural connectivity)
+        // Auto-fallback to OSM if satellite tiles keep failing (rural connectivity).
+        //
+        // The previous version of this only counted esriSat's own errors and
+        // waited for "more than 5" of them before switching — a threshold
+        // tuned for a large viewport requesting dozens of tiles. On a small
+        // or just-opened map (a phone in portrait, a freshly mounted
+        // component) the whole visible area can be 4-6 tiles total across
+        // BOTH the satellite and labels layers, so that fixed threshold
+        // could never actually fire: every visible tile would fail and the
+        // farmer would still be looking at a gray box with nothing on it,
+        // because "more than 5" never arrived. Track errors against how
+        // many tiles we've actually asked for, across both Esri layers, and
+        // fall back once a clear majority of everything requested has
+        // failed — not after an absolute count that assumes a big viewport.
+        let satRequested = 0
         let satErrors = 0
         let fellBack = false
+        const countSatRequest = () => { satRequested += 1 }
         const fallBackToOsm = () => {
           if (fellBack || !map.hasLayer(esriSat)) return
           fellBack = true
           esriSat.remove(); esriLabels.remove(); osm.addTo(map); setMapType('street')
+          // New provider, new load cycle — give it its own honest "still
+          // loading" window instead of inheriting whatever was left of the
+          // satellite attempt's timer.
+          retryTiles()
         }
-        esriSat.on('tileerror', () => { if (++satErrors > 5) fallBackToOsm() })
+        const onSatError = () => {
+          satErrors += 1
+          const enoughAbsolute = satErrors >= 5
+          const enoughRelative = satErrors >= 3 && satErrors >= Math.ceil(satRequested * 0.6)
+          if (enoughAbsolute || enoughRelative) fallBackToOsm()
+        }
+        esriSat.on('tileloadstart', countSatRequest)
+        esriLabels.on('tileloadstart', countSatRequest)
+        esriSat.on('tileerror', onSatError)
+        esriLabels.on('tileerror', onSatError)
         esriSat.on('tileload', () => { setTilesRendered(true); setTilesStalled(false); if (slowTileTimerRef.current) clearTimeout(slowTileTimerRef.current) })
         osm.on('tileload', () => { setTilesRendered(true); setTilesStalled(false) })
         // A throttled-but-working connection never fires tileerror — tiles just
@@ -342,6 +381,19 @@ export default function PlotBoundaryMapper({
         // rows), we just stop pretending it's about to finish and surface
         // real choices once 8s pass with nothing rendered.
         slowTileTimerRef.current = setTimeout(() => { if (!tilesRenderedRef.current) setTilesStalled(true) }, 8000)
+        // Failures are a stronger signal than silence: if we're already
+        // seeing errors pile up fast (both providers unreachable, not just
+        // slow), don't make the farmer wait out the full 8s of a "loading"
+        // badge that's quietly lying to them — surface the actionable
+        // stalled banner as soon as that's clearly where this is headed.
+        osm.on('tileerror', () => {
+          if (tilesRenderedRef.current) return
+          satErrors += 1
+          if (satErrors >= 6 && slowTileTimerRef.current) {
+            clearTimeout(slowTileTimerRef.current)
+            setTilesStalled(true)
+          }
+        })
 
         // Sync zoom state to React for our custom buttons
         map.on('zoom', () => setZoom(map.getZoom()))
@@ -362,6 +414,47 @@ export default function PlotBoundaryMapper({
       if (mapRef.current) { try { mapRef.current.remove() } catch {} ; mapRef.current = null }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Keep Leaflet's internal size in sync with its container ───────────────
+  // Leaflet reads its container's actual pixel size once, at L.map() time,
+  // and computes which tiles to request from that. Every mount of this
+  // component happens inside something conditional — a wizard step
+  // (`step === 'map'`), a toggled section (`showMapper &&`), or the
+  // next/dynamic loading-placeholder swap — so the container isn't
+  // guaranteed to have its final layout size in the same tick the map is
+  // constructed (a parent flex/grid reflow, a webfont swap, or the
+  // dynamic-import chunk finishing a beat later can all resize it after the
+  // fact). Leaflet never notices that on its own; the fix is to tell it
+  // explicitly via `invalidateSize()`, which recomputes the tile grid for
+  // whatever size the container actually is right now. We do this on
+  // mount (next frame + a short delayed follow-up, to catch layout that
+  // settles a moment after paint) and on every subsequent resize via
+  // ResizeObserver, which also covers rotating a phone or resizing a
+  // desktop window mid-session.
+  useEffect(() => {
+    if (!mapLoaded) return
+    const map = mapRef.current
+    const container = mapContainerRef.current
+    if (!map || !container) return
+
+    const invalidate = () => { try { map.invalidateSize() } catch {} }
+
+    invalidate()
+    const raf = requestAnimationFrame(invalidate)
+    const settleTimer = setTimeout(invalidate, 300)
+
+    let observer: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => invalidate())
+      observer.observe(container)
+    }
+
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(settleTimer)
+      observer?.disconnect()
+    }
+  }, [mapLoaded])
 
   // ── Toggle map type ─────────────────────────────────────────────────────────
 

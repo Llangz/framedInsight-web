@@ -35,6 +35,18 @@ export interface OfflineTileLayerMeta {
   provider: string
 }
 
+// A single fully-transparent pixel. Leaflet's default tile-error handling
+// (GridLayer#_tileOnError) does NOT hide a failed tile — it leaves the
+// broken <img> in the DOM at full opacity unless `errorTileUrl` is set, so
+// out of the box a failed tile renders the browser's native "broken image"
+// icon right on the map. On a spotty rural connection that can mean a
+// scatter of broken-image glyphs across the whole viewport (exactly what a
+// farmer sees when a handful of tiles time out). Pointing every layer at
+// this transparent pixel means a failed tile just quietly shows the map's
+// own background instead — the map still looks intentional, never broken.
+export const TRANSPARENT_TILE =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7'
+
 /**
  * Builds an actual tile layer instance. `L` must be the already-loaded
  * Leaflet module (this file never imports 'leaflet' directly, matching
@@ -46,6 +58,9 @@ export function createOfflineTileLayer(
   options: Record<string, any>,
   meta: OfflineTileLayerMeta | null
 ) {
+  // Callers can still override errorTileUrl explicitly (rare); default it
+  // here so every provider gets graceful-failure behavior for free.
+  const layerOptions = { errorTileUrl: TRANSPARENT_TILE, ...options }
   const OfflineTileLayer = L.TileLayer.extend({
     createTile(this: any, coords: any, done: (err: any, tile?: HTMLElement) => void) {
       const tile = document.createElement('img')
@@ -92,7 +107,7 @@ export function createOfflineTileLayer(
     },
   })
 
-  return new OfflineTileLayer(urlTemplate, options)
+  return new OfflineTileLayer(urlTemplate, layerOptions)
 }
 
 async function cacheTileInBackground(url: string, meta: OfflineTileLayerMeta) {
