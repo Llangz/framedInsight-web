@@ -4,14 +4,21 @@
  * Two pieces:
  *
  *  1. createOfflineTileLayer() — a drop-in replacement for L.tileLayer() whose
- *     createTile() checks lib/tile-cache.ts before hitting the network, and
- *     writes successful network fetches back to the cache. When `meta` is
- *     null (no plotId — e.g. a brand-new plot that hasn't been saved yet, so
- *     there's nothing durable to key the cache by), it behaves exactly like a
- *     normal Leaflet tile layer: no caching, no behaviour change. If both the
- *     cache and the network fail, it renders a muted placeholder tile rather
- *     than a broken-image icon, per the goal of degrading gracefully instead
- *     of erroring.
+ *     createTile() loads straight from the network, synchronously, exactly
+ *     like a plain Leaflet tile layer always has — no async work of any kind
+ *     gates that initial `img.src` assignment. The IndexedDB tile cache
+ *     (lib/tile-cache.ts) is consulted only as a FALLBACK, triggered by the
+ *     tile's own 'error' event (i.e. only once the network load has actually
+ *     failed). This ordering is deliberate and fixes a real regression: an
+ *     earlier version of this file awaited a cache lookup *before* attempting
+ *     the network load, and in some runtimes that IndexedDB read never
+ *     resolved — not rejected, just never settled — which meant `img.src`
+ *     was never assigned at all, so tiles never rendered even on a working
+ *     connection. Nothing before the synchronous `tile.src = url` line below
+ *     may ever be async again; that's the invariant that matters here.
+ *     On a successful network load, the tile is also written to the cache in
+ *     the background (fire-and-forget, never blocking or delaying display)
+ *     so it's available next time there's no connection at all.
  *
  *  2. prefetchTilesForPlot() — walks the tile grid for a plot's bounding box
  *     (+ buffer) across a small zoom range and populates the cache ahead of
@@ -45,62 +52,47 @@ export function createOfflineTileLayer(
       tile.alt = ''
       tile.setAttribute('role', 'presentation')
 
-      L.DomEvent.on(tile, 'load', L.Util.bind(this._tileOnLoad, this, done, tile))
-      L.DomEvent.on(tile, 'error', L.Util.bind(this._tileOnError, this, done, tile))
-
       if (this.options.crossOrigin || this.options.crossOrigin === '') {
         tile.crossOrigin = this.options.crossOrigin === true ? '' : this.options.crossOrigin
       }
 
       const url = this.getTileUrl(coords)
+      const onLoad = L.Util.bind(this._tileOnLoad, this, done, tile)
+      const onError = L.Util.bind(this._tileOnError, this, done, tile)
 
       if (!meta) {
-        // No durable plot to key the cache by — plain network load.
+        // No durable plot to key the cache by — plain network load,
+        // identical to a stock Leaflet tile layer.
+        L.DomEvent.on(tile, 'load', onLoad)
+        L.DomEvent.on(tile, 'error', onError)
         tile.src = url
         return tile
       }
 
-      loadTile(url, meta, tile)
+      // Network-first, cache-as-fallback: see the file header for why this
+      // ordering (and not "check cache, then network") is the fix.
+      let fellBackToCache = false
+      L.DomEvent.on(tile, 'load', () => {
+        onLoad()
+        if (!fellBackToCache) void cacheTileInBackground(url, meta)
+      })
+      L.DomEvent.on(tile, 'error', () => {
+        if (fellBackToCache) { onError(); return } // cache fallback also failed — nothing available for this tile
+        fellBackToCache = true
+        getCachedTile(url)
+          .then((cached) => {
+            if (cached) tile.src = URL.createObjectURL(cached) // triggers 'load' above
+            else onError()
+          })
+          .catch(() => onError())
+      })
+
+      tile.src = url
       return tile
     },
   })
 
   return new OfflineTileLayer(urlTemplate, options)
-}
-
-async function loadTile(url: string, meta: OfflineTileLayerMeta, img: HTMLImageElement) {
-  // 1. Cache hit — this is what actually delivers on "works offline."
-  try {
-    const cached = await getCachedTile(url)
-    if (cached) {
-      img.src = URL.createObjectURL(cached)
-      return
-    }
-  } catch {
-    // fall through to a direct load
-  }
-
-  // 2. No cached copy: load the tile exactly the way a plain Leaflet
-  // TileLayer always has — a direct `img.src` assignment, which the browser
-  // fetches itself and which only needs the CSP's `img-src` (already
-  // allow-lists both tile providers) to succeed, not `connect-src`.
-  //
-  // This is deliberate: rendering must never depend on the fetch() call
-  // below succeeding. The two are governed by different CSP directives, can
-  // fail independently (a provider that allows plain image loads but
-  // doesn't send permissive CORS headers is common), and conflating them is
-  // exactly what caused every tile to render as a blank placeholder the
-  // first time this shipped — see HANDOFF-offline-tile-caching.md follow-up
-  // notes. If this also fails (genuinely offline, nothing cached), Leaflet's
-  // own tileerror handling takes over, same as before this feature existed.
-  img.src = url
-
-  // 3. Separately, best-effort: try to fetch+cache this tile's bytes so
-  // it's available offline next time. Requires CORS + connect-src to allow
-  // the provider's origin (see next.config.js). A failure here — CORS not
-  // configured on a given provider, offline, anything — is silent and has
-  // zero effect on what the farmer sees, since step 2 already rendered it.
-  void cacheTileInBackground(url, meta)
 }
 
 async function cacheTileInBackground(url: string, meta: OfflineTileLayerMeta) {
@@ -116,7 +108,8 @@ async function cacheTileInBackground(url: string, meta: OfflineTileLayerMeta) {
       blob
     )
   } catch {
-    // Non-fatal and silent by design — see loadTile's comment above.
+    // Non-fatal and silent by design — the tile already rendered from
+    // network; this only affects whether it's available offline next time.
   }
 }
 
