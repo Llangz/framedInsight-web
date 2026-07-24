@@ -27,7 +27,7 @@ type RiskLevel = 'green' | 'yellow' | 'red' | 'unknown'
 interface PlotData {
   id: string; plot_name: string; area_hectares: number | null
   gps_polygon: any; gps_latitude: number | null; gps_longitude: number | null
-  region_name: string | null
+  region_name: string | null; farm_id: string
 }
 type EudrData = Database['public']['Tables']['coffee_eudr_compliance']['Row'] | null
 interface SatData { ndvi_mean: number | null; health_label: string | null; image_date: string }
@@ -73,8 +73,10 @@ type MapStatus = 'loading' | 'ready' | 'timeout' | 'error'
 function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null; lng: number | null; risk: RiskLevel }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
+  const mapLayersRef = useRef<{ map: any; satellite: any; streetFallback: any } | null>(null)
   const [status, setStatus] = useState<MapStatus>('loading')
   const [retryToken, setRetryToken] = useState(0)
+  const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite')
 
   const latlngs = extractPolygonLatLngs(polygon)
   const hasPolygon = latlngs.length > 0
@@ -127,10 +129,23 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
           }
         })
         satellite.addTo(map)
+        mapLayersRef.current = { map, satellite, streetFallback }
 
         if (hasPolygon) {
           const poly = L.polygon(latlngs, { color, weight: 4, fillOpacity: 0.15, fillColor: color }).addTo(map)
-          map.fitBounds(poly.getBounds(), { padding: [30, 30] })
+          // Cap how tight fitBounds will zoom for a small plot. Esri's World
+          // Imagery mosaic has full high-resolution coverage in cities but
+          // only a coarser base layer over a lot of rural/farmland Kenya —
+          // past roughly zoom 17-18 in those areas it starts serving a
+          // "Map data not yet available" placeholder tile. That tile loads
+          // as a completely valid image (it never fires `tileerror`), so
+          // the fallback above never catches it — a tiny plot's tight
+          // bounding box was pushing fitBounds well past that ceiling.
+          // Capping it here keeps small plots framed at a zoom level
+          // where imagery is actually far more likely to exist; the
+          // satellite/street toggle below is the escape hatch for the
+          // specific locations where it still doesn't.
+          map.fitBounds(poly.getBounds(), { padding: [30, 30], maxZoom: 17 })
         } else if (hasPoint) {
           L.circleMarker([lat, lng], { radius: 10, color, weight: 3, fillColor: color, fillOpacity: 0.4 }).addTo(map)
           map.setView([lat, lng], 17)
@@ -159,10 +174,35 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [polygon, lat, lng, risk, retryToken])
 
+  function toggleMapType() {
+    const layers = mapLayersRef.current
+    if (!layers) return
+    const { map, satellite, streetFallback } = layers
+    if (mapType === 'satellite') {
+      if (map.hasLayer(satellite)) map.removeLayer(satellite)
+      if (!map.hasLayer(streetFallback)) streetFallback.addTo(map)
+      setMapType('street')
+    } else {
+      if (map.hasLayer(streetFallback)) map.removeLayer(streetFallback)
+      if (!map.hasLayer(satellite)) satellite.addTo(map)
+      setMapType('satellite')
+    }
+  }
+
   if (!hasPolygon && !hasPoint) return null // handled by NoGpsPanel below
   return (
     <div className="relative rounded-xl overflow-hidden border-2 border-slate-600">
       <div ref={containerRef} style={{ height: 280 }} />
+      {status === 'ready' && (
+        <button
+          type="button"
+          onClick={toggleMapType}
+          className="absolute top-2 right-2 z-[1000] bg-white text-xs font-semibold text-gray-700 px-2.5 py-1.5 rounded-lg shadow-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+          title={mapType === 'satellite' ? 'No imagery here? Switch to street map' : 'Switch to satellite'}
+        >
+          {mapType === 'satellite' ? 'Street view' : 'Satellite view'}
+        </button>
+      )}
       {status === 'loading' && (
         <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
           <div className="text-center">
@@ -240,24 +280,32 @@ export default function EUDRPlotDetailPage() {
 
       if (error) throw error
 
-      // Record in audit trail
-      const eventStore = new EventStore()
-      await eventStore.recordEvent({
-        id: crypto.randomUUID(),
-        farm_id: eudr?.farm_id || '',
-        event_type: 'plot_boundary_recorded',
-        actor_id: session.user.id,
-        actor_type: 'farmer',
-        created_at: new Date().toISOString(),
-        event_data: {
-          plot_id: plotId,
-          point_count: result.pointCount,
-          area_ha: result.areaHa,
-          perimeter_m: result.perimeterM,
-          centroid_lat: result.centroid.lat,
-          centroid_lng: result.centroid.lng,
-        }
-      } as any)
+      // Record in audit trail. This is a secondary, best-effort write —
+      // the boundary itself is already saved by the update() above, so a
+      // failure here must not be reported as "failed to save the boundary"
+      // (that was misleading: the polygon/GPS data had in fact saved, only
+      // the audit log entry hadn't).
+      try {
+        const eventStore = new EventStore()
+        await eventStore.recordEvent({
+          id: crypto.randomUUID(),
+          farm_id: plot?.farm_id || eudr?.farm_id || '',
+          event_type: 'plot_boundary_recorded',
+          actor_id: session.user.id,
+          actor_type: 'farmer',
+          created_at: new Date().toISOString(),
+          event_data: {
+            plot_id: plotId,
+            point_count: result.pointCount,
+            area_ha: result.areaHa,
+            perimeter_m: result.perimeterM,
+            centroid_lat: result.centroid.lat,
+            centroid_lng: result.centroid.lng,
+          }
+        } as any)
+      } catch (auditErr) {
+        console.error('Boundary saved, but audit trail entry failed:', auditErr)
+      }
 
       setBoundaryOk(true)
       setBoundaryMsg('Plot boundary saved!')
@@ -279,7 +327,7 @@ export default function EUDRPlotDetailPage() {
       if (!session) { router.push('/auth/login'); return }
 
       const [plotRes, eudrRes, satRes, auditRes] = await Promise.all([
-        supabase.from('coffee_plots').select('id,plot_name,area_hectares,gps_polygon,gps_latitude,gps_longitude,region_name').eq('id', plotId).single(),
+        supabase.from('coffee_plots').select('id,plot_name,area_hectares,gps_polygon,gps_latitude,gps_longitude,region_name,farm_id').eq('id', plotId).single(),
         supabase.from('coffee_eudr_compliance').select('*').eq('plot_id', plotId).maybeSingle(),
         supabase.from('coffee_satellite_indices').select('ndvi_mean,health_label,image_date').eq('plot_id', plotId).order('image_date', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('v_compliance_timeline').select('*').eq('plot_id', plotId).order('created_at', { ascending: false }).limit(10),
@@ -330,7 +378,7 @@ export default function EUDRPlotDetailPage() {
       // Update compliance record
       await supabase.from('coffee_eudr_compliance').upsert({
         plot_id: plotId,
-        farm_id: eudr?.farm_id || '',
+        farm_id: plot?.farm_id || eudr?.farm_id || '',
         notes: (eudr?.notes ? eudr.notes + '\n' : '') + `Evidence: ${publicUrl}`,
         updated_at: new Date().toISOString(),
         assessment_date: eudr?.assessment_date || new Date().toISOString(),
@@ -340,7 +388,7 @@ export default function EUDRPlotDetailPage() {
       const eventStore = new EventStore()
       await eventStore.recordEvent({
         id: crypto.randomUUID(),
-        farm_id: eudr?.farm_id || '',
+        farm_id: plot?.farm_id || eudr?.farm_id || '',
         event_type: 'photo_evidence_uploaded',
         actor_id: session.user.id,
         actor_type: 'farmer',
@@ -385,7 +433,7 @@ export default function EUDRPlotDetailPage() {
       const eventStore = new EventStore()
       await eventStore.recordEvent({
         id: crypto.randomUUID(),
-        farm_id: eudr?.farm_id || '',
+        farm_id: plot?.farm_id || eudr?.farm_id || '',
         event_type: 'eudr_assessment_run',
         actor_id: session.user.id,
         actor_type: 'system',
