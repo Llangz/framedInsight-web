@@ -114,6 +114,39 @@ function toGeoJSON(pts: LatLng[]): any {
 
 function fmtDist(m: number) { return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m` }
 
+// ── GPS fix sanity-checking ──────────────────────────────────────────────────
+// framedInsight only maps plots in Kenya. A generous bounding box (not the
+// precise national border — just "obviously not Kenya" vs "plausibly Kenya")
+// catches the specific failure mode that produces a solid-white map: the
+// browser's Geolocation API falling back to IP-based positioning (common on
+// laptops/desktops with no GPS radio, VPNs, or emulators/test devices) and
+// returning a low-accuracy fix hundreds of kilometres away — sometimes over
+// open ocean or a data-centre location with zero Esri World Imagery coverage
+// at the zoom levels this app requests. Esri doesn't error on those tiles;
+// it returns a valid, blank-white PNG, so nothing here would ever call it a
+// "failure" without this check — the map just silently renders white.
+const KENYA_BOUNDS = { south: -4.9, north: 5.5, west: 33.5, east: 42.0 }
+
+function isWithinKenya(lat: number, lng: number): boolean {
+  return lat >= KENYA_BOUNDS.south && lat <= KENYA_BOUNDS.north &&
+         lng >= KENYA_BOUNDS.west && lng <= KENYA_BOUNDS.east
+}
+
+// A real on-device GPS fix is typically accurate to single-digit-to-low-
+// double-digit metres; IP/network-based positioning is usually 100s of
+// metres to a few kilometres. Forcing the map to zoom 18 regardless of
+// which kind of fix we got means a bad fix doesn't just mis-centre the
+// map, it does so at a zoom level where — even if the coordinates happen
+// to land somewhere with imagery — the plot itself won't be anywhere near
+// the crosshair. Scale the auto-zoom to how much we actually trust the fix.
+function zoomForAccuracy(accuracyM: number): number {
+  if (accuracyM <= 20) return 18   // real GPS fix — safe to zoom in tight
+  if (accuracyM <= 60) return 17
+  if (accuracyM <= 150) return 16
+  if (accuracyM <= 500) return 14  // likely wifi/network positioning
+  return 12                        // likely coarse IP geolocation
+}
+
 // ── Marker icon factories (called after L is loaded) ──────────────────────────
 
 function makeCornerIcon(L: any, index: number, isFirst: boolean, isSnapping: boolean) {
@@ -513,8 +546,21 @@ export default function PlotBoundaryMapper({
         // map — and every pin already placed — out from under them. A
         // user-initiated tap of the "locate me" button always recenters.
         const userAlreadyMapping = opts?.silent && (pointsRef.current.length > 0 || modeRef.current !== 'idle')
-        if (!userAlreadyMapping) {
-          _map.setView([lat, lng], 18)
+        // A fix outside Kenya entirely is a strong signal this is IP-based
+        // positioning rather than real GPS (see isWithinKenya's comment) —
+        // recentring the map there would show a plot the farmer never asked
+        // for, at best, or a blank tile with no imagery at worst. Leave the
+        // map on initialCenter instead of trusting a fix like that; still
+        // record the accuracy badge so the farmer can see GPS is unreliable
+        // right now, and manual corner-tapping / walking are unaffected.
+        const trustworthy = isWithinKenya(lat, lng)
+        if (!userAlreadyMapping && trustworthy) {
+          _map.setView([lat, lng], zoomForAccuracy(accuracy))
+        } else if (!userAlreadyMapping && !trustworthy && !opts?.silent) {
+          // Only surface this as an error for an explicit "locate me" tap —
+          // the silent auto-locate on mount should fail quietly and just
+          // leave the farmer on the default view.
+          setGpsError('GPS fix looks unreliable right now (outside Kenya) — map position unchanged')
         }
         setLocating(false)
         // Reverse geocode
