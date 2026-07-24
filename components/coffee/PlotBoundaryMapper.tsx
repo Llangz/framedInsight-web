@@ -27,6 +27,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { EUDR_POLYGON_THRESHOLD_HA, roundToEudrPrecision, getEudrGeolocationFormat } from '@/lib/eudr-constants'
 import { createOfflineTileLayer, prefetchTilesForPlot, boundsFromPoints, type PrefetchProgress } from '@/lib/offline-tile-layer'
 import { getPlotTileStats, clearPlotTiles, type PlotTileStats } from '@/lib/tile-cache'
+import { probeMaxAvailableZoom } from '@/lib/esri-tile-availability'
 
 // ── Public contract ────────────────────────────────────────────────────────────
 
@@ -266,6 +267,21 @@ export default function PlotBoundaryMapper({
   const osmLayerRef = useRef<any>(null)
   const labelsLayerRef = useRef<any>(null)
 
+  // ── Real imagery zoom ceiling (fixes "map data not yet available") ───────
+  // Esri's real high-resolution coverage varies a lot by location — see
+  // lib/esri-tile-availability.ts for the full explanation. Past the true
+  // ceiling for wherever the farmer is mapping, Esri returns a valid-but-
+  // blank placeholder tile instead of erroring, so we have to *discover*
+  // and enforce the real ceiling ourselves rather than reacting to a
+  // failure that never technically fires. `ESRI_NOMINAL_MAX_ZOOM` is the
+  // upper bound we'd otherwise request (matches maxNativeZoom below);
+  // `satelliteZoomCeilingRef` holds whatever the probe actually found for
+  // the current location, and is what we clamp the map to while satellite
+  // is the active layer.
+  const ESRI_NOMINAL_MAX_ZOOM = 19
+  const satelliteZoomCeilingRef = useRef<number>(ESRI_NOMINAL_MAX_ZOOM)
+  const [atImageryCeiling, setAtImageryCeiling] = useState(false)
+
   // ── Offline tile cache (only meaningful when plotId is set — see Props) ───
   const [tileStats, setTileStats] = useState<PlotTileStats | null>(null)
   const [savingOffline, setSavingOffline] = useState(false)
@@ -427,11 +443,26 @@ export default function PlotBoundaryMapper({
           }
         })
 
-        // Sync zoom state to React for our custom buttons
-        map.on('zoom', () => setZoom(map.getZoom()))
+        // Sync zoom state to React for our custom buttons. Checks the map's
+        // actual active layer (not the `mapType` React variable) since this
+        // listener is attached once at mount and would otherwise close over
+        // a stale value once the farmer toggles satellite/street.
+        map.on('zoom', () => {
+          const z = map.getZoom()
+          setZoom(z)
+          const onSatellite = !!esriLayerRef.current && map.hasLayer(esriLayerRef.current)
+          setAtImageryCeiling(onSatellite && z >= satelliteZoomCeilingRef.current)
+        })
 
         mapRef.current = map
         setMapLoaded(true)
+
+        // Probe imagery availability for the default center right away —
+        // this is a coarse first pass (initialCenter is just Kenya's rough
+        // midpoint, not the farmer's actual plot) so the map is never left
+        // uncapped, but gets replaced by a precise probe the moment we have
+        // a real location (autoLocate below, or a manual "locate me" tap).
+        applyZoomCeiling(initialCenter[0], initialCenter[1])
         autoLocate(map, L, { silent: true })
       } catch (e) {
         console.error('Map init error:', e)
@@ -498,12 +529,52 @@ export default function PlotBoundaryMapper({
       if (labelsLayerRef.current) map.removeLayer(labelsLayerRef.current)
       if (osmLayerRef.current) osmLayerRef.current.addTo(map)
       setMapType('street')
+      // OSM's coverage is effectively uniform worldwide at the zooms this
+      // app uses, unlike Esri's — lift the satellite-specific cap while
+      // street view is active so switching to street is also the "escape
+      // hatch" for zoom, not just for missing imagery.
+      map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
+      setAtImageryCeiling(false)
     } else {
       if (osmLayerRef.current) map.removeLayer(osmLayerRef.current)
       if (esriLayerRef.current) esriLayerRef.current.addTo(map)
       if (labelsLayerRef.current) labelsLayerRef.current.addTo(map)
       setMapType('satellite')
+      // Re-apply whatever ceiling we last discovered for this location.
+      map.setMaxZoom(satelliteZoomCeilingRef.current)
+      if (map.getZoom() > satelliteZoomCeilingRef.current) map.setZoom(satelliteZoomCeilingRef.current)
+      setAtImageryCeiling(map.getZoom() >= satelliteZoomCeilingRef.current)
     }
+  }
+
+  // ── Discover & enforce the real Esri imagery zoom ceiling ──────────────────
+  // See lib/esri-tile-availability.ts for why this exists: Esri's own tile
+  // endpoint returns a valid-looking "Map data not yet available" tile
+  // rather than an error once you're past a location's real resolution, so
+  // we have to find that ceiling proactively and clamp to it — reacting
+  // after the fact isn't possible because nothing ever technically fails.
+  async function applyZoomCeiling(lat: number, lng: number) {
+    const map = mapRef.current
+    if (!map) return
+    const ceiling = await probeMaxAvailableZoom(lat, lng)
+    // The map (or the farmer) may have moved on to a different mode/type
+    // while the probe was in flight — only apply if still relevant. We
+    // check the map's actual active layer here rather than the `mapType`
+    // React variable: this function is called from autoLocate's memoized
+    // callback, which can hold a stale closure over `mapType` from an
+    // earlier render if the farmer toggled satellite/street in between —
+    // asking Leaflet what's actually on the map right now is always correct.
+    if (!mapRef.current) return
+    satelliteZoomCeilingRef.current = ceiling
+    const esri = esriLayerRef.current
+    if (!esri || !map.hasLayer(esri)) return // street active — has its own, higher cap; see toggleMapType
+    map.setMaxZoom(ceiling)
+    // If the farmer had already zoomed in past the newly-discovered ceiling
+    // (e.g. tapped + rapidly before the probe resolved), pull the view back
+    // to the sharpest level we've confirmed actually has imagery, rather
+    // than leaving them stranded on a blank tile.
+    if (map.getZoom() > ceiling) map.setZoom(ceiling)
+    setAtImageryCeiling(map.getZoom() >= ceiling)
   }
 
   // ── Retry tile loading (after a stall) ─────────────────────────────────────
@@ -555,6 +626,10 @@ export default function PlotBoundaryMapper({
         const trustworthy = isWithinKenya(lat, lng)
         if (!userAlreadyMapping && trustworthy) {
           _map.setView([lat, lng], zoomForAccuracy(accuracy))
+          // Re-probe now that we have the farmer's actual location, not
+          // just Kenya's rough midpoint — the initial mount-time probe was
+          // only ever a safe placeholder until this real fix arrived.
+          applyZoomCeiling(lat, lng)
         } else if (!userAlreadyMapping && !trustworthy && !opts?.silent) {
           // Only surface this as an error for an explicit "locate me" tap —
           // the silent auto-locate on mount should fail quietly and just
@@ -912,11 +987,15 @@ export default function PlotBoundaryMapper({
             {/* ── Left column: zoom + locate ─────────────────────────── */}
             <div className="absolute left-3 top-3 z-[1000] flex flex-col gap-1.5">
 
-              {/* Zoom in */}
+              {/* Zoom in — disabled once we've hit the sharpest imagery this
+                  location actually has (see applyZoomCeiling). A farmer
+                  tapping this at the ceiling gets a greyed-out button and a
+                  tooltip instead of the map silently blanking out. */}
               <button
                 type="button" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); zoomIn() }}
-                className="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-xl font-bold text-gray-700 hover:bg-gray-100 active:scale-95 border border-gray-200 transition-all select-none"
-                title="Zoom in"
+                disabled={atImageryCeiling}
+                className="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-xl font-bold text-gray-700 hover:bg-gray-100 active:scale-95 border border-gray-200 transition-all select-none disabled:opacity-40 disabled:hover:bg-white disabled:active:scale-100"
+                title={atImageryCeiling ? 'Sharpest satellite imagery available for this spot' : 'Zoom in'}
               >+</button>
 
               {/* Zoom out */}
@@ -1014,6 +1093,18 @@ export default function PlotBoundaryMapper({
             {gpsAccuracy !== null && !hasPolygon && (
               <div className="absolute bottom-3 right-3 z-[1000] bg-black/60 text-white text-xs px-2 py-1 rounded-md">
                 GPS ±{gpsAccuracy}m{gpsAccuracy <= 5 ? ' ✓' : gpsAccuracy > 15 ? ' ⚠' : ''}
+              </div>
+            )}
+
+            {/* ── Imagery zoom ceiling notice ──────────────────────────────
+                Only in satellite mode — street/OSM isn't capped (see
+                toggleMapType). Tells the farmer *why* + stopped working
+                instead of leaving it looking broken, and points at the one
+                thing that actually helps: switching to street map, which
+                still shows roads/paths even where satellite has no detail. */}
+            {atImageryCeiling && mapType === 'satellite' && (
+              <div className="absolute bottom-3 left-3 z-[1000] bg-black/70 text-white text-xs px-2.5 py-1.5 rounded-md max-w-[200px] leading-snug">
+                Sharpest satellite imagery available here — try street map for more detail
               </div>
             )}
 
