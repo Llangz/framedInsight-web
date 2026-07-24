@@ -55,8 +55,15 @@ const nextConfig = {
     // img-src covers <img>-based map tiles: OSM street tiles + Esri World Imagery satellite tiles
     "img-src 'self' blob: data: https://*.supabase.co https://api.agromonitoring.com https://*.tile.openstreetmap.org https://server.arcgisonline.com",
     "font-src 'self' data: https://fonts.gstatic.com",
-    // AI APIs (Vercel AI SDK, Anthropic) + Nominatim for reverse-geocoding plot coordinates to county/ward
-    "connect-src 'self' https://*.supabase.co https://api.agromonitoring.com https://api2.tiaraconnect.io https://gateway.lipachat.com https://api.openai.com https://api.anthropic.com https://nominatim.openstreetmap.org",
+    // AI APIs (Vercel AI SDK, Anthropic) + Nominatim for reverse-geocoding plot coordinates to county/ward.
+    // Tile origins (Esri, OSM) are also listed here, not just in img-src: the
+    // offline tile cache (lib/offline-tile-layer.ts) fetch()es tiles in the
+    // background to store them for offline use, which is governed by
+    // connect-src — img-src alone only covers the plain <img src> display
+    // path. Missing this caused every tile to silently fail to cache (and,
+    // in an earlier version of this feature, blocked display too — see the
+    // comment in lib/offline-tile-layer.ts's loadTile()).
+    "connect-src 'self' https://*.supabase.co https://api.agromonitoring.com https://api2.tiaraconnect.io https://gateway.lipachat.com https://api.openai.com https://api.anthropic.com https://nominatim.openstreetmap.org https://server.arcgisonline.com https://*.tile.openstreetmap.org",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

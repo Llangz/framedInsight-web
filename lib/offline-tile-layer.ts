@@ -28,9 +28,6 @@ export interface OfflineTileLayerMeta {
   provider: string
 }
 
-const TRANSPARENT_TILE =
-  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7'
-
 /**
  * Builds an actual tile layer instance. `L` must be the already-loaded
  * Leaflet module (this file never imports 'leaflet' directly, matching
@@ -72,6 +69,7 @@ export function createOfflineTileLayer(
 }
 
 async function loadTile(url: string, meta: OfflineTileLayerMeta, img: HTMLImageElement) {
+  // 1. Cache hit — this is what actually delivers on "works offline."
   try {
     const cached = await getCachedTile(url)
     if (cached) {
@@ -79,38 +77,46 @@ async function loadTile(url: string, meta: OfflineTileLayerMeta, img: HTMLImageE
       return
     }
   } catch {
-    // fall through to network
+    // fall through to a direct load
   }
 
-  try {
-    const res = await fetch(url, { mode: 'cors' })
-    if (!res.ok) throw new Error(`tile fetch failed: ${res.status}`)
-    const blob = await res.blob()
-    img.src = URL.createObjectURL(blob)
-    // Cache in the background — never blocks the tile from rendering, and a
-    // failure here is silently non-fatal (see cacheTileIfWithinBudget).
-    void cacheTileIfWithinBudget(url, meta, blob)
-  } catch {
-    // Offline (or the request genuinely failed) and nothing cached for this
-    // tile: show a muted placeholder instead of a broken-image icon so the
-    // mapper stays usable underneath it.
-    img.src = TRANSPARENT_TILE
-    img.style.background = 'rgba(15, 23, 42, 0.45)'
-  }
+  // 2. No cached copy: load the tile exactly the way a plain Leaflet
+  // TileLayer always has — a direct `img.src` assignment, which the browser
+  // fetches itself and which only needs the CSP's `img-src` (already
+  // allow-lists both tile providers) to succeed, not `connect-src`.
+  //
+  // This is deliberate: rendering must never depend on the fetch() call
+  // below succeeding. The two are governed by different CSP directives, can
+  // fail independently (a provider that allows plain image loads but
+  // doesn't send permissive CORS headers is common), and conflating them is
+  // exactly what caused every tile to render as a blank placeholder the
+  // first time this shipped — see HANDOFF-offline-tile-caching.md follow-up
+  // notes. If this also fails (genuinely offline, nothing cached), Leaflet's
+  // own tileerror handling takes over, same as before this feature existed.
+  img.src = url
+
+  // 3. Separately, best-effort: try to fetch+cache this tile's bytes so
+  // it's available offline next time. Requires CORS + connect-src to allow
+  // the provider's origin (see next.config.js). A failure here — CORS not
+  // configured on a given provider, offline, anything — is silent and has
+  // zero effect on what the farmer sees, since step 2 already rendered it.
+  void cacheTileInBackground(url, meta)
 }
 
-async function cacheTileIfWithinBudget(url: string, meta: OfflineTileLayerMeta, blob: Blob) {
+async function cacheTileInBackground(url: string, meta: OfflineTileLayerMeta) {
   try {
     const count = await getPlotTileCount(meta.plotId)
     if (count >= MAX_TILES_PER_PLOT) return
-    const coords = parseCoordsFromLeafletUrl(url) // best-effort, only used for bookkeeping
+    const res = await fetch(url, { mode: 'cors' })
+    if (!res.ok) return
+    const blob = await res.blob()
+    const coords = parseCoordsFromLeafletUrl(url) // best-effort, bookkeeping only
     await putCachedTile(
       { url, plotId: meta.plotId, provider: meta.provider, z: coords?.z ?? -1, x: coords?.x ?? -1, y: coords?.y ?? -1 },
       blob
     )
   } catch {
-    // Non-fatal — the tile still rendered from network, it just won't
-    // persist for next time.
+    // Non-fatal and silent by design — see loadTile's comment above.
   }
 }
 
