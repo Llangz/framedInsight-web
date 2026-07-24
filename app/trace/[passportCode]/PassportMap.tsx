@@ -51,11 +51,13 @@ export default function PassportMap({ lat, lng, label, heightPx = 224 }: Props) 
 
     ;(async () => {
       try {
-        // 1. Import Leaflet JS + the BUNDLED CSS together before touching the DOM.
-        //    This is the fix for the CSP-blocked CDN link and the race where tiles
-        //    rendered before the Leaflet stylesheet applied grid-coordinate styles.
+        // Leaflet's base stylesheet is imported once, globally, in
+        // app/globals.css — it must be present before ANY map mounts,
+        // and a static global import is the only reliable way to
+        // guarantee that (see globals.css for why the per-component
+        // dynamic `import('leaflet/dist/leaflet.css')` this used to do
+        // here was the actual root cause of blank/unstyled maps).
         const L = (await import('leaflet')).default
-        await import('leaflet/dist/leaflet.css')
 
         if (cancelled || !containerRef.current || mapRef.current) return
 

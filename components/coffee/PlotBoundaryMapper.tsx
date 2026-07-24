@@ -304,7 +304,6 @@ export default function PlotBoundaryMapper({
       try {
         if (!mapContainerRef.current) return
         const L = (await import('leaflet')).default
-        await import('leaflet/dist/leaflet.css')
         leafletRef.current = L
 
         // Fix broken webpack asset paths for default markers

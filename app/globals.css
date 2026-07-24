@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* Leaflet base stylesheet — imported once, globally, so it is always
+   present before any map component mounts. This MUST be a static import
+   here rather than the per-component `await import('leaflet/dist/leaflet.css')`
+   pattern: without leaflet.css, Leaflet's tile <img> elements have no
+   `position: absolute` / pane positioning rules, so instead of forming an
+   absolutely-positioned tile grid they render in normal document flow —
+   stacking and wrapping inside the map container. That is the actual cause
+   of the blank/striped map: the tiles ARE loading, they are just laid out
+   as ordinary inline images instead of a map grid. See app/layout.tsx,
+   which imports this file globally, for why a single import here reaches
+   every map on the site. */
+@import "leaflet/dist/leaflet.css";
+
 
 :root {
   /* Core Palette */

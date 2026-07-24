@@ -32,7 +32,6 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
       try {
         if (!mapContainerRef.current) return
         const L = (await import('leaflet')).default
-        await import('leaflet/dist/leaflet.css')
 
         // Fix broken default icons
         delete (L.Icon.Default.prototype as any)._getIconUrl

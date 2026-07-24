@@ -32,22 +32,22 @@ const RISK_CONFIG: Record<RiskLevel, {
 }> = {
   green: {
     bg: 'bg-green-50', border: 'border-green-400',
-    badge: 'text-green-800', badgeBg: 'bg-green-100',
+    badge: 'text-emerald-400', badgeBg: 'bg-emerald-500/10',
     icon: '✅', label: 'CLEAR — Ready for Export', textColor: 'text-green-700'
   },
   yellow: {
     bg: 'bg-amber-50', border: 'border-amber-400',
-    badge: 'text-amber-900', badgeBg: 'bg-amber-100',
+    badge: 'text-amber-400', badgeBg: 'bg-amber-500/10',
     icon: '⚠️', label: 'VERIFY — Action Needed', textColor: 'text-amber-700'
   },
   red: {
     bg: 'bg-red-50', border: 'border-red-500',
-    badge: 'text-red-900', badgeBg: 'bg-red-100',
+    badge: 'text-red-400', badgeBg: 'bg-red-500/10',
     icon: '🚫', label: 'BLOCKED — Forest Conflict', textColor: 'text-red-700'
   },
   unknown: {
     bg: 'bg-slate-50', border: 'border-slate-300',
-    badge: 'text-slate-700', badgeBg: 'bg-slate-100',
+    badge: 'text-slate-400', badgeBg: 'bg-slate-700/40',
     icon: '❓', label: 'NOT CHECKED', textColor: 'text-slate-600'
   },
 }

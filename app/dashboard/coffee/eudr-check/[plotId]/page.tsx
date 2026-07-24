@@ -95,8 +95,6 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
     async function init() {
       try {
         const leafletMod: any = await import('leaflet')
-        // @ts-ignore — CSS import has no type declarations but works at runtime (bundled, not CDN)
-        await import('leaflet/dist/leaflet.css')
         if (cancelled || !containerRef.current) return
         const L = leafletMod.default ?? leafletMod
 
