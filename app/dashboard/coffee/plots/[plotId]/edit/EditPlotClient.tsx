@@ -270,6 +270,7 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
                 <div className="p-3">
                   <PlotBoundaryMapper
                     onComplete={(result) => { setBoundary(result); setShowMapper(false) }}
+                    plotId={plot.id}
                   />
                 </div>
               </div>

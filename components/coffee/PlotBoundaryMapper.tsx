@@ -25,6 +25,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { EUDR_POLYGON_THRESHOLD_HA, roundToEudrPrecision, getEudrGeolocationFormat } from '@/lib/eudr-constants'
+import { createOfflineTileLayer, prefetchTilesForPlot, boundsFromPoints, type PrefetchProgress } from '@/lib/offline-tile-layer'
+import { getPlotTileStats, clearPlotTiles, type PlotTileStats } from '@/lib/tile-cache'
 
 // ── Public contract ────────────────────────────────────────────────────────────
 
@@ -51,6 +53,15 @@ interface Props {
   onClear?: () => void
   initialCenter?: [number, number]
   className?: string
+  /**
+   * Existing plot's ID. Only present when mapping/re-mapping a plot that
+   * already exists in the database (edit flows, the "map this plot now"
+   * read-only-page flow) — omitted for brand-new plots that haven't been
+   * saved yet, since there's no durable ID to key an offline tile cache by.
+   * When provided, this also enables the "Save this map for offline use"
+   * action once a boundary is captured.
+   */
+  plotId?: string
 }
 
 type MapMode = 'idle' | 'drawing' | 'walking' | 'done'
@@ -176,6 +187,7 @@ export default function PlotBoundaryMapper({
   onComplete, onLocationDetected, onClear,
   initialCenter = [-0.7, 37.0],
   className = '',
+  plotId,
 }: Props) {
 
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -221,6 +233,13 @@ export default function PlotBoundaryMapper({
   const osmLayerRef = useRef<any>(null)
   const labelsLayerRef = useRef<any>(null)
 
+  // ── Offline tile cache (only meaningful when plotId is set — see Props) ───
+  const [tileStats, setTileStats] = useState<PlotTileStats | null>(null)
+  const [savingOffline, setSavingOffline] = useState(false)
+  const [offlineProgress, setOfflineProgress] = useState<PrefetchProgress | null>(null)
+  const [offlineSaveError, setOfflineSaveError] = useState<string | null>(null)
+  const [clearingOffline, setClearingOffline] = useState(false)
+
   // Derived
   const ha = areaHa(points)
   const acres = ha * 2.47105
@@ -235,6 +254,13 @@ export default function PlotBoundaryMapper({
   useEffect(() => { pointsRef.current = points }, [points])
   useEffect(() => { modeRef.current = mode }, [mode])
   useEffect(() => { tilesRenderedRef.current = tilesRendered }, [tilesRendered])
+
+  useEffect(() => {
+    if (!plotId) return
+    let cancelled = false
+    getPlotTileStats(plotId).then(stats => { if (!cancelled) setTileStats(stats.tileCount > 0 ? stats : null) })
+    return () => { cancelled = true }
+  }, [plotId])
 
   // ── Init Leaflet ────────────────────────────────────────────────────────────
 
@@ -266,18 +292,28 @@ export default function PlotBoundaryMapper({
           attributionControl: false, // we add a minimal one
         })
 
-        // Satellite tiles
-        const esriSat = L.tileLayer(
+        // Satellite tiles — routed through the offline-aware tile layer so a
+        // plot that's been viewed once with signal renders from cache when
+        // offline later. `tileCacheMeta` is null for brand-new, unsaved plots
+        // (no plotId yet), in which case this behaves like a plain L.tileLayer.
+        const tileCacheMeta = plotId ? { plotId } : null
+        const esriSat = createOfflineTileLayer(
+          L,
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          { maxZoom: 20, maxNativeZoom: 19 }
+          { maxZoom: 20, maxNativeZoom: 19 },
+          tileCacheMeta && { ...tileCacheMeta, provider: 'esri-satellite' }
         )
-        const esriLabels = L.tileLayer(
+        const esriLabels = createOfflineTileLayer(
+          L,
           'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-          { maxZoom: 20, maxNativeZoom: 19, opacity: 0.8 }
+          { maxZoom: 20, maxNativeZoom: 19, opacity: 0.8 },
+          tileCacheMeta && { ...tileCacheMeta, provider: 'esri-labels' }
         )
-        const osm = L.tileLayer(
+        const osm = createOfflineTileLayer(
+          L,
           'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          { maxZoom: 19 }
+          { maxZoom: 19 },
+          tileCacheMeta && { ...tileCacheMeta, provider: 'osm' }
         )
 
         esriSat.addTo(map)
@@ -641,6 +677,64 @@ export default function PlotBoundaryMapper({
     finalizePoints(points)
   }
 
+  // ── Save map for offline use ────────────────────────────────────────────────
+  // Only reachable when plotId is set and a boundary/point exists — walks the
+  // tile grid for the plot's bounding box (+ buffer) at the zoom levels this
+  // mapper actually renders (native satellite detail tops out at z19; z20 is
+  // just Leaflet upsampling those same tiles, so there's nothing real to fetch
+  // there) and populates the cache, so the plot's imagery survives offline.
+
+  async function saveOfflineMap() {
+    if (!plotId || points.length === 0 || savingOffline) return
+    const bounds = boundsFromPoints(points)
+    if (!bounds) return
+
+    setSavingOffline(true)
+    setOfflineSaveError(null)
+    setOfflineProgress({ done: 0, total: 0 })
+
+    try {
+      const layers = mapType === 'satellite'
+        ? [
+            { urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', provider: 'esri-satellite' },
+            { urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', provider: 'esri-labels' },
+          ]
+        : [
+            { urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', provider: 'osm', subdomains: ['a', 'b', 'c'] },
+          ]
+
+      await prefetchTilesForPlot(
+        plotId,
+        bounds,
+        [16, 17, 18, 19],
+        layers,
+        (p) => setOfflineProgress(p)
+      )
+
+      const stats = await getPlotTileStats(plotId)
+      setTileStats(stats.tileCount > 0 ? stats : null)
+    } catch (e) {
+      console.error('Offline map save failed:', e)
+      setOfflineSaveError('Could not save the full map for offline use — some tiles may still have been cached.')
+    } finally {
+      setSavingOffline(false)
+      setOfflineProgress(null)
+    }
+  }
+
+  async function clearOfflineMap() {
+    if (!plotId || clearingOffline) return
+    setClearingOffline(true)
+    try {
+      await clearPlotTiles(plotId)
+      setTileStats(null)
+    } catch (e) {
+      console.error('Failed to clear offline tiles:', e)
+    } finally {
+      setClearingOffline(false)
+    }
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -980,6 +1074,61 @@ export default function PlotBoundaryMapper({
                 }
               </p>
             </div>
+            {plotId && (
+              <div className="p-3 bg-slate-800/60 border border-white/10 rounded-xl space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <svg className="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-slate-200">
+                      {tileStats ? 'Saved for offline use' : 'Save this map for offline use'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                      {tileStats
+                        ? `${tileStats.tileCount} tiles cached (~${(tileStats.bytes / (1024 * 1024)).toFixed(1)} MB), last updated ${new Date(tileStats.newestSavedAt || Date.now()).toLocaleDateString()}.`
+                        : 'Download this plot\'s imagery now so it still loads with no signal in the field.'}
+                    </p>
+                  </div>
+                </div>
+
+                {savingOffline && offlineProgress && (
+                  <div className="space-y-1">
+                    <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 transition-all"
+                        style={{ width: offlineProgress.total > 0 ? `${Math.round((offlineProgress.done / offlineProgress.total) * 100)}%` : '8%' }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      {offlineProgress.total > 0 ? `Caching tile ${offlineProgress.done} of ${offlineProgress.total}…` : 'Preparing…'}
+                    </p>
+                  </div>
+                )}
+
+                {offlineSaveError && <p className="text-xs text-amber-400">{offlineSaveError}</p>}
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={saveOfflineMap}
+                    disabled={savingOffline}
+                    className="flex-1 py-2 bg-emerald-700/80 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition-colors"
+                  >
+                    {savingOffline ? 'Saving…' : tileStats ? 'Update offline copy' : 'Save for offline'}
+                  </button>
+                  {tileStats && (
+                    <button
+                      type="button"
+                      onClick={clearOfflineMap}
+                      disabled={clearingOffline || savingOffline}
+                      className="py-2 px-3 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-slate-400 hover:text-white text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      {clearingOffline ? 'Clearing…' : 'Clear'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             <button
               type="button" onClick={clearAll}
               className="w-full py-2.5 border border-white/10 text-slate-400 hover:text-white rounded-xl text-sm font-medium hover:bg-white/5 transition-colors"

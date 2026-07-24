@@ -529,6 +529,7 @@ export default function EUDRPlotDetailPage() {
               <div className="p-3">
                 <PlotBoundaryMapper
                   onComplete={handleBoundaryComplete}
+                  plotId={plotId}
                 />
               </div>
               {savingBoundary && (
