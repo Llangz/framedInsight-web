@@ -203,3 +203,54 @@ input[class*="bg-[#161921]"]:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px
 ::-webkit-scrollbar-track { background: var(--background); }
 ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+/* ── Leaflet safety-net overrides ──────────────────────────────
+   These rules ensure the map never shows a white/light background
+   regardless of when the Leaflet stylesheet finishes loading.
+   They also prevent global img resets from interfering with tiles
+   and ensure our dark-theme overlay panels sit above tile images. */
+
+/* Dark background so the map area looks intentional while tiles load
+   (Leaflet's own default is #ddd, which reads as "broken" in dark UI). */
+.leaflet-container {
+  background: #0f172a !important;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+/* Prevent any global img[style] or img resets from clipping tiles */
+.leaflet-tile {
+  image-rendering: auto;
+  max-width: none !important;
+}
+
+/* Ensure our React overlay buttons sit above Leaflet's own controls */
+.leaflet-pane {
+  z-index: 400;
+}
+.leaflet-overlay-pane {
+  z-index: 410;
+}
+.leaflet-marker-pane,
+.leaflet-tooltip-pane {
+  z-index: 420;
+}
+.leaflet-popup-pane {
+  z-index: 430;
+}
+
+/* Passport map tooltip — styled by JS but guarded here as fallback */
+.passport-tip {
+  background: #0D0F14;
+  border: 1px solid rgba(201, 169, 110, 0.35);
+  color: #C9A96E;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.passport-tip::before,
+.leaflet-tooltip-top.passport-tip::before {
+  display: none;
+}

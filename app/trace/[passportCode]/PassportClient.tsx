@@ -364,13 +364,16 @@ export default function PassportClient({ passport, passportCode, ledger = [], le
                     {geo.centroid_lat.toFixed(4)}, {geo.centroid_lng.toFixed(4)}
                   </span>
                 </div>
-                <div className="h-56">
-                  <PassportMap
-                    lat={geo.centroid_lat}
-                    lng={geo.centroid_lng}
-                    label={story.factory ?? story.cooperative}
-                  />
-                </div>
+                {/* Map — heightPx is passed directly so Leaflet has an explicit
+                    pixel height at init; no h-56 wrapper needed (that relied on
+                    CSS layout settling before Leaflet read the container). */}
+                <PassportMap
+                  key={`${geo.centroid_lat}-${geo.centroid_lng}`}
+                  lat={geo.centroid_lat}
+                  lng={geo.centroid_lng}
+                  label={story.factory ?? story.cooperative}
+                  heightPx={224}
+                />
               </div>
             )}
 

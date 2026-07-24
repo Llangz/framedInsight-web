@@ -882,8 +882,15 @@ export default function PlotBoundaryMapper({
       {/* ── Map area ─────────────────────────────────────────────────────────── */}
       <div className="relative rounded-xl overflow-hidden" style={{ background: '#0f172a' }}>
 
-        {/* Leaflet mount point */}
-        <div ref={mapContainerRef} style={{ height: 400, width: '100%' }} />
+        {/* Leaflet mount point — responsive height: 460px on desktop, 60vh on short mobile screens */}
+        <div
+          ref={mapContainerRef}
+          style={{
+            height: 'min(460px, 60vh)',
+            minHeight: 280,
+            width: '100%',
+          }}
+        />
 
         {/* Crosshair — only in draw mode, centered, pointer-events:none */}
         <Crosshair visible={isDrawing} />

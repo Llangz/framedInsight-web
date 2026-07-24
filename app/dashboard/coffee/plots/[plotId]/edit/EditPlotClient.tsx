@@ -267,12 +267,10 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
                   <p className="text-amber-300 text-sm font-semibold">Walk the perimeter or tap corners, then tap Save</p>
                   <button type="button" onClick={() => setShowMapper(false)} className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded border border-slate-600">Cancel</button>
                 </div>
-                <div className="p-3">
-                  <PlotBoundaryMapper
-                    onComplete={(result) => { setBoundary(result); setShowMapper(false) }}
-                    plotId={plot.id}
-                  />
-                </div>
+                <PlotBoundaryMapper
+                  onComplete={(result) => { setBoundary(result); setShowMapper(false) }}
+                  plotId={plot.id}
+                />
               </div>
             )}
           </div>
