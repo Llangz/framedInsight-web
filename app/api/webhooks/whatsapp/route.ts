@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { processFarmerIntent, executeIntent } from '@/lib/ai/intent-processor'
+import { getFarmContextSnapshot, logIntentInteraction } from '@/lib/ai/intent-logging'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 // ─────────────────────────────────────────────
@@ -609,10 +610,31 @@ export async function POST(req: NextRequest) {
   // ── AI intent processing for registered farmers
   try {
     console.log(`Farm: ${farm.farm_name} (${farm.id}) | lang: ${session.lang} | state: ${session.menuState}`)
+    const startedAt = Date.now()
     const parsedIntent = await processFarmerIntent(rawText, farm.id, session.lastEnterprise)
     console.log('Intent:', JSON.stringify(parsedIntent))
     const reply = await executeIntent(farm.id, parsedIntent)
     await sendText(senderNumber, reply)
+
+    // Phase 0 data collection for a future small language model — never on
+    // the farmer's critical path, and never allowed to affect the reply.
+    getFarmContextSnapshot(farm.id)
+      .then(farmContext =>
+        logIntentInteraction({
+          farmId:         farm.id,
+          rawMessage:     rawText,
+          language:       session.lang,
+          farmContext,
+          modelProvider:  'openai',
+          modelName:      'gpt-4o',
+          parsedIntent:   parsedIntent.intent,
+          parsedEntities: parsedIntent.entities,
+          confidence:     parsedIntent.confidence,
+          replyText:      reply,
+          latencyMs:      Date.now() - startedAt,
+        })
+      )
+      .catch(err => console.error('Phase 0 intent logging failed', err))
 
     // After AI responds, if the user was in AWAITING_INPUT,
     // offer to return to their last enterprise sub-menu or main menu
