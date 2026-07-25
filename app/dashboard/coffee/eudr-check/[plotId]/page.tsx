@@ -577,10 +577,27 @@ export default function EUDRPlotDetailPage() {
                   Cancel
                 </button>
               </div>
-              <div className="h-72">
+              {/* Was `h-72` (a hard 288px), which clips its own children
+                  rather than growing to fit them. PlotBoundaryMapper's map
+                  alone wants up to 460px, and the "Tap Corners"/"Walk
+                  Boundary" mode buttons, GPS/error banners, and the
+                  Undo/Clear/Done action row all render BELOW that in a
+                  flex-col — none of it fits in 288px. Because the
+                  grandparent card above has `overflow-hidden`, that excess
+                  wasn't just visually cramped, it was invisible: tapping
+                  "Re-map boundary" reset the mapper to idle mode, whose
+                  entire button choice (Tap Corners / Walk Boundary) lives
+                  past the 288px cutoff, so the farmer saw a live map with
+                  no way to act on it. `p-3` matches the working version
+                  of this same flow on the plot detail page — let the
+                  content size itself and just add breathing room. Also
+                  passing plotId, previously omitted here (present on the
+                  plot detail page's copy of this exact block), which is
+                  what enables the "Save this map for offline use" flow. */}
+              <div className="p-3">
                 <PlotBoundaryMapper
                   onComplete={handleBoundaryComplete}
-
+                  plotId={plotId}
                 />
               </div>
               {savingBoundary && (
