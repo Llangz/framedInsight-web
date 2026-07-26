@@ -17,6 +17,26 @@ function getSupabaseClient() {
 
 const today = () => new Date().toISOString().split('T')[0]
 
+// Mirrors the Lang type in app/api/webhooks/whatsapp/route.ts — kept as a
+// separate local type (not imported) so this module has no dependency on
+// the webhook route; the two are just kept in sync by convention.
+type Lang = 'en' | 'sw'
+
+/**
+ * Human labels + which intents belong to each enterprise, used both to
+ * build the classifier's context hint and (previously) nowhere — this is
+ * what makes the `enterpriseHint` parameter to processFarmerIntent() do
+ * something. Before this, a farmer who tapped "🍼 Record Milk" and then
+ * typed something ambiguous got no benefit from having explicitly chosen
+ * dairy — the classifier guessed across all 12 intents from a blank slate.
+ */
+const ENTERPRISE_INTENTS: Record<string, { label: string; intents: string[] }> = {
+  MENU_COFFEE:  { label: 'Coffee',        intents: ['record_coffee_harvest', 'report_coffee_disease', 'query_eudr_status'] },
+  MENU_DAIRY:   { label: 'Dairy',         intents: ['record_milk', 'report_cow_health'] },
+  MENU_GOATS:   { label: 'Goats & Sheep', intents: ['record_goat_weight', 'report_goat_health', 'record_goat_sale'] },
+  MENU_POULTRY: { label: 'Poultry',       intents: ['record_egg', 'record_poultry_feed', 'report_poultry_health', 'record_poultry_mortality'] },
+}
+
 // ─────────────────────────────────────────────
 // Intent Schema
 // Every intent the WhatsApp menu can trigger must appear here.
@@ -69,6 +89,7 @@ export async function processFarmerIntent(
   message: string,
   farmId: string,
   enterpriseHint?: string,
+  lang: Lang = 'en',
 ): Promise<ParsedIntent> {
   const supabase = getSupabaseClient()
 
@@ -103,6 +124,15 @@ export async function processFarmerIntent(
 
     const model = getLanguageModel('openai')
 
+    const hint = enterpriseHint ? ENTERPRISE_INTENTS[enterpriseHint] : undefined
+    const hintLine = hint
+      ? `\nThe farmer just tapped into the *${hint.label}* menu on WhatsApp before sending this message. Strongly prefer one of these intents: ${hint.intents.join(', ')} — unless the message clearly and unambiguously describes something else (e.g. asking for AI warnings or farm stats instead).\n`
+      : ''
+
+    const languageLine = lang === 'sw'
+      ? `The farmer has chosen Kiswahili as their WhatsApp language. Write the "response" field in Kiswahili.`
+      : `The farmer has chosen English as their WhatsApp language. Write the "response" field in English.`
+
     const { object } = await generateObject({
       model,
       schema: intentSchema,
@@ -115,6 +145,8 @@ Parse WhatsApp messages into structured farm actions.
 Today's date: ${today()}
 Farm context:
 ${contextStr}
+${hintLine}
+${languageLine}
 
 Intent classification rules:
 - Milk amount or litres for a cow → record_milk
@@ -139,7 +171,7 @@ entity extraction:
 - disease: specific disease if named
 - severity: mild/moderate/severe if mentioned
 
-Keep responses short, friendly, Kenyan farming tone. Sheng/Swahili welcome.`,
+Keep the "response" field short and in a friendly, Kenyan farming tone, in the language specified above. The farmer's own message may be in English, Kiswahili, or Sheng regardless of their chosen reply language — parse it either way, but always reply in the language specified above.`,
         },
         { role: 'user', content: message },
       ],
@@ -153,7 +185,9 @@ Keep responses short, friendly, Kenyan farming tone. Sheng/Swahili welcome.`,
       intent: 'unknown',
       confidence: 0,
       entities: {},
-      response: 'Pole, sijaelewa vizuri. Tafadhali jaribu tena.',
+      response: lang === 'sw'
+        ? 'Pole, sijaelewa vizuri. Tafadhali jaribu tena.'
+        : "Sorry, I didn't quite understand that. Please try again.",
     }
   }
 }
@@ -208,9 +242,16 @@ async function findPoultryBatch(supabase: ReturnType<typeof getSupabaseClient>, 
 // ─────────────────────────────────────────────
 // executeIntent — write to DB and return reply
 // ─────────────────────────────────────────────
-export async function executeIntent(farmId: string, parsed: ParsedIntent): Promise<string> {
+export async function executeIntent(farmId: string, parsed: ParsedIntent, lang: Lang = 'en'): Promise<string> {
   const supabase = getSupabaseClient()
   const { intent, entities } = parsed
+
+  // Every branch below builds its farmer-facing reply through this helper
+  // instead of a hardcoded string, so the same confirmation/clarification/
+  // error text a farmer gets when recording data matches the language they
+  // picked on the menu — previously every reply here was Kiswahili
+  // regardless of session language.
+  const L = (en: string, sw: string) => (lang === 'sw' ? sw : en)
 
   try {
     // ── DAIRY: Record milk ────────────────────────────────────────────────
@@ -219,16 +260,21 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
 
       if (!cow) {
         return entities.target
-          ? `Sijaona ng'ombe "${entities.target}" kwa shamba lako. Angalia tag au jina.`
-          : `Taja jina au tag ya ng'ombe, e.g. "Daisy ametoa 18L asubuhi".`
+          ? L(`I couldn't find a cow named "${entities.target}" on your farm. Check the tag or name.`,
+              `Sijaona ng'ombe "${entities.target}" kwa shamba lako. Angalia tag au jina.`)
+          : L(`Tell me the cow's name or tag, e.g. "Daisy gave 18L this morning".`,
+              `Taja jina au tag ya ng'ombe, e.g. "Daisy ametoa 18L asubuhi".`)
       }
       if (!entities.amount) {
-        return `Unataka kurekodi maziwa ya ${cow.cow_tag} — ilikuwa lita ngapi?`
+        return L(`Recording milk for ${cow.cow_tag} — how many litres?`,
+                  `Unataka kurekodi maziwa ya ${cow.cow_tag} — ilikuwa lita ngapi?`)
       }
 
       const isMorning = entities.session === 'morning' || !entities.session
-      const sessionLabel = entities.session === 'evening' ? 'jioni'
-                         : entities.session === 'afternoon' ? 'mchana' : 'asubuhi'
+      const sessionLabel = L(
+        entities.session === 'evening' ? 'evening' : entities.session === 'afternoon' ? 'afternoon' : 'morning',
+        entities.session === 'evening' ? 'jioni' : entities.session === 'afternoon' ? 'mchana' : 'asubuhi',
+      )
 
       await supabase.from('milk_records').insert({
         cow_id:       cow.id,
@@ -238,7 +284,8 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         total_milk:   entities.amount,
       })
 
-      return `✓ Nime-record ${entities.amount}L za ${sessionLabel} kwa ${cow.name || cow.cow_tag}. Kazi nzuri!`
+      return L(`✓ Recorded ${entities.amount}L ${sessionLabel} milk for ${cow.name || cow.cow_tag}. Nice work!`,
+                `✓ Nime-record ${entities.amount}L za ${sessionLabel} kwa ${cow.name || cow.cow_tag}. Kazi nzuri!`)
     }
 
     // ── DAIRY: Cow health ─────────────────────────────────────────────────
@@ -247,11 +294,12 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
 
       if (!cow) {
         return entities.target
-          ? `Sijaona ng'ombe "${entities.target}". Taja tag sahihi.`
-          : `Taja jina au tag ya ng'ombe aliye na tatizo.`
+          ? L(`I couldn't find "${entities.target}". Check the tag.`, `Sijaona ng'ombe "${entities.target}". Taja tag sahihi.`)
+          : L(`Tell me the name or tag of the cow with the problem.`, `Taja jina au tag ya ng'ombe aliye na tatizo.`)
       }
       if (!entities.issue) {
-        return `Elezea tatizo la ${cow.name || cow.cow_tag} — dalili ni zipi?`
+        return L(`Describe the problem with ${cow.name || cow.cow_tag} — what are the symptoms?`,
+                  `Elezea tatizo la ${cow.name || cow.cow_tag} — dalili ni zipi?`)
       }
 
       await supabase.from('health_records').insert({
@@ -261,7 +309,8 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         treatment_date: entities.date || today(),
       })
 
-      return `✓ Nime-record tatizo la "${entities.issue}" kwa ${cow.name || cow.cow_tag}. Fuatilia vizuri — wasiliana na daktari wa mifugo ikibidi.`
+      return L(`✓ Recorded "${entities.issue}" for ${cow.name || cow.cow_tag}. Keep monitoring closely — call a vet if it doesn't improve.`,
+                `✓ Nime-record tatizo la "${entities.issue}" kwa ${cow.name || cow.cow_tag}. Fuatilia vizuri — wasiliana na daktari wa mifugo ikibidi.`)
     }
 
     // ── COFFEE: Record harvest ────────────────────────────────────────────
@@ -270,11 +319,14 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
 
       if (!plot) {
         return entities.target
-          ? `Sijaona plot ya kahawa inayoitwa "${entities.target}". Angalia jina.`
-          : `Taja jina la plot, e.g. "Niliokota 80kg kutoka Hillside".`
+          ? L(`I couldn't find a coffee plot called "${entities.target}". Check the name.`,
+              `Sijaona plot ya kahawa inayoitwa "${entities.target}". Angalia jina.`)
+          : L(`Tell me the plot name, e.g. "Picked 80kg from Hillside".`,
+              `Taja jina la plot, e.g. "Niliokota 80kg kutoka Hillside".`)
       }
       if (!entities.amount) {
-        return `Unataka kurekodi mavuno ya ${plot.plot_name} — ilikuwa kilo ngapi?`
+        return L(`Recording the harvest for ${plot.plot_name} — how many kg?`,
+                  `Unataka kurekodi mavuno ya ${plot.plot_name} — ilikuwa kilo ngapi?`)
       }
 
       await supabase.from('coffee_harvests').insert({
@@ -287,7 +339,8 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         quality_grade: 'AB',
       })
 
-      return `✓ Nime-record ${entities.amount}kg cherry kwa ${plot.plot_name}. Safi sana — endelea hivyo!`
+      return L(`✓ Recorded ${entities.amount}kg cherry for ${plot.plot_name}. Great work — keep it up!`,
+                `✓ Nime-record ${entities.amount}kg cherry kwa ${plot.plot_name}. Safi sana — endelea hivyo!`)
     }
 
     // ── COFFEE: Report disease ────────────────────────────────────────────
@@ -296,11 +349,12 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
 
       if (!plot) {
         return entities.target
-          ? `Sijaona plot "${entities.target}". Taja jina sahihi.`
-          : `Taja plot iliyoathiriwa, e.g. "Hillside ina CBD".`
+          ? L(`I couldn't find plot "${entities.target}". Check the name.`, `Sijaona plot "${entities.target}". Taja jina sahihi.`)
+          : L(`Tell me which plot is affected, e.g. "Hillside has CBD".`, `Taja plot iliyoathiriwa, e.g. "Hillside ina CBD".`)
       }
       if (!entities.issue && !entities.disease) {
-        return `Elezea ugonjwa/tatizo kwenye ${plot.plot_name} — dalili ni zipi?`
+        return L(`Describe the disease/problem on ${plot.plot_name} — what are the symptoms?`,
+                  `Elezea ugonjwa/tatizo kwenye ${plot.plot_name} — dalili ni zipi?`)
       }
 
       const description = [entities.disease, entities.issue].filter(Boolean).join(' — ')
@@ -315,7 +369,8 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         alert_level:          entities.severity === 'severe' ? 'high' : 'medium',
       })
 
-      return `✓ Nime-record ripoti ya ugonjwa kwa ${plot.plot_name}: "${description}". Tembelea plot haraka na fikiria dawa sahihi.`
+      return L(`✓ Recorded a disease report for ${plot.plot_name}: "${description}". Visit the plot soon and consider the right treatment.`,
+                `✓ Nime-record ripoti ya ugonjwa kwa ${plot.plot_name}: "${description}". Tembelea plot haraka na fikiria dawa sahihi.`)
     }
 
     // ── COFFEE: EUDR status ───────────────────────────────────────────────
@@ -329,12 +384,13 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
           .select('plot_name, eudr_risk_level, total_trees')
           .eq('farm_id', farmId)
 
-        if (!allPlots?.length) return `Bado huna plots zilizosajiliwa.`
+        if (!allPlots?.length) return L(`You don't have any registered plots yet.`, `Bado huna plots zilizosajiliwa.`)
 
         const lines = allPlots.map(p =>
-          `• ${p.plot_name}: ${p.eudr_risk_level ? eudrLabel(p.eudr_risk_level) : 'Haijapimwa'}`
+          `• ${p.plot_name}: ${p.eudr_risk_level ? eudrLabel(p.eudr_risk_level, lang) : L('Not yet assessed', 'Haijapimwa')}`
         ).join('\n')
-        return `📋 EUDR status ya plots zako:\n${lines}\n\nTumia dashboard kuona details zaidi.`
+        return L(`📋 EUDR status for your plots:\n${lines}\n\nUse the dashboard to see more details.`,
+                  `📋 EUDR status ya plots zako:\n${lines}\n\nTumia dashboard kuona details zaidi.`)
       }
 
       const { data: compliance } = await supabase
@@ -345,16 +401,20 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         .limit(1).maybeSingle()
 
       if (!compliance) {
-        return `EUDR ya plot ya ${plot.plot_name} bado haijapimwa. Nenda dashboard → Coffee → EUDR Compliance.`
+        return L(`EUDR for ${plot.plot_name} hasn't been assessed yet. Go to Dashboard → Coffee → EUDR Compliance.`,
+                  `EUDR ya plot ya ${plot.plot_name} bado haijapimwa. Nenda dashboard → Coffee → EUDR Compliance.`)
       }
 
-      const risk = compliance.risk_level ? eudrLabel(compliance.risk_level) : 'Haijulikani'
-      const deforest = compliance.deforestation_risk ? '⚠️ Kuna hatari ya deforestation' : '✓ Hakuna hatari ya deforestation'
+      const risk = compliance.risk_level ? eudrLabel(compliance.risk_level, lang) : L('Unknown', 'Haijulikani')
+      const deforest = compliance.deforestation_risk
+        ? L('⚠️ There is deforestation risk', '⚠️ Kuna hatari ya deforestation')
+        : L('✓ No deforestation risk', '✓ Hakuna hatari ya deforestation')
       const date = compliance.assessment_date
-        ? `Tathmini: ${new Date(compliance.assessment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}`
+        ? L(`Assessed: ${new Date(compliance.assessment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}`,
+            `Tathmini: ${new Date(compliance.assessment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}`)
         : ''
 
-      return `📋 EUDR — ${plot.plot_name}\nHali: ${risk}\n${deforest}\n${date}`
+      return `📋 EUDR — ${plot.plot_name}\n${L('Status', 'Hali')}: ${risk}\n${deforest}\n${date}`
     }
 
     // ── GOATS: Record weight ──────────────────────────────────────────────
@@ -363,11 +423,12 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
 
       if (!animal) {
         return entities.target
-          ? `Sijaona mbuzi/kondoo "${entities.target}". Angalia tag.`
-          : `Taja tag ya mnyama, e.g. "Nanny 01 ana uzito 38kg".`
+          ? L(`I couldn't find "${entities.target}". Check the tag.`, `Sijaona mbuzi/kondoo "${entities.target}". Angalia tag.`)
+          : L(`Tell me the animal's tag, e.g. "Nanny 01 weighs 38kg".`, `Taja tag ya mnyama, e.g. "Nanny 01 ana uzito 38kg".`)
       }
       if (!entities.amount) {
-        return `${animal.name || animal.animal_tag} ana uzito gani kwa kilo?`
+        return L(`What does ${animal.name || animal.animal_tag} weigh, in kg?`,
+                  `${animal.name || animal.animal_tag} ana uzito gani kwa kilo?`)
       }
 
       await supabase.from('weight_records').insert({
@@ -376,7 +437,8 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         weight_kg:   entities.amount,
       })
 
-      return `✓ Nime-record uzito wa ${entities.amount}kg kwa ${animal.name || animal.animal_tag} (${animal.species}). Endelea kufuatilia ukuaji wake.`
+      return L(`✓ Recorded ${entities.amount}kg weight for ${animal.name || animal.animal_tag} (${animal.species}). Keep tracking its growth.`,
+                `✓ Nime-record uzito wa ${entities.amount}kg kwa ${animal.name || animal.animal_tag} (${animal.species}). Endelea kufuatilia ukuaji wake.`)
     }
 
     // ── GOATS: Report health ──────────────────────────────────────────────
@@ -385,11 +447,12 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
 
       if (!animal) {
         return entities.target
-          ? `Sijaona "${entities.target}" kwenye kundi lako. Angalia tag.`
-          : `Taja tag ya mnyama mwenye tatizo.`
+          ? L(`I couldn't find "${entities.target}" in your herd. Check the tag.`, `Sijaona "${entities.target}" kwenye kundi lako. Angalia tag.`)
+          : L(`Tell me the tag of the animal with the problem.`, `Taja tag ya mnyama mwenye tatizo.`)
       }
       if (!entities.issue) {
-        return `Elezea tatizo la ${animal.name || animal.animal_tag} — dalili ni zipi?`
+        return L(`Describe the problem with ${animal.name || animal.animal_tag} — what are the symptoms?`,
+                  `Elezea tatizo la ${animal.name || animal.animal_tag} — dalili ni zipi?`)
       }
 
       await supabase.from('small_ruminant_health').insert({
@@ -400,7 +463,8 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         disease:     entities.disease ?? null,
       })
 
-      return `✓ Nime-record tatizo la "${entities.issue}" kwa ${animal.name || animal.animal_tag}. Angalia lishe na maji, na wasiliana na daktari ikihitajika.`
+      return L(`✓ Recorded "${entities.issue}" for ${animal.name || animal.animal_tag}. Check its feed and water, and call a vet if needed.`,
+                `✓ Nime-record tatizo la "${entities.issue}" kwa ${animal.name || animal.animal_tag}. Angalia lishe na maji, na wasiliana na daktari ikihitajika.`)
     }
 
     // ── GOATS: Record sale ────────────────────────────────────────────────
@@ -409,8 +473,10 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
 
       if (!entities.amount) {
         return animal
-          ? `Ulimuuza ${animal.name || animal.animal_tag} kwa KES ngapi?`
-          : `Taja tag ya mnyama na bei, e.g. "Nilimuuza Nanny 02 kwa KES 9,000".`
+          ? L(`How much did you sell ${animal.name || animal.animal_tag} for, in KES?`,
+              `Ulimuuza ${animal.name || animal.animal_tag} kwa KES ngapi?`)
+          : L(`Tell me the animal's tag and the price, e.g. "Sold Nanny 02 for KES 9,000".`,
+              `Taja tag ya mnyama na bei, e.g. "Nilimuuza Nanny 02 kwa KES 9,000".`)
       }
 
       await supabase.from('small_ruminant_sales').insert({
@@ -422,8 +488,9 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         payment_status: 'paid',
       })
 
-      const animalLabel = animal ? `${animal.name || animal.animal_tag}` : 'mnyama'
-      return `✓ Mauzo ya ${animalLabel} yame-record — KES ${entities.amount.toLocaleString()}. Pesa njema!`
+      const animalLabel = animal ? `${animal.name || animal.animal_tag}` : L('the animal', 'mnyama')
+      return L(`✓ Recorded the sale of ${animalLabel} — KES ${entities.amount.toLocaleString()}. Good money!`,
+                `✓ Mauzo ya ${animalLabel} yame-record — KES ${entities.amount.toLocaleString()}. Pesa njema!`)
     }
 
     // ── POULTRY: Record eggs ──────────────────────────────────────────────
@@ -431,11 +498,11 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
       const batch = await findPoultryBatch(supabase, farmId, entities.target)
       if (!batch) {
         return entities.target
-          ? `Sijaona batch inayoitwa "${entities.target}". Angalia jina vizuri.`
-          : `Taja batch ya kuku, e.g. "Batch A wametaga mayai 320".`
+          ? L(`I couldn't find a batch called "${entities.target}". Check the name.`, `Sijaona batch inayoitwa "${entities.target}". Angalia jina vizuri.`)
+          : L(`Tell me the poultry batch, e.g. "Batch A laid 320 eggs".`, `Taja batch ya kuku, e.g. "Batch A wametaga mayai 320".`)
       }
       if (!entities.amount) {
-        return `Batch "${batch.batch_name}" wametaga mayai mangapi leo?`
+        return L(`How many eggs did batch "${batch.batch_name}" lay today?`, `Batch "${batch.batch_name}" wametaga mayai mangapi leo?`)
       }
 
       await supabase.from('poultry_egg_records').insert({
@@ -445,17 +512,19 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         total_eggs:  entities.amount,
       })
 
-      return `✓ Nime-record mayai ${entities.amount} kutoka kwa ${batch.batch_name}. Kazi nzuri!`
+      return L(`✓ Recorded ${entities.amount} eggs from ${batch.batch_name}. Nice work!`,
+                `✓ Nime-record mayai ${entities.amount} kutoka kwa ${batch.batch_name}. Kazi nzuri!`)
     }
 
     // ── POULTRY: Record feed ──────────────────────────────────────────────
     if (intent === 'record_poultry_feed') {
       const batch = await findPoultryBatch(supabase, farmId, entities.target)
       if (!batch) {
-        return `Taja batch ya kuku na kiasi cha chakula, e.g. "Batch B wamekula 50kg".`
+        return L(`Tell me the poultry batch and the feed amount, e.g. "Batch B ate 50kg".`,
+                  `Taja batch ya kuku na kiasi cha chakula, e.g. "Batch B wamekula 50kg".`)
       }
       if (!entities.amount) {
-        return `Uliwapa ${batch.batch_name} kilo ngapi za chakula?`
+        return L(`How many kg of feed did you give ${batch.batch_name}?`, `Uliwapa ${batch.batch_name} kilo ngapi za chakula?`)
       }
 
       await supabase.from('poultry_feed_records').insert({
@@ -466,17 +535,20 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         feed_type:   'unknown', // default type since intent doesn't extract feed type yet
       })
 
-      return `✓ Nime-record ${entities.amount}kg za chakula kwa ${batch.batch_name}.`
+      return L(`✓ Recorded ${entities.amount}kg of feed for ${batch.batch_name}.`,
+                `✓ Nime-record ${entities.amount}kg za chakula kwa ${batch.batch_name}.`)
     }
 
     // ── POULTRY: Report health ────────────────────────────────────────────
     if (intent === 'report_poultry_health') {
       const batch = await findPoultryBatch(supabase, farmId, entities.target)
       if (!batch) {
-        return `Taja batch ya kuku wenye shida, e.g. "Batch C wanakohoa".`
+        return L(`Tell me which poultry batch has the problem, e.g. "Batch C is coughing".`,
+                  `Taja batch ya kuku wenye shida, e.g. "Batch C wanakohoa".`)
       }
       if (!entities.issue) {
-        return `Elezea ugonjwa/dalili kwa ${batch.batch_name} — wana shida gani?`
+        return L(`Describe the disease/symptoms for ${batch.batch_name} — what's wrong?`,
+                  `Elezea ugonjwa/dalili kwa ${batch.batch_name} — wana shida gani?`)
       }
 
       await supabase.from('poultry_health_records').insert({
@@ -488,17 +560,18 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         symptoms:    entities.issue,
       })
 
-      return `✓ Nime-record ugonjwa kwa ${batch.batch_name} ("${entities.issue}"). Wasiliana na daktari ukiona hali inazidi.`
+      return L(`✓ Recorded a health issue for ${batch.batch_name} ("${entities.issue}"). Call a vet if it gets worse.`,
+                `✓ Nime-record ugonjwa kwa ${batch.batch_name} ("${entities.issue}"). Wasiliana na daktari ukiona hali inazidi.`)
     }
 
     // ── POULTRY: Record mortality ─────────────────────────────────────────
     if (intent === 'record_poultry_mortality') {
       const batch = await findPoultryBatch(supabase, farmId, entities.target)
       if (!batch) {
-        return `Taja batch ya kuku, e.g. "Kuku 3 wamekufa Batch A".`
+        return L(`Tell me the poultry batch, e.g. "3 birds died in Batch A".`, `Taja batch ya kuku, e.g. "Kuku 3 wamekufa Batch A".`)
       }
       if (!entities.amount) {
-        return `Kuku wangapi wamekufa kwa ${batch.batch_name}?`
+        return L(`How many birds died in ${batch.batch_name}?`, `Kuku wangapi wamekufa kwa ${batch.batch_name}?`)
       }
 
       await supabase.from('poultry_mortality').insert({
@@ -509,7 +582,8 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         cause:       entities.issue ?? 'unknown',
       })
 
-      return `✓ Nime-record vifo ${entities.amount} kwa ${batch.batch_name}. Fuatilia kwa karibu kuzuia maambukizi zaidi.`
+      return L(`✓ Recorded ${entities.amount} deaths for ${batch.batch_name}. Monitor closely to prevent further spread.`,
+                `✓ Nime-record vifo ${entities.amount} kwa ${batch.batch_name}. Fuatilia kwa karibu kuzuia maambukizi zaidi.`)
     }
 
     // ── AI Warnings ───────────────────────────────────────────────────────
@@ -535,7 +609,7 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
       const lines: string[] = []
 
       if (activeAlerts?.length) {
-        lines.push('🔔 *Arifa za haraka:*')
+        lines.push(L('🔔 *Urgent alerts:*', '🔔 *Arifa za haraka:*'))
         activeAlerts.forEach(a => {
           const priority = a.alert_priority === 'high' ? '🔴' : a.alert_priority === 'medium' ? '🟡' : '⚪'
           lines.push(`${priority} ${a.message}`)
@@ -543,7 +617,7 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
       }
 
       if (predictions?.length) {
-        lines.push('\n🤖 *Utabiri wa AI:*')
+        lines.push(L('\n🤖 *AI predictions:*', '\n🤖 *Utabiri wa AI:*'))
         predictions.forEach(p => {
           const conf = p.confidence_score ? ` (${Math.round(p.confidence_score * 100)}%)` : ''
           lines.push(`• ${p.prediction_text}${conf}`)
@@ -551,7 +625,7 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
       }
 
       if (!lines.length) {
-        return '✓ Hakuna arifa wala tahadhari za AI kwa sasa. Shamba lako liko sawa!'
+        return L('✓ No alerts or AI warnings right now. Your farm looks good!', '✓ Hakuna arifa wala tahadhari za AI kwa sasa. Shamba lako liko sawa!')
       }
 
       return lines.join('\n')
@@ -565,38 +639,42 @@ export async function executeIntent(farmId: string, parsed: ParsedIntent): Promi
         .eq('id', farmId)
         .maybeSingle()
 
-      if (!summary) return `Takwimu za shamba hazikupatikana. Jaribu tena.`
+      if (!summary) return L(`Couldn't find your farm's stats. Please try again.`, `Takwimu za shamba hazikupatikana. Jaribu tena.`)
 
       const lines = [
-        '📊 *Muhtasari wa shamba lako:*',
-        summary.total_coffee_plots   ? `☕ Plots za kahawa: ${summary.total_coffee_plots}` : null,
-        summary.season_cherry_kg     ? `🍒 Mavuno ya msimu: ${summary.season_cherry_kg.toLocaleString()} kg` : null,
-        summary.total_cows           ? `🐄 Ng'ombe wote: ${summary.total_cows} (${summary.total_active_cows || 0} wanaozalisha)` : null,
-        summary.today_milk_litres    ? `🍼 Maziwa leo: ${summary.today_milk_litres}L` : null,
-        summary.total_small_ruminants ? `🐏 Mbuzi/kondoo: ${summary.total_small_ruminants}` : null,
+        L('📊 *Your farm summary:*', '📊 *Muhtasari wa shamba lako:*'),
+        summary.total_coffee_plots    ? L(`☕ Coffee plots: ${summary.total_coffee_plots}`, `☕ Plots za kahawa: ${summary.total_coffee_plots}`) : null,
+        summary.season_cherry_kg      ? L(`🍒 Season harvest: ${summary.season_cherry_kg.toLocaleString()} kg`, `🍒 Mavuno ya msimu: ${summary.season_cherry_kg.toLocaleString()} kg`) : null,
+        summary.total_cows            ? L(`🐄 Cows: ${summary.total_cows} (${summary.total_active_cows || 0} producing)`, `🐄 Ng'ombe wote: ${summary.total_cows} (${summary.total_active_cows || 0} wanaozalisha)`) : null,
+        summary.today_milk_litres     ? L(`🍼 Milk today: ${summary.today_milk_litres}L`, `🍼 Maziwa leo: ${summary.today_milk_litres}L`) : null,
+        summary.total_small_ruminants ? L(`🐏 Goats/sheep: ${summary.total_small_ruminants}`, `🐏 Mbuzi/kondoo: ${summary.total_small_ruminants}`) : null,
       ].filter(Boolean)
 
       return lines.join('\n')
     }
 
     // ── Fallback ──────────────────────────────────────────────────────────
-    return parsed.response || 'Samahani, sijui jinsi ya kusaidia na hilo. Tuma *menu* kuona chaguo.'
+    return parsed.response || L(`Sorry, I'm not sure how to help with that. Send *menu* to see options.`,
+                                  `Samahani, sijui jinsi ya kusaidia na hilo. Tuma *menu* kuona chaguo.`)
 
   } catch (error) {
     console.error('Execution error:', error)
-    return `Kuna shida kidogo kwa system 😅 Tafadhali jaribu tena.`
+    return L('There was a small system hiccup 😅 Please try again.', `Kuna shida kidogo kwa system 😅 Tafadhali jaribu tena.`)
   }
 }
 
 // ─────────────────────────────────────────────
 // Utilities
 // ─────────────────────────────────────────────
-function eudrLabel(risk: string): string {
-  return {
-    low:      '✅ Hatari Ndogo',
-    medium:   '🟡 Hatari ya Kati',
-    high:     '🔴 Hatari Kubwa',
-    compliant: '✅ Inafuata Sheria',
-    non_compliant: '❌ Haifuati Sheria',
-  }[risk.toLowerCase()] ?? risk
+function eudrLabel(risk: string, lang: Lang): string {
+  const en: Record<string, string> = {
+    low: '✅ Low Risk', medium: '🟡 Medium Risk', high: '🔴 High Risk',
+    compliant: '✅ Compliant', non_compliant: '❌ Not Compliant',
+  }
+  const sw: Record<string, string> = {
+    low: '✅ Hatari Ndogo', medium: '🟡 Hatari ya Kati', high: '🔴 Hatari Kubwa',
+    compliant: '✅ Inafuata Sheria', non_compliant: '❌ Haifuati Sheria',
+  }
+  const table = lang === 'sw' ? sw : en
+  return table[risk.toLowerCase()] ?? risk
 }

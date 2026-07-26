@@ -324,14 +324,57 @@ async function sendButtons(to: string, bodyText: string, buttons: Button[]) {
 }
 
 /**
- * Try interactive buttons first; fall back to a numbered text list.
- * `buttons` can be any length — sendButtons handles chunking internally.
+ * Interactive list (WhatsApp "list" message): a single tap opens a native
+ * picker sheet listing every option — no message fragmentation, no typing.
+ * WhatsApp caps this at 10 rows across all sections combined, and our
+ * largest menu (poultry: 4 actions + Back) is well inside that.
  */
-async function sendMenu(to: string, bodyText: string, buttons: Button[]) {
+async function sendList(to: string, bodyText: string, buttons: Button[], lang: Lang) {
+  const rows = buttons.slice(0, 10) // hard WhatsApp cap — see comment above
+  const res = await fetch('https://gateway.lipachat.com/api/v1/whatsapp/interactive/list', {
+    method: 'POST',
+    headers: lipachatHeaders(),
+    body: JSON.stringify({
+      headerText: 'framedInsight',
+      body: bodyText,
+      buttonText: lang === 'sw' ? 'Chagua' : 'Choose',
+      buttons: [
+        {
+          sectionTitle: lang === 'sw' ? 'Chaguo' : 'Options',
+          sectionItems: rows.map(b => ({ id: b.id, title: b.title })),
+        },
+      ],
+      messageId: crypto.randomUUID(),
+      to: cleanPhone(to),
+      from: getFrom(),
+    }),
+  })
+  const data = await res.json()
+  console.log('sendList response:', JSON.stringify(data))
+  if (data?.status === 'error') throw new Error(data.message || 'LipaChat error')
+}
+
+/**
+ * Pick the right tap-only widget for the choice count, and only fall back
+ * to a typed numbered list if the LipaChat call itself fails (session
+ * expired, transient API error, etc.) — never as the default experience.
+ *
+ * - 1-3 options → reply buttons (visible inline, single tap, no extra sheet)
+ * - 4-10 options → interactive list (one message, native picker, single tap)
+ * WhatsApp hard-caps reply buttons at 3 per message; the old code split
+ * anything beyond that into multiple button bubbles (a "…continued"
+ * second message), which reads as broken and effectively forced farmers
+ * back onto typing a number. The list widget removes that entirely.
+ */
+async function sendMenu(to: string, bodyText: string, buttons: Button[], lang: Lang) {
   try {
-    await sendButtons(to, bodyText, buttons)
+    if (buttons.length > 3) {
+      await sendList(to, bodyText, buttons, lang)
+    } else {
+      await sendButtons(to, bodyText, buttons)
+    }
   } catch (err: any) {
-    console.warn('Buttons failed, falling back to text menu:', err.message)
+    console.warn('Interactive menu failed, falling back to text menu:', err.message)
     const numbered = buttons.map((b, i) => `${i + 1}. ${b.title}`).join('\n')
     await sendText(to, `${bodyText}\n\n${numbered}`)
   }
@@ -382,15 +425,26 @@ async function saveSession(
   phone: string,
   farmId: string | null,
   session: SessionState,
-  messageText: string
+  messageText: string,
+  whatsappMessageId: string
 ) {
-  await supabase.from('whatsapp_messages').insert({
+  const { error } = await supabase.from('whatsapp_messages').insert({
     sender_phone:         phone,
     farm_id:              farmId ?? undefined,
     message_type:         'INBOUND',
     message_text:         messageText,
     conversation_context: session as any,
+    whatsapp_message_id:  whatsappMessageId || null,
   })
+
+  // 23505 = unique_violation. Only realistic cause here is a genuine race
+  // against a retried delivery of the same message we already handled — the
+  // early check above already returned for the common (sequential retry)
+  // case, so this is just the backstop for a true concurrent race. Not an
+  // error worth surfacing to the farmer.
+  if (error && (error as any).code !== '23505') {
+    console.error('saveSession insert failed:', error.message)
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -424,11 +478,17 @@ function isValidLipaChatSignature(rawBody: string, signatureHeader: string | nul
   return timingSafeEqual(receivedBuf, expectedBuf)
 }
 
+// The AI intent path does a real LLM round trip (generateObject) before we
+// can reply, which can occasionally run past Vercel's default serverless
+// timeout. Matches the maxDuration already used for the other long-running
+// route in this codebase (app/api/cron/reconcile-payments).
+export const maxDuration = 60
+
 // ─────────────────────────────────────────────
 // GET — health check
 // ─────────────────────────────────────────────
 export async function GET() {
-  return NextResponse.json({ status: 'Webhook active', version: '7.0' })
+  return NextResponse.json({ status: 'Webhook active', version: '8.0' })
 }
 
 // ─────────────────────────────────────────────
@@ -456,6 +516,7 @@ export async function POST(req: NextRequest) {
   const rawText: string      = body.text || body.message || ''
   const msgType: string      = (body.type || '').toUpperCase()
   const interactive          = body.interactive || null
+  const inboundMessageId: string = body.messageId || ''
 
   // Masked logging - no PII
   const maskedPhone = senderNumber ? senderNumber.slice(0, 6) + '***' : 'unknown'
@@ -465,6 +526,28 @@ export async function POST(req: NextRequest) {
 
   const supabase = getSupabase()
   const phone    = senderNumber.startsWith('+') ? senderNumber : `+${senderNumber}`
+
+  // ── Idempotency guard
+  // The AI intent path awaits an LLM call + DB write before responding to
+  // LipaChat. If that round trip is slow enough to trip LipaChat/WhatsApp's
+  // retry-on-timeout behaviour, we'd otherwise process the same inbound
+  // message twice — e.g. two milk_records rows for one "18L" text. LipaChat
+  // includes a stable messageId on every inbound message (see webhook docs),
+  // so we check it against messages we've already logged and short-circuit.
+  // This is a best-effort check-then-act (not a DB-level lock), backed by a
+  // partial unique index on whatsapp_message_id as a hard backstop — see
+  // migration 20260725b_whatsapp_message_dedup.sql.
+  if (inboundMessageId) {
+    const { data: seen } = await supabase
+      .from('whatsapp_messages')
+      .select('id')
+      .eq('whatsapp_message_id', inboundMessageId)
+      .maybeSingle()
+    if (seen) {
+      console.log(`Duplicate inbound message ${inboundMessageId} — skipping`)
+      return NextResponse.json({ ok: true, duplicate: true })
+    }
+  }
 
   // ── Resolve farm
   const { data: farm } = await supabase
@@ -483,14 +566,14 @@ export async function POST(req: NextRequest) {
   // ── Convenience: persist session and return 200
   const done = async (newSession: Partial<SessionState>, logText = rawText) => {
     const merged: SessionState = { ...session, ...newSession }
-    await saveSession(supabase, phone, farm?.id ?? null, merged, logText)
+    await saveSession(supabase, phone, farm?.id ?? null, merged, logText, inboundMessageId)
     return NextResponse.json({ ok: true })
   }
 
   // ── Navigate to the main enterprise menu
   const goMainMenu = async () => {
     const s = t[session.lang]
-    await sendMenu(senderNumber, s.menuPrompt, s.menuButtons)
+    await sendMenu(senderNumber, s.menuPrompt, s.menuButtons, session.lang)
     return done({ menuState: 'MAIN_MENU' })
   }
 
@@ -500,7 +583,7 @@ export async function POST(req: NextRequest) {
     const prompt  = (s as any)[enterprise.promptKey]  as string
     const buttons = (s as any)[enterprise.buttonsKey] as Button[]
     // Append a Back button to every sub-menu
-    await sendMenu(senderNumber, prompt, [...buttons, s.backButton])
+    await sendMenu(senderNumber, prompt, [...buttons, s.backButton], session.lang)
     return done({ menuState: enterprise.state, lastEnterprise: enterprise.menuId })
   }
 
@@ -521,9 +604,15 @@ export async function POST(req: NextRequest) {
   // ─────────────────────────────────
   // 1. INTERACTIVE BUTTON REPLY
   // ─────────────────────────────────
-  if (msgType === 'INTERACTIVE' && interactive?.button_reply) {
-    const btnId: string = interactive.button_reply.id
-    console.log('Button clicked:', btnId)
+  // Buttons and list-picker taps both land here — LipaChat reports the
+  // tapped option as either `button_reply` (≤3-option menus) or
+  // `list_reply` (4-10 option menus, see sendList above). Same id/title
+  // shape, so the rest of the routing logic doesn't need to know which one
+  // the farmer used.
+  const tappedOption = interactive?.button_reply ?? interactive?.list_reply
+  if (msgType === 'INTERACTIVE' && tappedOption) {
+    const btnId: string = tappedOption.id
+    console.log('Option tapped:', btnId)
 
     try {
       // ── Language selection
@@ -531,7 +620,7 @@ export async function POST(req: NextRequest) {
         const chosenLang: Lang = btnId === 'LANG_EN' ? 'en' : 'sw'
         const chosenStrings = t[chosenLang]
         await sendText(senderNumber, chosenStrings.langSet)
-        await sendMenu(senderNumber, chosenStrings.menuPrompt, chosenStrings.menuButtons)
+        await sendMenu(senderNumber, chosenStrings.menuPrompt, chosenStrings.menuButtons, chosenLang)
         return done({ lang: chosenLang, menuState: 'MAIN_MENU' }, btnId)
       }
 
@@ -583,7 +672,7 @@ export async function POST(req: NextRequest) {
   if (isGreeting) {
     try {
       if (session.menuState === 'LANG_SELECT') {
-        await sendMenu(senderNumber, strings.langPrompt, strings.langButtons)
+        await sendMenu(senderNumber, strings.langPrompt, strings.langButtons, session.lang)
         return done({ menuState: 'LANG_SELECT' })
       }
       return goMainMenu()
@@ -611,9 +700,9 @@ export async function POST(req: NextRequest) {
   try {
     console.log(`Farm: ${farm.farm_name} (${farm.id}) | lang: ${session.lang} | state: ${session.menuState}`)
     const startedAt = Date.now()
-    const parsedIntent = await processFarmerIntent(rawText, farm.id, session.lastEnterprise)
+    const parsedIntent = await processFarmerIntent(rawText, farm.id, session.lastEnterprise, session.lang)
     console.log('Intent:', JSON.stringify(parsedIntent))
-    const reply = await executeIntent(farm.id, parsedIntent)
+    const reply = await executeIntent(farm.id, parsedIntent, session.lang)
     await sendText(senderNumber, reply)
 
     // Phase 0 data collection for a future small language model — never on
@@ -647,7 +736,7 @@ export async function POST(req: NextRequest) {
           { id: enterprise.menuId, title: session.lang === 'sw' ? '🔄 Endelea hapa' : '🔄 Continue here' },
           { id: 'NAV_BACK',        title: session.lang === 'sw' ? '🏠 Menyu Kuu' : '🏠 Main Menu' },
         ]
-        await sendMenu(senderNumber, continuationPrompt, continuationButtons)
+        await sendMenu(senderNumber, continuationPrompt, continuationButtons, session.lang)
       }
     }
   } catch (err: any) {
