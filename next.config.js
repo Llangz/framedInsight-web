@@ -53,7 +53,9 @@ const nextConfig = {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://maps.googleapis.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     // img-src covers <img>-based map tiles: OSM street tiles + Esri World Imagery satellite tiles
-    "img-src 'self' blob: data: https://*.supabase.co https://api.agromonitoring.com https://*.tile.openstreetmap.org https://server.arcgisonline.com",
+    // cdnjs.cloudflare.com serves Leaflet's default marker icon images
+    // (see components/coffee/PlotBoundaryMapper.tsx's L.Icon.Default.mergeOptions)
+    "img-src 'self' blob: data: https://*.supabase.co https://api.agromonitoring.com https://*.tile.openstreetmap.org https://server.arcgisonline.com https://cdnjs.cloudflare.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     // AI APIs (Vercel AI SDK, Anthropic) + Nominatim for reverse-geocoding plot coordinates to county/ward.
     // Tile origins (Esri, OSM) are also listed here, not just in img-src: the

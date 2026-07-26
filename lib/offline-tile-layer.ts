@@ -39,75 +39,143 @@ export interface OfflineTileLayerMeta {
 // Esri's World Imagery service has real, high-resolution native tiles in
 // cities but often nothing past zoom ~13-17 over rural/farmland Kenya. Past
 // that point it doesn't error — it returns a perfectly valid 200 OK image:
-// a flat tan placeholder tile reading "Map data not yet available". Leaflet
-// never sees this as a failure (no `tileerror`), so tileerror-counting
-// fallback logic elsewhere in this app never fires, and a farmer zoomed in
-// tight on a small plot just silently loses the map.
+// a placeholder tile (background colour + a short "Map data not yet
+// available" caption, sometimes on a light checkered grid) rather than
+// real photography. Leaflet never sees this as a failure (no `tileerror`),
+// so tileerror-counting fallback logic elsewhere in this app never fires,
+// and a farmer zoomed in tight on a small plot just silently loses the map.
 //
 // An earlier fix attempt (lib/esri-tile-availability.ts, since removed)
 // tried to pre-discover the real ceiling via the ArcGIS `tilemap` REST
-// resource. That resource is genuinely how Esri recommends solving this —
-// but it's an *optional* capability, and confirmed (via this service's own
-// REST directory listing at server.arcgisonline.com/.../World_Imagery/
-// MapServer — its "Supported Operations" list has no Tilemap entry) that
-// this specific legacy endpoint doesn't expose it. Every probe request
-// therefore silently failed (404), and the "discovered" ceiling collapsed
-// to the same hardcoded floor for every location on earth — clamping every
-// plot, everywhere, to a country-wide zoom regardless of real coverage.
-// That's a worse regression than the original bug (it broke tight mapping
-// even in well-covered areas), which is why it's gone rather than tuned.
+// resource. Confirmed unavailable on this specific legacy endpoint — see
+// git history for the full writeup — so it's gone.
 //
-// This replaces it with detection that doesn't depend on any Esri REST
-// capability at all: it looks at the actual pixels of tiles that load. The
-// placeholder is a near-flat graphic (background colour + a short line of
-// text); real aerial/satellite photography — even a plain dirt field —
-// still has meaningful pixel-to-pixel variance from soil texture, crop
-// rows, and shadow. We downscale each tile to a small grid and measure
-// grayscale variance across it: a value near zero means "essentially one
-// flat colour", which is what the placeholder is and real photography
-// essentially never is. This runs against a tile the browser already
-// downloaded (no extra request, unlike the tilemap probe) and only needs
-// `crossOrigin` set — Esri's tile servers are CORS-enabled, which the
-// existing cacheTileInBackground() fetch() below already relies on.
+// The version that followed that (still in git history as of the previous
+// commit) tried to detect the placeholder by drawing the tile's own
+// on-screen <img> onto a canvas and reading its pixels, which required
+// setting `crossOrigin="anonymous"` directly on that displayed <img>.
+// THAT WAS A REGRESSION, not a fix, and is why this file no longer does
+// it: `crossOrigin` on an <img> doesn't just gate canvas readback — if the
+// response for that specific request isn't correctly CORS-headered (an
+// edge cache without `Vary: Origin`, a carrier-side compression proxy
+// common on Kenyan mobile data, an extension, anything), the browser
+// refuses to load the image AT ALL. No partial render, no fallback — the
+// tile just silently fails to display, which is indistinguishable from
+// the map being broken. Because the flag was applied unconditionally to
+// every satellite tile (new plot or existing), this turned an optional,
+// best-effort zoom-ceiling heuristic into something that could take down
+// the entire visible map. That is the root cause of the persistent blank
+// map bug — see the note above createOfflineTileLayer.
 //
-// The threshold is a considered starting point, not a guarantee — it
-// should be watched in the field (see the console.debug below, gated
-// behind NEXT_PUBLIC_DEBUG_TILES) and tuned if real reports show either
-// false positives (a genuinely flat, recently-tilled field wrongly
-// flagged) or false negatives (a placeholder tile slipping through). But
-// unlike the tilemap probe, a bad call here only affects one tile's
-// zoom-ceiling contribution, reactively and per-location — it can't
-// collapse to one wrong global constant the way the REST probe did.
+// FIX: detection now runs against a completely SEPARATE, independent
+// fetch() of the same tile URL — never the displayed <img>, which is
+// never given a `crossOrigin` attribute and therefore always renders
+// exactly like a plain, un-instrumented Leaflet tile layer regardless of
+// whether that background fetch succeeds. If the fetch fails for any
+// reason (CORS, offline, timeout) we simply skip detection for that tile
+// and let it render normally — a lost heuristic, never a lost map. For
+// plot-scoped layers this also reuses the same fetch that already powers
+// the offline tile cache instead of doing a second, redundant request.
+//
+// Detection itself is also hardened: a pure grayscale-variance check
+// (near-zero variance = "one flat colour") misses the checkered/gridded
+// variant of the placeholder some regions return, since alternating grid
+// squares produce real variance despite still being a placeholder. We now
+// also quantize the sample down to a small palette and count distinct
+// colours — the placeholder (background + grid lines + a short caption)
+// only ever has a handful of distinct quantized colours, where real
+// aerial/satellite photography of farmland — soil texture, crop rows,
+// shadow — almost always has many more. A tile is flagged if EITHER
+// signal fires, so a flat placeholder and a checkered placeholder are both
+// caught, and a genuinely flat but real field (a still pond, bare soil)
+// still has to pass both the variance AND the colour-count bar to trip a
+// false positive.
+//
+// Thresholds are a considered starting point, not a guarantee — watch the
+// console.debug output (gated behind window.__FI_DEBUG_TILES__) in the
+// field and tune if real reports show false positives/negatives. A bad
+// call here only ever affects one tile's zoom-ceiling contribution,
+// reactively and per-location — it can never take down tile display the
+// way the crossOrigin regression did.
 const NO_IMAGERY_SAMPLE = 24 // tile is downscaled to this NxN grid before sampling
 const NO_IMAGERY_VARIANCE_THRESHOLD = 60
+const NO_IMAGERY_QUANTIZE_LEVELS = 8 // per channel — 8x8x8 palette
+const NO_IMAGERY_MAX_DISTINCT_COLORS = 6 // ≤ this many distinct quantized colours ⇒ likely a placeholder graphic
 
-function detectLikelyNoImagery(img: HTMLImageElement): boolean {
+function detectLikelyNoImageryFromBitmap(bitmap: ImageBitmap): boolean {
   try {
     const canvas = document.createElement('canvas')
     canvas.width = NO_IMAGERY_SAMPLE
     canvas.height = NO_IMAGERY_SAMPLE
     const ctx = canvas.getContext('2d', { willReadFrequently: true } as any) as CanvasRenderingContext2D | null
     if (!ctx) return false
-    ctx.drawImage(img, 0, 0, NO_IMAGERY_SAMPLE, NO_IMAGERY_SAMPLE)
+    ctx.drawImage(bitmap, 0, 0, NO_IMAGERY_SAMPLE, NO_IMAGERY_SAMPLE)
     const { data } = ctx.getImageData(0, 0, NO_IMAGERY_SAMPLE, NO_IMAGERY_SAMPLE)
+
     let sum = 0, sumSq = 0, n = 0
+    const distinct = new Set<number>()
+    const step = 256 / NO_IMAGERY_QUANTIZE_LEVELS
     for (let i = 0; i < data.length; i += 4) {
-      const gray = (data[i] + data[i + 1] + data[i + 2]) / 3
+      const r = data[i], g = data[i + 1], b = data[i + 2]
+      const gray = (r + g + b) / 3
       sum += gray; sumSq += gray * gray; n++
+
+      const qr = Math.floor(r / step), qg = Math.floor(g / step), qb = Math.floor(b / step)
+      distinct.add((qr << 16) | (qg << 8) | qb)
     }
     const mean = sum / n
     const variance = sumSq / n - mean * mean
+    const flatColor = variance < NO_IMAGERY_VARIANCE_THRESHOLD
+    const fewColors = distinct.size <= NO_IMAGERY_MAX_DISTINCT_COLORS
+    const flagged = flatColor || fewColors
+
     if (typeof window !== 'undefined' && (window as any).__FI_DEBUG_TILES__) {
       // eslint-disable-next-line no-console
-      console.debug('[tile-variance]', variance.toFixed(1), variance < NO_IMAGERY_VARIANCE_THRESHOLD ? '→ flagged as placeholder' : '')
+      console.debug('[tile-variance]', variance.toFixed(1), 'colors:', distinct.size, flagged ? '→ flagged as placeholder' : '')
     }
-    return variance < NO_IMAGERY_VARIANCE_THRESHOLD
+    return flagged
   } catch {
-    // A tainted canvas (CORS not actually applied for some reason) or an
-    // unsupported context must never break tile display — just skip
-    // detection for this tile and let it render normally either way.
+    // Must never throw into the caller — just means "couldn't tell."
     return false
   }
+}
+
+/**
+ * Fire-and-forget: independently fetches `url` and runs placeholder
+ * detection against the result, entirely decoupled from the displayed
+ * <img> (see the file-header note above for why that separation matters).
+ * `onBlob`, if provided, receives the fetched blob too — lets callers that
+ * already need this same fetch (the offline tile cache) share it instead
+ * of fetching the same tile twice.
+ */
+function checkTileForPlaceholder(
+  url: string,
+  onFlagged: () => void,
+  onBlob?: (blob: Blob) => void
+) {
+  fetch(url, { mode: 'cors' })
+    .then(async (res) => {
+      if (!res.ok) return
+      const blob = await res.blob()
+      onBlob?.(blob)
+      try {
+        const bitmap = await createImageBitmap(blob)
+        try {
+          if (detectLikelyNoImageryFromBitmap(bitmap)) onFlagged()
+        } finally {
+          bitmap.close()
+        }
+      } catch {
+        // Decoding failed (corrupt blob, unsupported format) — skip
+        // detection for this tile silently.
+      }
+    })
+    .catch(() => {
+      // Network/CORS failure on the BACKGROUND fetch only — the tile is
+      // already displayed via the separate, un-instrumented <img> load
+      // and is completely unaffected by this failing. Just means we
+      // don't get a zoom-ceiling opinion on this particular tile.
+    })
 }
 
 // A single fully-transparent pixel. Leaflet's default tile-error handling
@@ -136,38 +204,33 @@ export function createOfflineTileLayer(
 ) {
   // Callers can still override errorTileUrl explicitly (rare); default it
   // here so every provider gets graceful-failure behavior for free.
+  //
+  // Deliberately NOT setting `crossOrigin` here, even when detectNoImagery
+  // is true. The displayed tile <img> is always a plain, uninstrumented
+  // load — see the long note above detectLikelyNoImageryFromBitmap for why
+  // coupling crossOrigin to the display path was the actual cause of the
+  // "map just goes blank" regression this file previously shipped.
   const layerOptions: Record<string, any> = { errorTileUrl: TRANSPARENT_TILE, ...options }
-  if (detectNoImagery) {
-    // Required for canvas pixel access (getImageData) on a cross-origin
-    // image without tainting the canvas. Esri's tile servers are already
-    // known CORS-enabled — see the note above.
-    layerOptions.crossOrigin = layerOptions.crossOrigin ?? 'anonymous'
-  }
   const OfflineTileLayer = L.TileLayer.extend({
     createTile(this: any, coords: any, done: (err: any, tile?: HTMLElement) => void) {
       const tile = document.createElement('img')
       tile.alt = ''
       tile.setAttribute('role', 'presentation')
 
-      if (this.options.crossOrigin || this.options.crossOrigin === '') {
-        tile.crossOrigin = this.options.crossOrigin === true ? '' : this.options.crossOrigin
-      }
-
       const url = this.getTileUrl(coords)
       const onLoad = L.Util.bind(this._tileOnLoad, this, done, tile)
       const onError = L.Util.bind(this._tileOnError, this, done, tile)
-      const checkForPlaceholder = () => {
-        if (detectNoImagery && detectLikelyNoImagery(tile)) {
-          this.fire('tileplaceholder', { coords, url })
-        }
-      }
+      const fireIfPlaceholder = () => this.fire('tileplaceholder', { coords, url })
 
       if (!meta) {
         // No durable plot to key the cache by — plain network load,
-        // identical to a stock Leaflet tile layer.
-        L.DomEvent.on(tile, 'load', () => { onLoad(); checkForPlaceholder() })
+        // identical to a stock Leaflet tile layer. Placeholder detection
+        // (if enabled) runs on its own independent fetch and can never
+        // affect this display path either way.
+        L.DomEvent.on(tile, 'load', onLoad)
         L.DomEvent.on(tile, 'error', onError)
         tile.src = url
+        if (detectNoImagery) checkTileForPlaceholder(url, fireIfPlaceholder)
         return tile
       }
 
@@ -176,7 +239,16 @@ export function createOfflineTileLayer(
       let fellBackToCache = false
       L.DomEvent.on(tile, 'load', () => {
         onLoad()
-        if (!fellBackToCache) { void cacheTileInBackground(url, meta); checkForPlaceholder() }
+        if (!fellBackToCache) {
+          // Share one background fetch between offline-caching and
+          // placeholder detection instead of doing two separate requests
+          // for the same tile.
+          if (detectNoImagery) {
+            checkTileForPlaceholder(url, fireIfPlaceholder, (blob) => void cacheTileBlob(url, meta, blob))
+          } else {
+            void cacheTileInBackground(url, meta)
+          }
+        }
       })
       L.DomEvent.on(tile, 'error', () => {
         if (fellBackToCache) { onError(); return } // cache fallback also failed — nothing available for this tile
@@ -199,19 +271,30 @@ export function createOfflineTileLayer(
 
 async function cacheTileInBackground(url: string, meta: OfflineTileLayerMeta) {
   try {
-    const count = await getPlotTileCount(meta.plotId)
-    if (count >= MAX_TILES_PER_PLOT) return
     const res = await fetch(url, { mode: 'cors' })
     if (!res.ok) return
     const blob = await res.blob()
+    await cacheTileBlob(url, meta, blob)
+  } catch {
+    // Non-fatal and silent by design — the tile already rendered from
+    // network; this only affects whether it's available offline next time.
+  }
+}
+
+// Shared by cacheTileInBackground (its own fetch) and the placeholder-check
+// path in createTile (reuses the fetch it already made for detection),
+// so a plot-scoped tile with detectNoImagery on is never fetched twice.
+async function cacheTileBlob(url: string, meta: OfflineTileLayerMeta, blob: Blob) {
+  try {
+    const count = await getPlotTileCount(meta.plotId)
+    if (count >= MAX_TILES_PER_PLOT) return
     const coords = parseCoordsFromLeafletUrl(url) // best-effort, bookkeeping only
     await putCachedTile(
       { url, plotId: meta.plotId, provider: meta.provider, z: coords?.z ?? -1, x: coords?.x ?? -1, y: coords?.y ?? -1 },
       blob
     )
   } catch {
-    // Non-fatal and silent by design — the tile already rendered from
-    // network; this only affects whether it's available offline next time.
+    // Non-fatal and silent by design.
   }
 }
 
