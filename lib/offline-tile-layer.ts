@@ -35,6 +35,81 @@ export interface OfflineTileLayerMeta {
   provider: string
 }
 
+// ── "No imagery available at this zoom" detection ──────────────────────────
+// Esri's World Imagery service has real, high-resolution native tiles in
+// cities but often nothing past zoom ~13-17 over rural/farmland Kenya. Past
+// that point it doesn't error — it returns a perfectly valid 200 OK image:
+// a flat tan placeholder tile reading "Map data not yet available". Leaflet
+// never sees this as a failure (no `tileerror`), so tileerror-counting
+// fallback logic elsewhere in this app never fires, and a farmer zoomed in
+// tight on a small plot just silently loses the map.
+//
+// An earlier fix attempt (lib/esri-tile-availability.ts, since removed)
+// tried to pre-discover the real ceiling via the ArcGIS `tilemap` REST
+// resource. That resource is genuinely how Esri recommends solving this —
+// but it's an *optional* capability, and confirmed (via this service's own
+// REST directory listing at server.arcgisonline.com/.../World_Imagery/
+// MapServer — its "Supported Operations" list has no Tilemap entry) that
+// this specific legacy endpoint doesn't expose it. Every probe request
+// therefore silently failed (404), and the "discovered" ceiling collapsed
+// to the same hardcoded floor for every location on earth — clamping every
+// plot, everywhere, to a country-wide zoom regardless of real coverage.
+// That's a worse regression than the original bug (it broke tight mapping
+// even in well-covered areas), which is why it's gone rather than tuned.
+//
+// This replaces it with detection that doesn't depend on any Esri REST
+// capability at all: it looks at the actual pixels of tiles that load. The
+// placeholder is a near-flat graphic (background colour + a short line of
+// text); real aerial/satellite photography — even a plain dirt field —
+// still has meaningful pixel-to-pixel variance from soil texture, crop
+// rows, and shadow. We downscale each tile to a small grid and measure
+// grayscale variance across it: a value near zero means "essentially one
+// flat colour", which is what the placeholder is and real photography
+// essentially never is. This runs against a tile the browser already
+// downloaded (no extra request, unlike the tilemap probe) and only needs
+// `crossOrigin` set — Esri's tile servers are CORS-enabled, which the
+// existing cacheTileInBackground() fetch() below already relies on.
+//
+// The threshold is a considered starting point, not a guarantee — it
+// should be watched in the field (see the console.debug below, gated
+// behind NEXT_PUBLIC_DEBUG_TILES) and tuned if real reports show either
+// false positives (a genuinely flat, recently-tilled field wrongly
+// flagged) or false negatives (a placeholder tile slipping through). But
+// unlike the tilemap probe, a bad call here only affects one tile's
+// zoom-ceiling contribution, reactively and per-location — it can't
+// collapse to one wrong global constant the way the REST probe did.
+const NO_IMAGERY_SAMPLE = 24 // tile is downscaled to this NxN grid before sampling
+const NO_IMAGERY_VARIANCE_THRESHOLD = 60
+
+function detectLikelyNoImagery(img: HTMLImageElement): boolean {
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = NO_IMAGERY_SAMPLE
+    canvas.height = NO_IMAGERY_SAMPLE
+    const ctx = canvas.getContext('2d', { willReadFrequently: true } as any) as CanvasRenderingContext2D | null
+    if (!ctx) return false
+    ctx.drawImage(img, 0, 0, NO_IMAGERY_SAMPLE, NO_IMAGERY_SAMPLE)
+    const { data } = ctx.getImageData(0, 0, NO_IMAGERY_SAMPLE, NO_IMAGERY_SAMPLE)
+    let sum = 0, sumSq = 0, n = 0
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = (data[i] + data[i + 1] + data[i + 2]) / 3
+      sum += gray; sumSq += gray * gray; n++
+    }
+    const mean = sum / n
+    const variance = sumSq / n - mean * mean
+    if (typeof window !== 'undefined' && (window as any).__FI_DEBUG_TILES__) {
+      // eslint-disable-next-line no-console
+      console.debug('[tile-variance]', variance.toFixed(1), variance < NO_IMAGERY_VARIANCE_THRESHOLD ? '→ flagged as placeholder' : '')
+    }
+    return variance < NO_IMAGERY_VARIANCE_THRESHOLD
+  } catch {
+    // A tainted canvas (CORS not actually applied for some reason) or an
+    // unsupported context must never break tile display — just skip
+    // detection for this tile and let it render normally either way.
+    return false
+  }
+}
+
 // A single fully-transparent pixel. Leaflet's default tile-error handling
 // (GridLayer#_tileOnError) does NOT hide a failed tile — it leaves the
 // broken <img> in the DOM at full opacity unless `errorTileUrl` is set, so
@@ -56,11 +131,18 @@ export function createOfflineTileLayer(
   L: any,
   urlTemplate: string,
   options: Record<string, any>,
-  meta: OfflineTileLayerMeta | null
+  meta: OfflineTileLayerMeta | null,
+  detectNoImagery: boolean = false
 ) {
   // Callers can still override errorTileUrl explicitly (rare); default it
   // here so every provider gets graceful-failure behavior for free.
-  const layerOptions = { errorTileUrl: TRANSPARENT_TILE, ...options }
+  const layerOptions: Record<string, any> = { errorTileUrl: TRANSPARENT_TILE, ...options }
+  if (detectNoImagery) {
+    // Required for canvas pixel access (getImageData) on a cross-origin
+    // image without tainting the canvas. Esri's tile servers are already
+    // known CORS-enabled — see the note above.
+    layerOptions.crossOrigin = layerOptions.crossOrigin ?? 'anonymous'
+  }
   const OfflineTileLayer = L.TileLayer.extend({
     createTile(this: any, coords: any, done: (err: any, tile?: HTMLElement) => void) {
       const tile = document.createElement('img')
@@ -74,11 +156,16 @@ export function createOfflineTileLayer(
       const url = this.getTileUrl(coords)
       const onLoad = L.Util.bind(this._tileOnLoad, this, done, tile)
       const onError = L.Util.bind(this._tileOnError, this, done, tile)
+      const checkForPlaceholder = () => {
+        if (detectNoImagery && detectLikelyNoImagery(tile)) {
+          this.fire('tileplaceholder', { coords, url })
+        }
+      }
 
       if (!meta) {
         // No durable plot to key the cache by — plain network load,
         // identical to a stock Leaflet tile layer.
-        L.DomEvent.on(tile, 'load', onLoad)
+        L.DomEvent.on(tile, 'load', () => { onLoad(); checkForPlaceholder() })
         L.DomEvent.on(tile, 'error', onError)
         tile.src = url
         return tile
@@ -89,7 +176,7 @@ export function createOfflineTileLayer(
       let fellBackToCache = false
       L.DomEvent.on(tile, 'load', () => {
         onLoad()
-        if (!fellBackToCache) void cacheTileInBackground(url, meta)
+        if (!fellBackToCache) { void cacheTileInBackground(url, meta); checkForPlaceholder() }
       })
       L.DomEvent.on(tile, 'error', () => {
         if (fellBackToCache) { onError(); return } // cache fallback also failed — nothing available for this tile

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { probeMaxAvailableZoom } from '@/lib/esri-tile-availability'
+import { useEffect, useRef, useState } from 'react'
+import { createOfflineTileLayer } from '@/lib/offline-tile-layer'
 
 interface PlotData {
   id: string
@@ -34,21 +34,36 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
   //    counters below add the same relative-threshold OSM fallback used
   //    in PlotBoundaryMapper (see its comment for why relative, not a
   //    flat count).
-  // 2. Esri's real per-location imagery resolution varies — see
-  //    lib/esri-tile-availability.ts. Past a location's real ceiling
-  //    Esri returns a valid-but-blank "Map data not yet available" tile
-  //    instead of erroring, so (1) alone can't catch it. Zooming into a
-  //    specific member's small plot on this fleet view hit exactly that.
-  //    satelliteZoomCeilingRef holds whatever the probe last found for
-  //    wherever the officer is currently looking (re-probed on moveend).
+  // 2. Esri's real per-location imagery resolution varies. Past a
+  //    location's real ceiling Esri returns a valid-but-blank "Map data
+  //    not yet available" tile instead of erroring, so (1) alone can't
+  //    catch it. Zooming into a specific member's small plot on this
+  //    fleet view hit exactly that.
+  //
+  //    An earlier fix attempted to pre-discover this via the ArcGIS
+  //    `tilemap` REST resource (lib/esri-tile-availability.ts, since
+  //    removed) — that resource turned out not to be exposed by this
+  //    specific Esri endpoint at all (confirmed against its own REST
+  //    service directory listing), so every probe silently 404'd and
+  //    "discovered" the same wrong, universally-low ceiling everywhere,
+  //    which broke tight zoom even in well-covered areas — worse than
+  //    the original bug.
+  //
+  //    This version is reactive instead: createOfflineTileLayer (see
+  //    lib/offline-tile-layer.ts) inspects each satellite tile that
+  //    actually loads and fires 'tileplaceholder' if its pixels look like
+  //    the flat "not available" graphic rather than real photography.
+  //    satelliteZoomCeilingRef only clamps down once that's actually been
+  //    observed for wherever the officer is currently looking — nothing
+  //    is capped ahead of time or on a timer.
   const esriLayerRef = useRef<any>(null)
   const labelsLayerRef = useRef<any>(null)
   const osmLayerRef = useRef<any>(null)
   const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite')
   const ESRI_NOMINAL_MAX_ZOOM = 19
   const satelliteZoomCeilingRef = useRef<number>(ESRI_NOMINAL_MAX_ZOOM)
+  const placeholderCountAtZoomRef = useRef<{ zoom: number; count: number }>({ zoom: -1, count: 0 })
   const [atImageryCeiling, setAtImageryCeiling] = useState(false)
-  const moveEndProbeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined' || mapRef.current) return
@@ -87,16 +102,26 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
         })
 
         // Satellite view
-        const esriSat = L.tileLayer(
+        const esriSat = createOfflineTileLayer(
+          L,
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          { maxZoom: 20, maxNativeZoom: 19 }
+          { maxZoom: 20, maxNativeZoom: 19 },
+          null,
+          true // detectNoImagery — see the zoom-ceiling note above esriLayerRef
         )
         // Labels
-        const esriLabels = L.tileLayer(
+        const esriLabels = createOfflineTileLayer(
+          L,
           'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-          { maxZoom: 20, maxNativeZoom: 19, opacity: 0.8 }
+          { maxZoom: 20, maxNativeZoom: 19, opacity: 0.8 },
+          null
         )
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+        const osm = createOfflineTileLayer(
+          L,
+          'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          { maxZoom: 19 },
+          null
+        )
 
         esriSat.addTo(map)
         esriLabels.addTo(map)
@@ -130,24 +155,30 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
         esriSat.on('tileerror', onSatError)
         esriLabels.on('tileerror', onSatError)
 
-        // Zoom-ceiling probe (fixes "map data not yet available" when
-        // zooming into a small member plot — see lib/esri-tile-availability.ts).
-        // Applied via the shared applyZoomCeiling helper below, defined once
-        // outside this effect and re-run on moveend as the officer pans
-        // toward specific plots, since a fleet map's imagery ceiling isn't
-        // one value for the whole cooperative.
-        applyZoomCeilingFor(map, center[0], center[1])
+        // Zoom-ceiling: reactive, not probed. A fleet map spans however many
+        // member plots are scattered across the cooperative's area, so
+        // there isn't one ceiling for the whole map — this just clamps
+        // down (per the same 2-in-a-row rule as PlotBoundaryMapper) once
+        // real placeholder tiles are actually seen at whatever zoom the
+        // officer is currently panned/zoomed to, and resets the moment
+        // they zoom to a different level.
+        esriSat.on('tileplaceholder', () => {
+          const current = map.getZoom()
+          if (placeholderCountAtZoomRef.current.zoom !== current) {
+            placeholderCountAtZoomRef.current = { zoom: current, count: 0 }
+          }
+          placeholderCountAtZoomRef.current.count += 1
+          if (placeholderCountAtZoomRef.current.count >= 2 && current < satelliteZoomCeilingRef.current) {
+            const ceiling = Math.max(current - 1, 1)
+            satelliteZoomCeilingRef.current = ceiling
+            map.setMaxZoom(ceiling)
+            if (map.getZoom() > ceiling) map.setZoom(ceiling)
+            setAtImageryCeiling(map.getZoom() >= ceiling)
+          }
+        })
         map.on('zoom', () => {
           const onSatellite = !!esriLayerRef.current && map.hasLayer(esriLayerRef.current)
           setAtImageryCeiling(onSatellite && map.getZoom() >= satelliteZoomCeilingRef.current)
-        })
-        map.on('moveend', () => {
-          if (moveEndProbeTimerRef.current) clearTimeout(moveEndProbeTimerRef.current)
-          moveEndProbeTimerRef.current = setTimeout(() => {
-            if (!mapRef.current) return
-            const c = mapRef.current.getCenter()
-            applyZoomCeilingFor(mapRef.current, c.lat, c.lng)
-          }, 400)
         })
 
         // Plot polygons and markers
@@ -229,7 +260,6 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
     initMap()
 
     return () => {
-      if (moveEndProbeTimerRef.current) { clearTimeout(moveEndProbeTimerRef.current); moveEndProbeTimerRef.current = null }
       if (mapRef.current) {
         try {
           mapRef.current.remove()
@@ -238,25 +268,6 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
       }
     }
   }, [plots])
-
-  // ── Discover & enforce the real Esri imagery zoom ceiling ──────────────────
-  // See lib/esri-tile-availability.ts for the full explanation. Unlike
-  // PlotBoundaryMapper (one plot, one location), a fleet map spans however
-  // many member plots are scattered across the cooperative's area — there
-  // isn't one ceiling for the whole map. This is re-run on moveend (see
-  // initMap) so the ceiling always reflects wherever the officer is
-  // currently looking, not just the fleet's overall centroid.
-  const applyZoomCeilingFor = useCallback(async (map: any, lat: number, lng: number) => {
-    if (!map) return
-    const ceiling = await probeMaxAvailableZoom(lat, lng)
-    if (!mapRef.current || mapRef.current !== map) return // unmounted or a newer probe has already superseded this one
-    satelliteZoomCeilingRef.current = ceiling
-    const esri = esriLayerRef.current
-    if (!esri || !map.hasLayer(esri)) return // street active — uncapped, see toggleMapType
-    map.setMaxZoom(ceiling)
-    if (map.getZoom() > ceiling) map.setZoom(ceiling)
-    setAtImageryCeiling(map.getZoom() >= ceiling)
-  }, [])
 
   function toggleMapType() {
     const map = mapRef.current

@@ -27,7 +27,6 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { EUDR_POLYGON_THRESHOLD_HA, roundToEudrPrecision, getEudrGeolocationFormat } from '@/lib/eudr-constants'
 import { createOfflineTileLayer, prefetchTilesForPlot, boundsFromPoints, type PrefetchProgress } from '@/lib/offline-tile-layer'
 import { getPlotTileStats, clearPlotTiles, type PlotTileStats } from '@/lib/tile-cache'
-import { probeMaxAvailableZoom } from '@/lib/esri-tile-availability'
 
 // ── Public contract ────────────────────────────────────────────────────────────
 
@@ -268,18 +267,30 @@ export default function PlotBoundaryMapper({
   const labelsLayerRef = useRef<any>(null)
 
   // ── Real imagery zoom ceiling (fixes "map data not yet available") ───────
-  // Esri's real high-resolution coverage varies a lot by location — see
-  // lib/esri-tile-availability.ts for the full explanation. Past the true
-  // ceiling for wherever the farmer is mapping, Esri returns a valid-but-
-  // blank placeholder tile instead of erroring, so we have to *discover*
-  // and enforce the real ceiling ourselves rather than reacting to a
-  // failure that never technically fires. `ESRI_NOMINAL_MAX_ZOOM` is the
-  // upper bound we'd otherwise request (matches maxNativeZoom below);
-  // `satelliteZoomCeilingRef` holds whatever the probe actually found for
-  // the current location, and is what we clamp the map to while satellite
-  // is the active layer.
+  // Esri's real high-resolution coverage varies a lot by location: past the
+  // true ceiling for wherever the farmer is mapping, Esri returns a valid
+  // HTTP 200 "Map data not yet available" placeholder tile instead of
+  // erroring, so tileerror-based fallback logic never sees it.
+  //
+  // An earlier version of this tried to *pre-discover* the ceiling via the
+  // ArcGIS `tilemap` REST resource before the farmer ever zoomed in. That's
+  // gone — the tilemap resource isn't actually exposed by this specific
+  // Esri endpoint (confirmed against its own REST service directory, which
+  // lists no Tilemap capability), so every probe silently 404'd and
+  // "discovered" the same wrong, universally-low ceiling for every plot on
+  // earth, which was a worse regression than having no ceiling at all.
+  //
+  // This version is reactive instead of predictive: createOfflineTileLayer
+  // (lib/offline-tile-layer.ts) inspects each satellite tile that actually
+  // loads and fires 'tileplaceholder' if its pixels look like the flat
+  // "not available" graphic rather than real photography. Only once we've
+  // actually seen that — real evidence, not a guess — do we clamp
+  // satelliteZoomCeilingRef down to the current zoom and stop the farmer
+  // going any tighter on satellite. Nothing is capped ahead of time, so a
+  // well-covered plot can still zoom to the full native 19.
   const ESRI_NOMINAL_MAX_ZOOM = 19
   const satelliteZoomCeilingRef = useRef<number>(ESRI_NOMINAL_MAX_ZOOM)
+  const placeholderCountAtZoomRef = useRef<{ zoom: number; count: number }>({ zoom: -1, count: 0 })
   const [atImageryCeiling, setAtImageryCeiling] = useState(false)
 
   // ── Offline tile cache (only meaningful when plotId is set — see Props) ───
@@ -360,7 +371,8 @@ export default function PlotBoundaryMapper({
           L,
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           { maxZoom: 20, maxNativeZoom: 19 },
-          tileCacheMeta && { ...tileCacheMeta, provider: 'esri-satellite' }
+          tileCacheMeta && { ...tileCacheMeta, provider: 'esri-satellite' },
+          true // detectNoImagery — see the zoom-ceiling note above esriLayerRef
         )
         const esriLabels = createOfflineTileLayer(
           L,
@@ -374,6 +386,27 @@ export default function PlotBoundaryMapper({
           { maxZoom: 19 },
           tileCacheMeta && { ...tileCacheMeta, provider: 'osm' }
         )
+
+        // A single placeholder tile could just be a coincidentally flat
+        // patch of real ground (bare soil, a still pond) — only treat it as
+        // real evidence of "no imagery past this zoom" once we've seen it
+        // more than once at the SAME zoom level; a genuinely blank area
+        // fills most of the viewport with placeholders, a real flat field
+        // does not. Resets whenever the zoom changes.
+        esriSat.on('tileplaceholder', () => {
+          const current = map.getZoom()
+          if (placeholderCountAtZoomRef.current.zoom !== current) {
+            placeholderCountAtZoomRef.current = { zoom: current, count: 0 }
+          }
+          placeholderCountAtZoomRef.current.count += 1
+          if (placeholderCountAtZoomRef.current.count >= 2 && current < satelliteZoomCeilingRef.current) {
+            const ceiling = Math.max(current - 1, 1)
+            satelliteZoomCeilingRef.current = ceiling
+            map.setMaxZoom(ceiling)
+            if (map.getZoom() > ceiling) map.setZoom(ceiling)
+            setAtImageryCeiling(map.getZoom() >= ceiling)
+          }
+        })
 
         esriSat.addTo(map)
         esriLabels.addTo(map)
@@ -456,13 +489,6 @@ export default function PlotBoundaryMapper({
 
         mapRef.current = map
         setMapLoaded(true)
-
-        // Probe imagery availability for the default center right away —
-        // this is a coarse first pass (initialCenter is just Kenya's rough
-        // midpoint, not the farmer's actual plot) so the map is never left
-        // uncapped, but gets replaced by a precise probe the moment we have
-        // a real location (autoLocate below, or a manual "locate me" tap).
-        applyZoomCeiling(initialCenter[0], initialCenter[1])
         autoLocate(map, L, { silent: true })
       } catch (e) {
         console.error('Map init error:', e)
@@ -547,36 +573,6 @@ export default function PlotBoundaryMapper({
     }
   }
 
-  // ── Discover & enforce the real Esri imagery zoom ceiling ──────────────────
-  // See lib/esri-tile-availability.ts for why this exists: Esri's own tile
-  // endpoint returns a valid-looking "Map data not yet available" tile
-  // rather than an error once you're past a location's real resolution, so
-  // we have to find that ceiling proactively and clamp to it — reacting
-  // after the fact isn't possible because nothing ever technically fails.
-  async function applyZoomCeiling(lat: number, lng: number) {
-    const map = mapRef.current
-    if (!map) return
-    const ceiling = await probeMaxAvailableZoom(lat, lng)
-    // The map (or the farmer) may have moved on to a different mode/type
-    // while the probe was in flight — only apply if still relevant. We
-    // check the map's actual active layer here rather than the `mapType`
-    // React variable: this function is called from autoLocate's memoized
-    // callback, which can hold a stale closure over `mapType` from an
-    // earlier render if the farmer toggled satellite/street in between —
-    // asking Leaflet what's actually on the map right now is always correct.
-    if (!mapRef.current) return
-    satelliteZoomCeilingRef.current = ceiling
-    const esri = esriLayerRef.current
-    if (!esri || !map.hasLayer(esri)) return // street active — has its own, higher cap; see toggleMapType
-    map.setMaxZoom(ceiling)
-    // If the farmer had already zoomed in past the newly-discovered ceiling
-    // (e.g. tapped + rapidly before the probe resolved), pull the view back
-    // to the sharpest level we've confirmed actually has imagery, rather
-    // than leaving them stranded on a blank tile.
-    if (map.getZoom() > ceiling) map.setZoom(ceiling)
-    setAtImageryCeiling(map.getZoom() >= ceiling)
-  }
-
   // ── Retry tile loading (after a stall) ─────────────────────────────────────
 
   function retryTiles() {
@@ -626,10 +622,14 @@ export default function PlotBoundaryMapper({
         const trustworthy = isWithinKenya(lat, lng)
         if (!userAlreadyMapping && trustworthy) {
           _map.setView([lat, lng], zoomForAccuracy(accuracy))
-          // Re-probe now that we have the farmer's actual location, not
-          // just Kenya's rough midpoint — the initial mount-time probe was
-          // only ever a safe placeholder until this real fix arrived.
-          applyZoomCeiling(lat, lng)
+          // A relocate means whatever placeholder evidence we'd gathered
+          // belonged to the OLD position (the Kenya-midpoint default
+          // center, most likely) — it says nothing about real coverage
+          // here, so un-cap and let fresh evidence accumulate for this spot.
+          satelliteZoomCeilingRef.current = ESRI_NOMINAL_MAX_ZOOM
+          placeholderCountAtZoomRef.current = { zoom: -1, count: 0 }
+          _map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
+          setAtImageryCeiling(false)
         } else if (!userAlreadyMapping && !trustworthy && !opts?.silent) {
           // Only surface this as an error for an explicit "locate me" tap —
           // the silent auto-locate on mount should fail quietly and just
