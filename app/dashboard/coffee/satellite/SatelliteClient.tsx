@@ -59,17 +59,17 @@ const HEALTH_CONFIG: Record<HealthLabel, {
   label: string; color: string; bg: string; border: string;
   ring: string; dot: string; barColor: string;
 }> = {
-  good:     { label: "Good",     color: "text-emerald-700", bg: "bg-emerald-50",  border: "border-emerald-200", ring: "ring-emerald-400", dot: "bg-emerald-500", barColor: "bg-emerald-500" },
-  watch:    { label: "Watch",    color: "text-yellow-700",  bg: "bg-yellow-50",   border: "border-yellow-200",  ring: "ring-yellow-400",  dot: "bg-yellow-500",  barColor: "bg-yellow-500"  },
-  stress:   { label: "Stress",   color: "text-orange-700",  bg: "bg-orange-50",   border: "border-orange-200",  ring: "ring-orange-400",  dot: "bg-orange-500",  barColor: "bg-orange-500"  },
-  critical: { label: "Critical", color: "text-red-700",     bg: "bg-red-50",      border: "border-red-200",     ring: "ring-red-400",     dot: "bg-red-500",     barColor: "bg-red-500"     },
+  good:     { label: "Good",     color: "text-emerald-400", bg: "bg-emerald-900/20", border: "border-emerald-500/30", ring: "ring-emerald-400", dot: "bg-emerald-500", barColor: "bg-emerald-500" },
+  watch:    { label: "Watch",    color: "text-yellow-400",  bg: "bg-yellow-900/20",  border: "border-yellow-500/30",  ring: "ring-yellow-400",  dot: "bg-yellow-500",  barColor: "bg-yellow-500"  },
+  stress:   { label: "Stress",   color: "text-orange-400",  bg: "bg-orange-900/20",  border: "border-orange-500/30",  ring: "ring-orange-400",  dot: "bg-orange-500",  barColor: "bg-orange-500"  },
+  critical: { label: "Critical", color: "text-red-400",     bg: "bg-red-900/20",     border: "border-red-500/30",     ring: "ring-red-400",     dot: "bg-red-500",     barColor: "bg-red-500"     },
 };
 
 const FRESHNESS_CONFIG: Record<DataFreshness, { label: string; color: string }> = {
-  current:    { label: "Current",    color: "text-emerald-600" },
-  recent:     { label: "Recent",     color: "text-blue-600" },
-  stale:      { label: "Stale",      color: "text-amber-600" },
-  very_stale: { label: "Very stale", color: "text-red-600" },
+  current:    { label: "Current",    color: "text-emerald-400" },
+  recent:     { label: "Recent",     color: "text-sky-400" },
+  stale:      { label: "Stale",      color: "text-amber-400" },
+  very_stale: { label: "Very stale", color: "text-red-400" },
 };
 
 function formatDate(dateStr: string | null) {

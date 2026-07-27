@@ -27,6 +27,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { EUDR_POLYGON_THRESHOLD_HA, roundToEudrPrecision, getEudrGeolocationFormat } from '@/lib/eudr-constants'
 import { createOfflineTileLayer, prefetchTilesForPlot, boundsFromPoints, type PrefetchProgress } from '@/lib/offline-tile-layer'
 import { getPlotTileStats, clearPlotTiles, type PlotTileStats } from '@/lib/tile-cache'
+import { sentinelTileUrlTemplate } from '@/lib/sentinel-tile-url'
 
 // ── Public contract ────────────────────────────────────────────────────────────
 
@@ -265,6 +266,10 @@ export default function PlotBoundaryMapper({
   const esriLayerRef = useRef<any>(null)
   const osmLayerRef = useRef<any>(null)
   const labelsLayerRef = useRef<any>(null)
+  // Sentinel-2 fallback — see fallBackToSentinel() below. Only set once Esri
+  // has actually proven unusable for the current location (connectivity
+  // failure, or confirmed no-imagery-at-any-zoom); most sessions never touch this.
+  const sentinelLayerRef = useRef<any>(null)
 
   // ── Real imagery zoom ceiling (fixes "map data not yet available") ───────
   // Esri's real high-resolution coverage varies a lot by location: past the
@@ -291,6 +296,15 @@ export default function PlotBoundaryMapper({
   const ESRI_NOMINAL_MAX_ZOOM = 19
   const satelliteZoomCeilingRef = useRef<number>(ESRI_NOMINAL_MAX_ZOOM)
   const placeholderCountAtZoomRef = useRef<{ zoom: number; count: number }>({ zoom: -1, count: 0 })
+  // How many times the ceiling above has actually been pulled down. One
+  // reduction just means "was zoomed in past what's available here" — normal
+  // and harmless, the clamp handles it. But if we're STILL seeing placeholder
+  // tiles after already pulling back once, that's no longer "too tight a
+  // zoom" — it means Esri has no real photography for this location at any
+  // farm-scale zoom, which the ceiling clamp alone can never fix (there's no
+  // zoom level left to clamp down to that has real imagery). That's the
+  // "map is just permanently white" case — see the auto-fallback below.
+  const ceilingReductionsRef = useRef(0)
   const [atImageryCeiling, setAtImageryCeiling] = useState(false)
 
   // ── Offline tile cache (only meaningful when plotId is set — see Props) ───
@@ -387,6 +401,85 @@ export default function PlotBoundaryMapper({
           tileCacheMeta && { ...tileCacheMeta, provider: 'osm' }
         )
 
+        // Auto-fallback if satellite tiles keep failing (rural connectivity)
+        // OR keep coming back as "no imagery here" placeholders even after
+        // pulling the zoom back (no connectivity problem — Esri simply has no
+        // real photography for this location). Declared here, before the
+        // 'tileplaceholder' listener below, so both paths can call it.
+        //
+        // Falls back through two tiers, not straight to OSM:
+        //   1. Sentinel-2 (via the sentinel-tile edge function) — real
+        //      satellite imagery with uniform global coverage, so it still
+        //      shows crop rows/field boundaries even where Esri has nothing.
+        //      Coarser (10m/pixel) than Esri where Esri actually has data,
+        //      but far more useful for tracing a boundary than a street map.
+        //   2. OSM street map — last resort, only if Sentinel-2 itself is
+        //      unreachable (edge function down, no Supabase URL configured).
+        //
+        // The previous version of this only counted esriSat's own errors and
+        // waited for "more than 5" of them before switching — a threshold
+        // tuned for a large viewport requesting dozens of tiles. On a small
+        // or just-opened map (a phone in portrait, a freshly mounted
+        // component) the whole visible area can be 4-6 tiles total across
+        // BOTH the satellite and labels layers, so that fixed threshold
+        // could never actually fire: every visible tile would fail and the
+        // farmer would still be looking at a gray box with nothing on it,
+        // because "more than 5" never arrived. Track errors against how
+        // many tiles we've actually asked for, across both Esri layers, and
+        // fall back once a clear majority of everything requested has
+        // failed — not after an absolute count that assumes a big viewport.
+        let satRequested = 0
+        let satErrors = 0
+        let fellBackToSentinel = false
+        let fellBackToOsm = false
+        const countSatRequest = () => { satRequested += 1 }
+
+        const fallBackToOsmFinal = () => {
+          if (fellBackToOsm) return
+          fellBackToOsm = true
+          if (sentinelLayerRef.current && map.hasLayer(sentinelLayerRef.current)) {
+            map.removeLayer(sentinelLayerRef.current)
+          } else if (map.hasLayer(esriSat)) {
+            esriSat.remove(); esriLabels.remove()
+          }
+          osm.addTo(map); setMapType('street')
+          // New provider, new load cycle — give it its own honest "still
+          // loading" window instead of inheriting whatever was left of the
+          // previous attempt's timer.
+          retryTiles()
+        }
+        const fallBackToSentinel = () => {
+          if (fellBackToSentinel || !map.hasLayer(esriSat)) return
+          fellBackToSentinel = true
+          esriSat.remove(); esriLabels.remove()
+          const sentinelUrl = sentinelTileUrlTemplate()
+          if (!sentinelUrl) { fallBackToOsmFinal(); return } // no Supabase URL configured — skip straight to OSM
+          const sentinel = createOfflineTileLayer(L, sentinelUrl, { maxZoom: 20, maxNativeZoom: 16 }, null, false)
+          let sentinelErrors = 0
+          sentinel.on('tileerror', () => {
+            sentinelErrors += 1
+            // A lower bar than Esri's — if the proxy itself is unreachable
+            // (edge function down, CDSE outage), every tile fails uniformly
+            // and fast, so there's no need to wait for a big sample before
+            // giving up on it.
+            if (sentinelErrors >= 3) fallBackToOsmFinal()
+          })
+          sentinel.on('tileload', () => { setTilesRendered(true); setTilesStalled(false); if (slowTileTimerRef.current) clearTimeout(slowTileTimerRef.current) })
+          sentinelLayerRef.current = sentinel
+          sentinel.addTo(map)
+          // Still "satellite" from the farmer's perspective — Sentinel-2 is
+          // satellite imagery too, just a different, always-covered
+          // provider — so mapType/the toggle button deliberately don't
+          // change here.
+          retryTiles()
+        }
+        const onSatError = () => {
+          satErrors += 1
+          const enoughAbsolute = satErrors >= 5
+          const enoughRelative = satErrors >= 3 && satErrors >= Math.ceil(satRequested * 0.6)
+          if (enoughAbsolute || enoughRelative) fallBackToSentinel()
+        }
+
         // A single placeholder tile could just be a coincidentally flat
         // patch of real ground (bare soil, a still pond) — only treat it as
         // real evidence of "no imagery past this zoom" once we've seen it
@@ -405,6 +498,19 @@ export default function PlotBoundaryMapper({
             map.setMaxZoom(ceiling)
             if (map.getZoom() > ceiling) map.setZoom(ceiling)
             setAtImageryCeiling(map.getZoom() >= ceiling)
+
+            // First reduction: could just mean the farmer (or the initial
+            // zoom-17 default) started in tighter than this location's real
+            // imagery ceiling — normal, the clamp above handles it, real
+            // photography should now be visible. A SECOND reduction means
+            // pulling back once didn't produce real imagery either — at
+            // this point there's strong evidence Esri has nothing usable
+            // for this location at any farm-relevant zoom, not just "too
+            // tight," and no further clamp will fix that. Stop making the
+            // farmer stare at a white rectangle and switch to Sentinel-2
+            // automatically, same as the connectivity-failure path above.
+            ceilingReductionsRef.current += 1
+            if (ceilingReductionsRef.current >= 2) fallBackToSentinel()
           }
         })
 
@@ -414,39 +520,6 @@ export default function PlotBoundaryMapper({
         osmLayerRef.current = osm
         labelsLayerRef.current = esriLabels
 
-        // Auto-fallback to OSM if satellite tiles keep failing (rural connectivity).
-        //
-        // The previous version of this only counted esriSat's own errors and
-        // waited for "more than 5" of them before switching — a threshold
-        // tuned for a large viewport requesting dozens of tiles. On a small
-        // or just-opened map (a phone in portrait, a freshly mounted
-        // component) the whole visible area can be 4-6 tiles total across
-        // BOTH the satellite and labels layers, so that fixed threshold
-        // could never actually fire: every visible tile would fail and the
-        // farmer would still be looking at a gray box with nothing on it,
-        // because "more than 5" never arrived. Track errors against how
-        // many tiles we've actually asked for, across both Esri layers, and
-        // fall back once a clear majority of everything requested has
-        // failed — not after an absolute count that assumes a big viewport.
-        let satRequested = 0
-        let satErrors = 0
-        let fellBack = false
-        const countSatRequest = () => { satRequested += 1 }
-        const fallBackToOsm = () => {
-          if (fellBack || !map.hasLayer(esriSat)) return
-          fellBack = true
-          esriSat.remove(); esriLabels.remove(); osm.addTo(map); setMapType('street')
-          // New provider, new load cycle — give it its own honest "still
-          // loading" window instead of inheriting whatever was left of the
-          // satellite attempt's timer.
-          retryTiles()
-        }
-        const onSatError = () => {
-          satErrors += 1
-          const enoughAbsolute = satErrors >= 5
-          const enoughRelative = satErrors >= 3 && satErrors >= Math.ceil(satRequested * 0.6)
-          if (enoughAbsolute || enoughRelative) fallBackToOsm()
-        }
         esriSat.on('tileloadstart', countSatRequest)
         esriLabels.on('tileloadstart', countSatRequest)
         esriSat.on('tileerror', onSatError)
@@ -553,6 +626,7 @@ export default function PlotBoundaryMapper({
     if (mapType === 'satellite') {
       if (esriLayerRef.current) map.removeLayer(esriLayerRef.current)
       if (labelsLayerRef.current) map.removeLayer(labelsLayerRef.current)
+      if (sentinelLayerRef.current) map.removeLayer(sentinelLayerRef.current)
       if (osmLayerRef.current) osmLayerRef.current.addTo(map)
       setMapType('street')
       // OSM's coverage is effectively uniform worldwide at the zooms this
@@ -566,6 +640,9 @@ export default function PlotBoundaryMapper({
       if (esriLayerRef.current) esriLayerRef.current.addTo(map)
       if (labelsLayerRef.current) labelsLayerRef.current.addTo(map)
       setMapType('satellite')
+      // Give a manually-requested retry a fresh chance before any future
+      // auto-fallback (see the 'tileplaceholder' listener above) fires again.
+      ceilingReductionsRef.current = 0
       // Re-apply whatever ceiling we last discovered for this location.
       map.setMaxZoom(satelliteZoomCeilingRef.current)
       if (map.getZoom() > satelliteZoomCeilingRef.current) map.setZoom(satelliteZoomCeilingRef.current)
@@ -583,6 +660,7 @@ export default function PlotBoundaryMapper({
     // Nudge Leaflet to re-request the currently-visible tiles rather than
     // waiting on whatever half-finished requests are still in flight.
     if (esriLayerRef.current && map.hasLayer(esriLayerRef.current)) esriLayerRef.current.redraw()
+    if (sentinelLayerRef.current && map.hasLayer(sentinelLayerRef.current)) sentinelLayerRef.current.redraw()
     if (osmLayerRef.current && map.hasLayer(osmLayerRef.current)) osmLayerRef.current.redraw()
     slowTileTimerRef.current = setTimeout(() => { if (!tilesRenderedRef.current) setTilesStalled(true) }, 8000)
   }
@@ -628,6 +706,7 @@ export default function PlotBoundaryMapper({
           // here, so un-cap and let fresh evidence accumulate for this spot.
           satelliteZoomCeilingRef.current = ESRI_NOMINAL_MAX_ZOOM
           placeholderCountAtZoomRef.current = { zoom: -1, count: 0 }
+          ceilingReductionsRef.current = 0
           _map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
           setAtImageryCeiling(false)
         } else if (!userAlreadyMapping && !trustworthy && !opts?.silent) {

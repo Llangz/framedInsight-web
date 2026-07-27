@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createOfflineTileLayer } from '@/lib/offline-tile-layer'
+import { sentinelTileUrlTemplate } from '@/lib/sentinel-tile-url'
 
 interface PlotData {
   id: string
@@ -24,6 +25,18 @@ interface Props {
 export default function CoopFleetMap({ plots, className = '' }: Props) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
+  const leafletRef = useRef<any>(null)
+  // Plot markers/polygons live in their own layer group so they can be
+  // cleared and redrawn independently of the tile layers and the map
+  // instance itself — see the note above the init effect below for why
+  // this decoupling is the actual fix for the blank-map bug on this view.
+  const plotLayerGroupRef = useRef<any>(null)
+  // Always holds the latest `plots` prop, read by renderPlots() below.
+  // Keeping this in a ref (rather than a dependency) is what lets the
+  // map-init effect run exactly once per mount instead of once per
+  // render — see the comment above that effect.
+  const plotsRef = useRef(plots)
+  useEffect(() => { plotsRef.current = plots }, [plots])
   const [mapLoaded, setMapLoaded] = useState(false)
 
   // ── Same two problems PlotBoundaryMapper had, present here too ───────────
@@ -59,12 +72,126 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
   const esriLayerRef = useRef<any>(null)
   const labelsLayerRef = useRef<any>(null)
   const osmLayerRef = useRef<any>(null)
+  // Sentinel-2 fallback — see fallBackToSentinel() below. Real satellite
+  // imagery with uniform global coverage, used before giving up on
+  // satellite entirely and dropping to the OSM street map.
+  const sentinelLayerRef = useRef<any>(null)
   const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite')
   const ESRI_NOMINAL_MAX_ZOOM = 19
   const satelliteZoomCeilingRef = useRef<number>(ESRI_NOMINAL_MAX_ZOOM)
   const placeholderCountAtZoomRef = useRef<{ zoom: number; count: number }>({ zoom: -1, count: 0 })
+  // How many times the ceiling above has actually been pulled down — see
+  // the matching comment in PlotBoundaryMapper.tsx. One reduction is
+  // normal (started zoomed in past what's available here); a second means
+  // there's no real Esri coverage at this location at any zoom, which no
+  // further clamp can fix — that's when fallBackToSentinel() kicks in.
+  const ceilingReductionsRef = useRef(0)
   const [atImageryCeiling, setAtImageryCeiling] = useState(false)
 
+  // Draws (or redraws) every plot's polygon/marker into a dedicated layer
+  // group, reading the latest data from plotsRef rather than a `plots`
+  // closure argument — that's what lets this be called both from the
+  // one-time init effect and from the plots-changed effect below without
+  // either one needing `plots` in its own dependency array.
+  const renderPlots = useCallback((fitView: boolean) => {
+    const map = mapRef.current
+    const L = leafletRef.current
+    if (!map || !L) return
+
+    if (plotLayerGroupRef.current) {
+      plotLayerGroupRef.current.clearLayers()
+    } else {
+      plotLayerGroupRef.current = L.layerGroup().addTo(map)
+    }
+    const group = plotLayerGroupRef.current
+
+    const bounds: any[] = []
+
+    plotsRef.current.forEach(plot => {
+      if (!plot.gps_latitude || !plot.gps_longitude) return
+
+      const statusColor = plot.eudr_risk_level === 'low' ? '#10B981' : // Green
+                         plot.eudr_risk_level === 'medium' ? '#F59E0B' : // Amber
+                         plot.eudr_risk_level === 'high' ? '#EF4444' : // Red
+                         '#6B7280' // Gray
+
+      // 1. Draw polygon if available
+      if (plot.gps_polygon && plot.gps_polygon.geometry && plot.gps_polygon.geometry.coordinates) {
+        try {
+          // GeoJSON format: coordinates is [[ [lng, lat], [lng, lat], ... ]]
+          const coords = plot.gps_polygon.geometry.coordinates[0].map((coord: [number, number]) => [coord[1], coord[0]])
+          const polygon = L.polygon(coords, {
+            color: statusColor,
+            weight: 2,
+            fillColor: statusColor,
+            fillOpacity: 0.3,
+          }).addTo(group)
+
+          polygon.bindPopup(`
+            <div class="text-zinc-900 font-sans p-1">
+              <h4 class="font-bold text-sm text-zinc-950">${plot.farm_name}</h4>
+              <p class="text-xs text-zinc-600 mt-0.5">Owner: ${plot.owner_name}</p>
+              <p class="text-xs text-zinc-600">Plot: ${plot.plot_name}</p>
+              <p class="text-xs text-zinc-600">Trees: ${plot.total_trees} · Size: ${plot.land_size_acres || 'N/A'} ac</p>
+              <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2 text-white" style="background-color: ${statusColor}">
+                EUDR Status: ${plot.eudr_risk_level || 'Unknown'}
+              </span>
+            </div>
+          `)
+          bounds.push(coords)
+        } catch (err) {
+          console.error('Error drawing plot polygon:', err)
+        }
+      } else {
+        // 2. Draw standard marker if no polygon
+        const marker = L.marker([plot.gps_latitude, plot.gps_longitude]).addTo(group)
+        marker.bindPopup(`
+          <div class="text-zinc-900 font-sans p-1">
+            <h4 class="font-bold text-sm text-zinc-950">${plot.farm_name}</h4>
+            <p class="text-xs text-zinc-600 mt-0.5">Owner: ${plot.owner_name}</p>
+            <p class="text-xs text-zinc-600">Centroid Only (No polygon mapped)</p>
+            <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2 text-white" style="background-color: ${statusColor}">
+              EUDR Status: ${plot.eudr_risk_level || 'Unknown'}
+            </span>
+          </div>
+        `)
+        bounds.push([[plot.gps_latitude, plot.gps_longitude]])
+      }
+    })
+
+    // Auto-fit to bounds only on the initial draw — re-fitting every time
+    // this runs (e.g. after a background data refresh) would yank the
+    // officer's current pan/zoom out from under them. Capped at 17 for the
+    // same reason as the read-only PlotMap component (see its comment): a
+    // tight bounding box around one small plot can otherwise push
+    // fitBounds well past where Esri has real imagery for many rural areas.
+    if (fitView && bounds.length > 0) {
+      const flatBounds = bounds.flat()
+      const lBounds = L.latLngBounds(flatBounds as any)
+      map.fitBounds(lBounds, { padding: [30, 30], maxZoom: 17 })
+    }
+  }, [])
+
+  // ── Init Leaflet — runs exactly once per mount ─────────────────────────────
+  // Previously this effect's dependency array was `[plots]`. Since `plots`
+  // arrives from a parent that recomputes it with `.filter().map()` on every
+  // render (a new array reference every time even when the underlying data
+  // is unchanged), that dependency caused this whole effect — tile layers,
+  // event listeners, and all — to tear down and reinitialize on every single
+  // parent re-render (router.refresh() after a save, a revalidated server
+  // component, React Strict Mode's double-invoke in dev, etc.).
+  //
+  // Worse, because `initMap` is async (it awaits `import('leaflet')`), a
+  // teardown could fire *while a previous init was still in flight*: the
+  // cleanup function nulls out mapRef.current, but the still-running old
+  // initMap() promise later does `mapRef.current = map` anyway with its own
+  // (now-orphaned) map instance — silently replacing the new map with a
+  // stale, disconnected one. Depending on timing this could leave the
+  // container with no live map attached at all, which is exactly the
+  // intermittent blank-white-canvas symptom reported here. Locking this
+  // effect to `[]` makes it truly mount-once; `plots` updates are now
+  // handled by the separate renderPlots effect below, which redraws
+  // markers/polygons in place without touching the map or tile layers.
   useEffect(() => {
     if (typeof window === 'undefined' || mapRef.current) return
 
@@ -86,7 +213,7 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
         // and the initial zoom-ceiling probe below — toward whichever plot
         // happened to be first in the list rather than the fleet as a
         // whole) or fallback to Kenya center if nothing is mapped yet.
-        const validCoords = plots.filter(p => p.gps_latitude && p.gps_longitude)
+        const validCoords = plotsRef.current.filter(p => p.gps_latitude && p.gps_longitude)
         const center: [number, number] = validCoords.length > 0
           ? [
               validCoords.reduce((s, p) => s + p.gps_latitude!, 0) / validCoords.length,
@@ -129,20 +256,48 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
         labelsLayerRef.current = esriLabels
         osmLayerRef.current = osm
 
-        // Auto-fallback to OSM if satellite tiles keep failing — this view
+        // Auto-fallback if satellite tiles keep failing — this view
         // previously had no error handling at all. Same relative-threshold
         // logic as PlotBoundaryMapper: an absolute error count never fires
         // reliably on a small/just-mounted viewport, so we track errors
         // against how many tiles were actually requested instead.
+        //
+        // Falls back through two tiers, not straight to OSM — see the
+        // matching comment in PlotBoundaryMapper.tsx: Sentinel-2 (uniform
+        // real coverage everywhere, just coarser) before OSM (last resort,
+        // no satellite context at all).
         let satRequested = 0
         let satErrors = 0
-        let fellBack = false
-        const fallBackToOsm = () => {
-          if (fellBack || !map.hasLayer(esriSat)) return
-          fellBack = true
-          esriSat.remove(); esriLabels.remove(); osm.addTo(map)
+        let fellBackToSentinel = false
+        let fellBackToOsm = false
+        const fallBackToOsmFinal = () => {
+          if (fellBackToOsm) return
+          fellBackToOsm = true
+          if (sentinelLayerRef.current && map.hasLayer(sentinelLayerRef.current)) {
+            map.removeLayer(sentinelLayerRef.current)
+          } else if (map.hasLayer(esriSat)) {
+            esriSat.remove(); esriLabels.remove()
+          }
+          osm.addTo(map)
           setMapType('street')
           map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
+        }
+        const fallBackToSentinel = () => {
+          if (fellBackToSentinel || !map.hasLayer(esriSat)) return
+          fellBackToSentinel = true
+          esriSat.remove(); esriLabels.remove()
+          const sentinelUrl = sentinelTileUrlTemplate()
+          if (!sentinelUrl) { fallBackToOsmFinal(); return }
+          const sentinel = createOfflineTileLayer(L, sentinelUrl, { maxZoom: 20, maxNativeZoom: 16 }, null, false)
+          let sentinelErrors = 0
+          sentinel.on('tileerror', () => {
+            sentinelErrors += 1
+            if (sentinelErrors >= 3) fallBackToOsmFinal()
+          })
+          sentinelLayerRef.current = sentinel
+          sentinel.addTo(map)
+          // Still "satellite" from the officer's perspective — mapType
+          // deliberately unchanged.
         }
         esriSat.on('tileloadstart', () => { satRequested += 1 })
         esriLabels.on('tileloadstart', () => { satRequested += 1 })
@@ -150,7 +305,7 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
           satErrors += 1
           const enoughAbsolute = satErrors >= 5
           const enoughRelative = satErrors >= 3 && satErrors >= Math.ceil(satRequested * 0.6)
-          if (enoughAbsolute || enoughRelative) fallBackToOsm()
+          if (enoughAbsolute || enoughRelative) fallBackToSentinel()
         }
         esriSat.on('tileerror', onSatError)
         esriLabels.on('tileerror', onSatError)
@@ -174,6 +329,12 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
             map.setMaxZoom(ceiling)
             if (map.getZoom() > ceiling) map.setZoom(ceiling)
             setAtImageryCeiling(map.getZoom() >= ceiling)
+
+            // Second reduction in a row means Esri has no real coverage
+            // here at any zoom, not just "too tight" — see the matching
+            // comment in PlotBoundaryMapper.tsx.
+            ceilingReductionsRef.current += 1
+            if (ceilingReductionsRef.current >= 2) fallBackToSentinel()
           }
         })
         map.on('zoom', () => {
@@ -181,76 +342,13 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
           setAtImageryCeiling(onSatellite && map.getZoom() >= satelliteZoomCeilingRef.current)
         })
 
-        // Plot polygons and markers
-        const bounds: any[] = []
-
-        plots.forEach(plot => {
-          if (!plot.gps_latitude || !plot.gps_longitude) return
-
-          const statusColor = plot.eudr_risk_level === 'low' ? '#10B981' : // Green
-                             plot.eudr_risk_level === 'medium' ? '#F59E0B' : // Amber
-                             plot.eudr_risk_level === 'high' ? '#EF4444' : // Red
-                             '#6B7280' // Gray
-
-          // 1. Draw polygon if available
-          if (plot.gps_polygon && plot.gps_polygon.geometry && plot.gps_polygon.geometry.coordinates) {
-            try {
-              // GeoJSON format: coordinates is [[ [lng, lat], [lng, lat], ... ]]
-              const coords = plot.gps_polygon.geometry.coordinates[0].map((coord: [number, number]) => [coord[1], coord[0]])
-              const polygon = L.polygon(coords, {
-                color: statusColor,
-                weight: 2,
-                fillColor: statusColor,
-                fillOpacity: 0.3,
-              }).addTo(map)
-
-              polygon.bindPopup(`
-                <div class="text-zinc-900 font-sans p-1">
-                  <h4 class="font-bold text-sm text-zinc-950">${plot.farm_name}</h4>
-                  <p class="text-xs text-zinc-600 mt-0.5">Owner: ${plot.owner_name}</p>
-                  <p class="text-xs text-zinc-600">Plot: ${plot.plot_name}</p>
-                  <p class="text-xs text-zinc-600">Trees: ${plot.total_trees} · Size: ${plot.land_size_acres || 'N/A'} ac</p>
-                  <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2 text-white" style="background-color: ${statusColor}">
-                    EUDR Status: ${plot.eudr_risk_level || 'Unknown'}
-                  </span>
-                </div>
-              `)
-              bounds.push(coords)
-            } catch (err) {
-              console.error('Error drawing plot polygon:', err)
-            }
-          } else {
-            // 2. Draw standard marker if no polygon
-            const marker = L.marker([plot.gps_latitude, plot.gps_longitude]).addTo(map)
-            marker.bindPopup(`
-              <div class="text-zinc-900 font-sans p-1">
-                <h4 class="font-bold text-sm text-zinc-950">${plot.farm_name}</h4>
-                <p class="text-xs text-zinc-600 mt-0.5">Owner: ${plot.owner_name}</p>
-                <p class="text-xs text-zinc-600">Centroid Only (No polygon mapped)</p>
-                <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2 text-white" style="background-color: ${statusColor}">
-                  EUDR Status: ${plot.eudr_risk_level || 'Unknown'}
-                </span>
-              </div>
-            `)
-            bounds.push([[plot.gps_latitude, plot.gps_longitude]])
-          }
-        })
-
-        // Auto-fit to bounds if we have valid elements. Capped at 17 for the
-        // same reason as the read-only PlotMap component (see its comment):
-        // a tight bounding box around one small plot can otherwise push
-        // fitBounds well past where Esri has real imagery for many rural
-        // areas. This is just the safe default for the very first paint —
-        // applyZoomCeilingFor above/below adjusts it precisely once the
-        // real probe resolves, which may allow tighter zoom or require
-        // pulling back further depending on the actual location.
-        if (bounds.length > 0 && map) {
-          const flatBounds = bounds.flat()
-          const lBounds = L.latLngBounds(flatBounds as any)
-          map.fitBounds(lBounds, { padding: [30, 30], maxZoom: 17 })
-        }
-
+        // Plot polygons and markers — drawn via the shared renderPlots()
+        // callback (see above) into their own layer group, rather than
+        // inline here, so a later `plots` prop change can redraw them
+        // without rebuilding the map or tile layers.
+        leafletRef.current = L
         mapRef.current = map
+        renderPlots(true)
         setMapLoaded(true)
       } catch (err) {
         console.error('Leaflet initialization failed:', err)
@@ -266,8 +364,53 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
         } catch {}
         mapRef.current = null
       }
+      leafletRef.current = null
+      plotLayerGroupRef.current = null
     }
-  }, [plots])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps — see comment above: intentionally mount-once
+
+  // ── Redraw markers when `plots` actually changes ───────────────────────────
+  // Runs after the map exists, and only touches the plot layer group — the
+  // map instance and tile layers are untouched, so this can never race with
+  // (or repeat) the init effect above. `fitView: false` deliberately doesn't
+  // recenter/rezoom on every redraw, so an officer's current pan/zoom
+  // survives a background data refresh.
+  useEffect(() => {
+    if (!mapLoaded) return
+    renderPlots(false)
+  }, [plots, mapLoaded, renderPlots])
+
+  // ── Keep Leaflet's internal size in sync with its container ───────────────
+  // Same fix as PlotBoundaryMapper.tsx: Leaflet only reads its container's
+  // pixel size once, at L.map() time. This view is dropped into a dashboard
+  // grid/card layout, so the container isn't guaranteed to have its final
+  // size in the same tick the map is constructed. invalidateSize() recomputes
+  // the tile grid for whatever size the container actually is; ResizeObserver
+  // also catches later layout shifts (sidebar collapse, window resize).
+  useEffect(() => {
+    if (!mapLoaded) return
+    const map = mapRef.current
+    const container = mapContainerRef.current
+    if (!map || !container) return
+
+    const invalidate = () => { try { map.invalidateSize() } catch {} }
+
+    invalidate()
+    const raf = requestAnimationFrame(invalidate)
+    const settleTimer = setTimeout(invalidate, 300)
+
+    let observer: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => invalidate())
+      observer.observe(container)
+    }
+
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(settleTimer)
+      observer?.disconnect()
+    }
+  }, [mapLoaded])
 
   function toggleMapType() {
     const map = mapRef.current
@@ -275,6 +418,7 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
     if (mapType === 'satellite') {
       if (esriLayerRef.current) map.removeLayer(esriLayerRef.current)
       if (labelsLayerRef.current) map.removeLayer(labelsLayerRef.current)
+      if (sentinelLayerRef.current) map.removeLayer(sentinelLayerRef.current)
       if (osmLayerRef.current) osmLayerRef.current.addTo(map)
       setMapType('street')
       map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM) // OSM's coverage doesn't have this problem — lift the cap
@@ -284,6 +428,9 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
       if (esriLayerRef.current) esriLayerRef.current.addTo(map)
       if (labelsLayerRef.current) labelsLayerRef.current.addTo(map)
       setMapType('satellite')
+      // Give a manually-requested retry a fresh chance before any future
+      // auto-fallback fires again.
+      ceilingReductionsRef.current = 0
       map.setMaxZoom(satelliteZoomCeilingRef.current)
       if (map.getZoom() > satelliteZoomCeilingRef.current) map.setZoom(satelliteZoomCeilingRef.current)
       setAtImageryCeiling(map.getZoom() >= satelliteZoomCeilingRef.current)

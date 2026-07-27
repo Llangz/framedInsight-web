@@ -12,6 +12,8 @@ import { supabase } from '@/lib/supabase'
 import { Database } from '@/lib/database.types'
 import { EventStore, PhotoEvidenceUploadedEvent, EudrAssessmentRunEvent } from '@/lib/event-sourcing'
 import type { BoundaryResult } from '@/components/coffee/PlotBoundaryMapper'
+import { createOfflineTileLayer } from '@/lib/offline-tile-layer'
+import { sentinelTileUrlTemplate } from '@/lib/sentinel-tile-url'
 
 const PlotBoundaryMapper = dynamic(
   () => import('@/components/coffee/PlotBoundaryMapper'),
@@ -73,10 +75,22 @@ type MapStatus = 'loading' | 'ready' | 'timeout' | 'error'
 function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null; lng: number | null; risk: RiskLevel }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
-  const mapLayersRef = useRef<{ map: any; satellite: any; streetFallback: any } | null>(null)
+  const mapLayersRef = useRef<{ map: any; satellite: any; streetFallback: any; sentinel: any } | null>(null)
   const [status, setStatus] = useState<MapStatus>('loading')
   const [retryToken, setRetryToken] = useState(0)
   const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite')
+
+  // Same imagery-ceiling tracking as PlotBoundaryMapper.tsx / CoopFleetMap.tsx
+  // (see the long comment there): Esri's World Imagery returns a valid 200 OK
+  // "no imagery here" placeholder rather than an error past its real coverage
+  // ceiling for a given spot, which a plain `tileerror` count can never catch.
+  // This view previously used a bare L.tileLayer() with no placeholder
+  // detection at all, so a saved plot with no real Esri coverage just showed
+  // the polygon floating over an empty map with no imagery and no fallback.
+  const ESRI_NOMINAL_MAX_ZOOM = 19
+  const satelliteZoomCeilingRef = useRef<number>(ESRI_NOMINAL_MAX_ZOOM)
+  const placeholderCountAtZoomRef = useRef<{ zoom: number; count: number }>({ zoom: -1, count: 0 })
+  const ceilingReductionsRef = useRef(0)
 
   const latlngs = extractPolygonLatLngs(polygon)
   const hasPolygon = latlngs.length > 0
@@ -111,25 +125,89 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
           updateWhenIdle: true, // fewer tile requests while panning — kinder to slow mobile data
         })
 
+        satelliteZoomCeilingRef.current = ESRI_NOMINAL_MAX_ZOOM
+        placeholderCountAtZoomRef.current = { zoom: -1, count: 0 }
+        ceilingReductionsRef.current = 0
+
         const color = RISK_COLOR[risk]
-        const satellite = L.tileLayer(
+        const satellite = createOfflineTileLayer(
+          L,
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          { maxZoom: 20, maxNativeZoom: 19 }
+          { maxZoom: 20, maxNativeZoom: 19 },
+          null,
+          true // detectNoImagery
         )
         const streetFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
 
-        // If the satellite tile provider is unreachable on this network, fall back to
-        // OpenStreetMap rather than leaving the farmer staring at a blank grey map.
+        // If the satellite tile provider is unreachable on this network, or
+        // Esri simply has no real imagery for this location (see the
+        // 'tileplaceholder' handler below), fall back through Sentinel-2
+        // (real global coverage, coarser resolution) before finally giving
+        // up on satellite entirely and switching to the OSM street map —
+        // see the matching comment in PlotBoundaryMapper.tsx for why two
+        // tiers instead of going straight to street.
         let tileErrors = 0
+        let fellBackToSentinel = false
+        let fellBackToOsm = false
+        const fallBackToOsmFinal = () => {
+          if (fellBackToOsm) return
+          fellBackToOsm = true
+          if (mapLayersRef.current?.sentinel && map.hasLayer(mapLayersRef.current.sentinel)) {
+            map.removeLayer(mapLayersRef.current.sentinel)
+          } else if (map.hasLayer(satellite)) {
+            map.removeLayer(satellite)
+          }
+          streetFallback.addTo(map)
+          setMapType('street')
+        }
+        const fallBackToSentinel = () => {
+          if (fellBackToSentinel || !map.hasLayer(satellite)) return
+          fellBackToSentinel = true
+          map.removeLayer(satellite)
+          const sentinelUrl = sentinelTileUrlTemplate()
+          if (!sentinelUrl) { fallBackToOsmFinal(); return }
+          const sentinel = createOfflineTileLayer(L, sentinelUrl, { maxZoom: 20, maxNativeZoom: 16 }, null, false)
+          let sentinelErrors = 0
+          sentinel.on('tileerror', () => {
+            sentinelErrors += 1
+            if (sentinelErrors >= 3) fallBackToOsmFinal()
+          })
+          sentinel.addTo(map)
+          if (mapLayersRef.current) mapLayersRef.current.sentinel = sentinel
+          // Still "satellite" from the farmer's perspective — mapType
+          // deliberately unchanged.
+        }
         satellite.on('tileerror', () => {
           tileErrors += 1
-          if (tileErrors > 4 && map.hasLayer(satellite)) {
-            map.removeLayer(satellite)
-            streetFallback.addTo(map)
+          if (tileErrors > 4) fallBackToSentinel()
+        })
+        // A single placeholder tile could just be a coincidentally flat patch
+        // of real ground — only treat it as real evidence of "no imagery past
+        // this zoom" once seen more than once at the same zoom level.
+        satellite.on('tileplaceholder', () => {
+          const current = map.getZoom()
+          if (placeholderCountAtZoomRef.current.zoom !== current) {
+            placeholderCountAtZoomRef.current = { zoom: current, count: 0 }
+          }
+          placeholderCountAtZoomRef.current.count += 1
+          if (placeholderCountAtZoomRef.current.count >= 2 && current < satelliteZoomCeilingRef.current) {
+            const ceiling = Math.max(current - 1, 1)
+            satelliteZoomCeilingRef.current = ceiling
+            map.setMaxZoom(ceiling)
+            if (map.getZoom() > ceiling) map.setZoom(ceiling)
+            // A first reduction just means the initial fitBounds/zoom landed
+            // tighter than this location's real ceiling — normal. A SECOND
+            // reduction means pulling back once still didn't find real
+            // imagery: strong evidence there's no usable Esri coverage here
+            // at all, which no further clamp can fix. Switch to Sentinel-2
+            // automatically instead of leaving the polygon floating over an
+            // empty map with no explanation.
+            ceilingReductionsRef.current += 1
+            if (ceilingReductionsRef.current >= 2) fallBackToSentinel()
           }
         })
         satellite.addTo(map)
-        mapLayersRef.current = { map, satellite, streetFallback }
+        mapLayersRef.current = { map, satellite, streetFallback, sentinel: null }
 
         if (hasPolygon) {
           const poly = L.polygon(latlngs, { color, weight: 4, fillOpacity: 0.15, fillColor: color }).addTo(map)
@@ -177,15 +255,23 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
   function toggleMapType() {
     const layers = mapLayersRef.current
     if (!layers) return
-    const { map, satellite, streetFallback } = layers
+    const { map, satellite, streetFallback, sentinel } = layers
     if (mapType === 'satellite') {
       if (map.hasLayer(satellite)) map.removeLayer(satellite)
+      if (sentinel && map.hasLayer(sentinel)) map.removeLayer(sentinel)
       if (!map.hasLayer(streetFallback)) streetFallback.addTo(map)
       setMapType('street')
     } else {
       if (map.hasLayer(streetFallback)) map.removeLayer(streetFallback)
+      if (sentinel && map.hasLayer(sentinel)) map.removeLayer(sentinel)
+      layers.sentinel = null
       if (!map.hasLayer(satellite)) satellite.addTo(map)
       setMapType('satellite')
+      // Give a manually-requested retry a fresh chance before any future
+      // auto-fallback fires again.
+      ceilingReductionsRef.current = 0
+      map.setMaxZoom(satelliteZoomCeilingRef.current)
+      if (map.getZoom() > satelliteZoomCeilingRef.current) map.setZoom(satelliteZoomCeilingRef.current)
     }
   }
 
