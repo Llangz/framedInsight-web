@@ -27,10 +27,28 @@
  *    `map.setView` fallback — if the dynamic import settled before the
  *    container had its final size the initial tile request was for 0×0.
  *
+ * 5. Esri/Sentinel/OSM fallback chain — this is the ONE map view in the app
+ *    that, until now, had none of the "no imagery here" protection every
+ *    other view has (PlotBoundaryMapper, CoopFleetMap, the plots/[plotId]
+ *    and eudr-check PlotMap components). Esri's World Imagery returns a
+ *    valid 200 OK placeholder tile — not an error — past its real coverage
+ *    ceiling for a given location, which is common over rural Kenyan
+ *    farmland. Because this is the one map every buyer and consumer sees
+ *    on the public passport (scan-a-QR-code path, zero chance to retry via
+ *    a "map this plot" flow), it's the single worst place in the app for
+ *    that bug class to be unguarded — see createOfflineTileLayer in
+ *    lib/offline-tile-layer.ts for the actual placeholder-detection logic
+ *    this now shares with every other map view. Falls back Esri → Sentinel-2
+ *    (real, if coarser, global coverage) → OSM street (last resort), same
+ *    two-tier chain as everywhere else, with a small manual satellite/street
+ *    toggle as the buyer's own escape hatch.
+ *
  * Dynamic import only — never SSR'd.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createOfflineTileLayer } from '@/lib/offline-tile-layer'
+import { sentinelTileUrlTemplate } from '@/lib/sentinel-tile-url'
 
 interface Props {
   lat: number
@@ -43,11 +61,24 @@ interface Props {
 export default function PassportMap({ lat, lng, label, heightPx = 224 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
+  const esriLayerRef = useRef<any>(null)
+  const labelsLayerRef = useRef<any>(null)
+  const osmLayerRef = useRef<any>(null)
+  const sentinelLayerRef = useRef<any>(null)
+  // Flipped true in the effect's cleanup — see the matching field in
+  // PlotBoundaryMapper.tsx / CoopFleetMap.tsx. Guards the tileplaceholder/
+  // fallback callbacks below, which can still fire from an in-flight async
+  // detection fetch after this component has unmounted (e.g. the buyer
+  // navigates away from the passport before tiles finish loading).
+  const destroyedRef = useRef(false)
+  const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite')
+  const [showToggle, setShowToggle] = useState(false)
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
     let cancelled = false
+    destroyedRef.current = false
 
     ;(async () => {
       try {
@@ -85,27 +116,133 @@ export default function PassportMap({ lat, lng, label, heightPx = 224 }: Props) 
         // Match the passport's dark theme — visible before any tile loads.
         map.getContainer().style.background = '#0A0C10'
 
-        // 4. Satellite tiles (Esri World Imagery) — already allowed in CSP img-src
-        //    and connect-src. Falls back gracefully if the load fails.
-        L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          {
-            maxZoom:        20,
-            maxNativeZoom:  19,
-            errorTileUrl:   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7',
-          }
-        ).addTo(map)
+        // 4. Satellite tiles (Esri World Imagery) — already allowed in CSP
+        //    img-src and connect-src. Routed through the same offline-aware,
+        //    placeholder-detecting tile layer every other map view uses (no
+        //    plot to key an offline cache by here, so `meta` is null — this
+        //    behaves like a plain tile layer except for the placeholder
+        //    detection, which is independent of caching).
+        const ESRI_NOMINAL_MAX_ZOOM = 19
+        const satelliteZoomCeilingRef = { current: ESRI_NOMINAL_MAX_ZOOM }
+        const placeholderCountAtZoomRef = { current: { zoom: -1, count: 0 } }
+        const ceilingReductionsRef = { current: 0 }
 
+        const esriSat = createOfflineTileLayer(
+          L,
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 20, maxNativeZoom: 19 },
+          null,
+          true // detectNoImagery
+        )
         // Thin boundary/label overlay on top of satellite
-        L.tileLayer(
+        const esriLabels = createOfflineTileLayer(
+          L,
           'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-          {
-            maxZoom:       20,
-            maxNativeZoom: 19,
-            opacity:       0.7,
-            errorTileUrl:  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7',
+          { maxZoom: 20, maxNativeZoom: 19, opacity: 0.7 },
+          null
+        )
+        const osm = createOfflineTileLayer(
+          L,
+          'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          { maxZoom: 19 },
+          null
+        )
+
+        // Same relative-threshold fallback chain as PlotBoundaryMapper /
+        // CoopFleetMap / the plot detail PlotMap views — see their comments
+        // for why relative-to-requested (not an absolute count) and why
+        // Sentinel-2 before OSM. This is a small, mostly-static passport
+        // widget rather than an interactive drawing surface, so it skips
+        // the offline tile cache (no plotId to key it by) but keeps the
+        // exact same detection/fallback behaviour.
+        let satRequested = 0
+        let satErrors = 0
+        let fellBackToSentinel = false
+        let fellBackToOsm = false
+        const countSatRequest = () => { satRequested += 1 }
+
+        const fallBackToOsmFinal = () => {
+          if (destroyedRef.current || fellBackToOsm) return
+          fellBackToOsm = true
+          try {
+            if (sentinelLayerRef.current && map.hasLayer(sentinelLayerRef.current)) {
+              map.removeLayer(sentinelLayerRef.current)
+            } else if (map.hasLayer(esriSat)) {
+              esriSat.remove(); esriLabels.remove()
+            }
+            osm.addTo(map)
+            setMapType('street')
+            map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
+            setShowToggle(true)
+          } catch (e) {
+            console.error('[PassportMap] fallBackToOsmFinal failed:', e)
           }
-        ).addTo(map)
+        }
+        const fallBackToSentinel = () => {
+          if (destroyedRef.current || fellBackToSentinel || !map.hasLayer(esriSat)) return
+          fellBackToSentinel = true
+          try {
+            esriSat.remove(); esriLabels.remove()
+            const sentinelUrl = sentinelTileUrlTemplate()
+            if (!sentinelUrl) { fallBackToOsmFinal(); return } // no Supabase URL configured — skip straight to OSM
+            const sentinel = createOfflineTileLayer(L, sentinelUrl, { maxZoom: 20, maxNativeZoom: 16 }, null, false)
+            let sentinelErrors = 0
+            sentinel.on('tileerror', () => {
+              sentinelErrors += 1
+              if (sentinelErrors >= 3) fallBackToOsmFinal()
+            })
+            sentinelLayerRef.current = sentinel
+            sentinel.addTo(map)
+            // Still "satellite" from the buyer's perspective — Sentinel-2 is
+            // satellite imagery too, just a different, always-covered
+            // provider — mapType deliberately unchanged.
+            setShowToggle(true)
+          } catch (e) {
+            console.error('[PassportMap] fallBackToSentinel failed:', e)
+          }
+        }
+        const onSatError = () => {
+          if (destroyedRef.current) return
+          satErrors += 1
+          const enoughAbsolute = satErrors >= 5
+          const enoughRelative = satErrors >= 3 && satErrors >= Math.ceil(satRequested * 0.6)
+          if (enoughAbsolute || enoughRelative) fallBackToSentinel()
+        }
+
+        // Only treat a placeholder as real evidence of "no imagery past this
+        // zoom" once seen more than once at the same zoom level — see the
+        // matching comment in PlotBoundaryMapper.tsx.
+        esriSat.on('tileplaceholder', () => {
+          if (destroyedRef.current) return
+          try {
+            const current = map.getZoom()
+            if (placeholderCountAtZoomRef.current.zoom !== current) {
+              placeholderCountAtZoomRef.current = { zoom: current, count: 0 }
+            }
+            placeholderCountAtZoomRef.current.count += 1
+            if (placeholderCountAtZoomRef.current.count >= 2 && current < satelliteZoomCeilingRef.current) {
+              const ceiling = Math.max(current - 1, 1)
+              satelliteZoomCeilingRef.current = ceiling
+              map.setMaxZoom(ceiling)
+              if (map.getZoom() > ceiling) map.setZoom(ceiling)
+              ceilingReductionsRef.current += 1
+              if (ceilingReductionsRef.current >= 2) fallBackToSentinel()
+            }
+          } catch (e) {
+            console.error('[PassportMap] tileplaceholder handling failed:', e)
+          }
+        })
+
+        esriSat.addTo(map)
+        esriLabels.addTo(map)
+        esriLayerRef.current = esriSat
+        labelsLayerRef.current = esriLabels
+        osmLayerRef.current = osm
+
+        esriSat.on('tileloadstart', countSatRequest)
+        esriLabels.on('tileloadstart', countSatRequest)
+        esriSat.on('tileerror', onSatError)
+        esriLabels.on('tileerror', onSatError)
 
         // 5. Custom parchment-pin marker — matches the passport's #C9A96E accent.
         const icon = L.divIcon({
@@ -195,21 +332,61 @@ export default function PassportMap({ lat, lng, label, heightPx = 224 }: Props) 
 
     return () => {
       cancelled = true
+      destroyedRef.current = true
       if (mapRef.current) {
         ;(mapRef.current as any).__observer?.disconnect()
         try { mapRef.current.remove() } catch {}
         mapRef.current = null
       }
+      esriLayerRef.current = null
+      labelsLayerRef.current = null
+      osmLayerRef.current = null
+      sentinelLayerRef.current = null
     }
   }, [lat, lng, label]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Manual escape hatch — same as every other map view. Only surfaced once
+  // the auto-fallback logic above has actually switched away from plain
+  // Esri (fellBackToSentinel/fellBackToOsm), since most passports never
+  // need it and a button with nothing to toggle to yet would be confusing.
+  function toggleMapType() {
+    const map = mapRef.current
+    if (!map) return
+    if (mapType === 'satellite') {
+      if (esriLayerRef.current) map.removeLayer(esriLayerRef.current)
+      if (labelsLayerRef.current) map.removeLayer(labelsLayerRef.current)
+      if (sentinelLayerRef.current) map.removeLayer(sentinelLayerRef.current)
+      if (osmLayerRef.current) osmLayerRef.current.addTo(map)
+      setMapType('street')
+    } else {
+      if (osmLayerRef.current) map.removeLayer(osmLayerRef.current)
+      if (sentinelLayerRef.current) { sentinelLayerRef.current.addTo(map) }
+      else if (esriLayerRef.current) { esriLayerRef.current.addTo(map); labelsLayerRef.current?.addTo(map) }
+      setMapType('satellite')
+    }
+  }
+
   return (
     <div
-      ref={containerRef}
-      // Explicit pixel height so Leaflet always gets a non-zero container at init.
-      // The parent wrapper (`<div className="h-56">`) also provides 224px, but
-      // Leaflet reads the DOM before CSS layout settles, so we belt-and-brace it.
-      style={{ width: '100%', height: heightPx, background: '#0A0C10', position: 'relative' }}
-    />
+      style={{ width: '100%', height: heightPx, position: 'relative' }}
+    >
+      <div
+        ref={containerRef}
+        // Explicit pixel height so Leaflet always gets a non-zero container at init.
+        // The parent wrapper (`<div className="h-56">`) also provides 224px, but
+        // Leaflet reads the DOM before CSS layout settles, so we belt-and-brace it.
+        style={{ width: '100%', height: heightPx, background: '#0A0C10', position: 'relative' }}
+      />
+      {showToggle && (
+        <button
+          type="button"
+          onClick={toggleMapType}
+          className="absolute top-2 right-2 z-[1000] bg-white text-[10px] font-semibold text-gray-700 px-2 py-1 rounded-md shadow-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+          title={mapType === 'satellite' ? 'No imagery here? Switch to street map' : 'Switch to satellite'}
+        >
+          {mapType === 'satellite' ? 'Street view' : 'Satellite view'}
+        </button>
+      )}
+    </div>
   )
 }
