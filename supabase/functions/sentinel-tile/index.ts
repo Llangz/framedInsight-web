@@ -41,9 +41,20 @@
  * cache hit; only a cache miss touches the Process API. That bucket must
  * exist before this function is deployed (see deploy note at bottom of
  * this file).
+ *
+ * IMPORT NOTE:
+ * Deliberately imported from a pinned esm.sh URL rather than the bare
+ * "@supabase/supabase-js" specifier fetch-plot-indices uses. That bare
+ * specifier only resolves via the import map in
+ * supabase/functions/deno.json, which the Supabase CLI picks up
+ * automatically but the Dashboard's paste-and-deploy bundler does not —
+ * deploying this file's source directly through the Dashboard with the
+ * bare specifier fails with "Relative import path ... not prefixed with
+ * /, ./, or ../". Importing the esm.sh URL directly (same version pinned
+ * in deno.json) works from either the CLI or the Dashboard.
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
