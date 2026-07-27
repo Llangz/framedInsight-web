@@ -85,11 +85,14 @@ export interface OfflineTileLayerMeta {
 // colours — the placeholder (background + grid lines + a short caption)
 // only ever has a handful of distinct quantized colours, where real
 // aerial/satellite photography of farmland — soil texture, crop rows,
-// shadow — almost always has many more. A tile is flagged if EITHER
-// signal fires, so a flat placeholder and a checkered placeholder are both
-// caught, and a genuinely flat but real field (a still pond, bare soil)
-// still has to pass both the variance AND the colour-count bar to trip a
-// false positive.
+// shadow — almost always has many more. A tile is only flagged if BOTH
+// signals fire together, so a genuinely flat-but-real field (a still
+// pond, bare soil, a uniform crop canopy) — which usually trips at most
+// one of the two signals on its own — doesn't trip a false positive. (An
+// earlier version of this OR'd the two signals instead of AND'ing them,
+// which made real farmland tiles misfire as placeholders often enough to
+// trigger the zoom-ceiling clamp / Sentinel fallback within seconds of
+// rendering correctly — see git history.)
 //
 // Thresholds are a considered starting point, not a guarantee — watch the
 // console.debug output (gated behind window.__FI_DEBUG_TILES__) in the
@@ -127,7 +130,18 @@ function detectLikelyNoImageryFromBitmap(bitmap: ImageBitmap): boolean {
     const variance = sumSq / n - mean * mean
     const flatColor = variance < NO_IMAGERY_VARIANCE_THRESHOLD
     const fewColors = distinct.size <= NO_IMAGERY_MAX_DISTINCT_COLORS
-    const flagged = flatColor || fewColors
+    // Both signals must agree. A real but visually flat field (bare soil, a
+    // still pond, a uniform crop canopy) can trip ONE of these alone often
+    // enough that OR-ing them made genuine farmland imagery misfire as a
+    // placeholder within seconds of rendering correctly — the tile itself
+    // never changes, but the async detection result arrives a beat after
+    // the tile is already on screen, so the map appears to "revert" once
+    // enough false positives accumulate and trigger the zoom-ceiling
+    // clamp / Sentinel fallback below. Requiring both to agree matches
+    // what the placeholder graphic actually looks like (flat fill AND a
+    // tiny palette) and is what the comment block above already documented
+    // as the intended behaviour.
+    const flagged = flatColor && fewColors
 
     if (typeof window !== 'undefined' && (window as any).__FI_DEBUG_TILES__) {
       // eslint-disable-next-line no-console
@@ -161,7 +175,17 @@ function checkTileForPlaceholder(
       try {
         const bitmap = await createImageBitmap(blob)
         try {
-          if (detectLikelyNoImageryFromBitmap(bitmap)) onFlagged()
+          // onFlagged is caller-supplied (ultimately a React component's
+          // event handler closing over a Leaflet map instance). By the
+          // time this async fetch+decode resolves, that map may already
+          // have been torn down (fast unmount, a "Re-map boundary" click,
+          // a parent re-render) — the caller is expected to guard against
+          // that itself, but we never let a mistake there escape as an
+          // unhandled rejection that could otherwise cascade into a
+          // broken render.
+          if (detectLikelyNoImageryFromBitmap(bitmap)) {
+            try { onFlagged() } catch (e) { console.error('[tile-placeholder] onFlagged handler failed:', e) }
+          }
         } finally {
           bitmap.close()
         }

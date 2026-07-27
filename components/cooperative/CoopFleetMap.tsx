@@ -87,6 +87,12 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
   // further clamp can fix — that's when fallBackToSentinel() kicks in.
   const ceilingReductionsRef = useRef(0)
   const [atImageryCeiling, setAtImageryCeiling] = useState(false)
+  // Flipped true in the init effect's cleanup — see the matching field in
+  // PlotBoundaryMapper.tsx. Lets the tileplaceholder/fallback callbacks
+  // below recognize a torn-down map (from an in-flight async detection
+  // fetch resolving after unmount) and no-op instead of calling methods on
+  // an already-`.remove()`d Leaflet instance.
+  const destroyedRef = useRef(false)
 
   // Draws (or redraws) every plot's polygon/marker into a dedicated layer
   // group, reading the latest data from plotsRef rather than a `plots`
@@ -271,37 +277,46 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
         let fellBackToSentinel = false
         let fellBackToOsm = false
         const fallBackToOsmFinal = () => {
-          if (fellBackToOsm) return
+          if (destroyedRef.current || fellBackToOsm) return
           fellBackToOsm = true
-          if (sentinelLayerRef.current && map.hasLayer(sentinelLayerRef.current)) {
-            map.removeLayer(sentinelLayerRef.current)
-          } else if (map.hasLayer(esriSat)) {
-            esriSat.remove(); esriLabels.remove()
+          try {
+            if (sentinelLayerRef.current && map.hasLayer(sentinelLayerRef.current)) {
+              map.removeLayer(sentinelLayerRef.current)
+            } else if (map.hasLayer(esriSat)) {
+              esriSat.remove(); esriLabels.remove()
+            }
+            osm.addTo(map)
+            setMapType('street')
+            map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
+          } catch (e) {
+            console.error('[fleet-map] fallBackToOsmFinal failed:', e)
           }
-          osm.addTo(map)
-          setMapType('street')
-          map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
         }
         const fallBackToSentinel = () => {
-          if (fellBackToSentinel || !map.hasLayer(esriSat)) return
+          if (destroyedRef.current || fellBackToSentinel || !map.hasLayer(esriSat)) return
           fellBackToSentinel = true
-          esriSat.remove(); esriLabels.remove()
-          const sentinelUrl = sentinelTileUrlTemplate()
-          if (!sentinelUrl) { fallBackToOsmFinal(); return }
-          const sentinel = createOfflineTileLayer(L, sentinelUrl, { maxZoom: 20, maxNativeZoom: 16 }, null, false)
-          let sentinelErrors = 0
-          sentinel.on('tileerror', () => {
-            sentinelErrors += 1
-            if (sentinelErrors >= 3) fallBackToOsmFinal()
-          })
-          sentinelLayerRef.current = sentinel
-          sentinel.addTo(map)
-          // Still "satellite" from the officer's perspective — mapType
-          // deliberately unchanged.
+          try {
+            esriSat.remove(); esriLabels.remove()
+            const sentinelUrl = sentinelTileUrlTemplate()
+            if (!sentinelUrl) { fallBackToOsmFinal(); return }
+            const sentinel = createOfflineTileLayer(L, sentinelUrl, { maxZoom: 20, maxNativeZoom: 16 }, null, false)
+            let sentinelErrors = 0
+            sentinel.on('tileerror', () => {
+              sentinelErrors += 1
+              if (sentinelErrors >= 3) fallBackToOsmFinal()
+            })
+            sentinelLayerRef.current = sentinel
+            sentinel.addTo(map)
+            // Still "satellite" from the officer's perspective — mapType
+            // deliberately unchanged.
+          } catch (e) {
+            console.error('[fleet-map] fallBackToSentinel failed:', e)
+          }
         }
         esriSat.on('tileloadstart', () => { satRequested += 1 })
         esriLabels.on('tileloadstart', () => { satRequested += 1 })
         const onSatError = () => {
+          if (destroyedRef.current) return
           satErrors += 1
           const enoughAbsolute = satErrors >= 5
           const enoughRelative = satErrors >= 3 && satErrors >= Math.ceil(satRequested * 0.6)
@@ -318,23 +333,28 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
         // officer is currently panned/zoomed to, and resets the moment
         // they zoom to a different level.
         esriSat.on('tileplaceholder', () => {
-          const current = map.getZoom()
-          if (placeholderCountAtZoomRef.current.zoom !== current) {
-            placeholderCountAtZoomRef.current = { zoom: current, count: 0 }
-          }
-          placeholderCountAtZoomRef.current.count += 1
-          if (placeholderCountAtZoomRef.current.count >= 2 && current < satelliteZoomCeilingRef.current) {
-            const ceiling = Math.max(current - 1, 1)
-            satelliteZoomCeilingRef.current = ceiling
-            map.setMaxZoom(ceiling)
-            if (map.getZoom() > ceiling) map.setZoom(ceiling)
-            setAtImageryCeiling(map.getZoom() >= ceiling)
+          if (destroyedRef.current) return
+          try {
+            const current = map.getZoom()
+            if (placeholderCountAtZoomRef.current.zoom !== current) {
+              placeholderCountAtZoomRef.current = { zoom: current, count: 0 }
+            }
+            placeholderCountAtZoomRef.current.count += 1
+            if (placeholderCountAtZoomRef.current.count >= 2 && current < satelliteZoomCeilingRef.current) {
+              const ceiling = Math.max(current - 1, 1)
+              satelliteZoomCeilingRef.current = ceiling
+              map.setMaxZoom(ceiling)
+              if (map.getZoom() > ceiling) map.setZoom(ceiling)
+              setAtImageryCeiling(map.getZoom() >= ceiling)
 
-            // Second reduction in a row means Esri has no real coverage
-            // here at any zoom, not just "too tight" — see the matching
-            // comment in PlotBoundaryMapper.tsx.
-            ceilingReductionsRef.current += 1
-            if (ceilingReductionsRef.current >= 2) fallBackToSentinel()
+              // Second reduction in a row means Esri has no real coverage
+              // here at any zoom, not just "too tight" — see the matching
+              // comment in PlotBoundaryMapper.tsx.
+              ceilingReductionsRef.current += 1
+              if (ceilingReductionsRef.current >= 2) fallBackToSentinel()
+            }
+          } catch (e) {
+            console.error('[fleet-map] tileplaceholder handling failed:', e)
           }
         })
         map.on('zoom', () => {
@@ -358,6 +378,7 @@ export default function CoopFleetMap({ plots, className = '' }: Props) {
     initMap()
 
     return () => {
+      destroyedRef.current = true
       if (mapRef.current) {
         try {
           mapRef.current.remove()

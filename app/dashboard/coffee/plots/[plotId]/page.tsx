@@ -150,34 +150,43 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
         let fellBackToSentinel = false
         let fellBackToOsm = false
         const fallBackToOsmFinal = () => {
-          if (fellBackToOsm) return
+          if (cancelled || fellBackToOsm) return
           fellBackToOsm = true
-          if (mapLayersRef.current?.sentinel && map.hasLayer(mapLayersRef.current.sentinel)) {
-            map.removeLayer(mapLayersRef.current.sentinel)
-          } else if (map.hasLayer(satellite)) {
-            map.removeLayer(satellite)
+          try {
+            if (mapLayersRef.current?.sentinel && map.hasLayer(mapLayersRef.current.sentinel)) {
+              map.removeLayer(mapLayersRef.current.sentinel)
+            } else if (map.hasLayer(satellite)) {
+              map.removeLayer(satellite)
+            }
+            streetFallback.addTo(map)
+            setMapType('street')
+          } catch (e) {
+            console.error('[plot-map] fallBackToOsmFinal failed:', e)
           }
-          streetFallback.addTo(map)
-          setMapType('street')
         }
         const fallBackToSentinel = () => {
-          if (fellBackToSentinel || !map.hasLayer(satellite)) return
+          if (cancelled || fellBackToSentinel || !map.hasLayer(satellite)) return
           fellBackToSentinel = true
-          map.removeLayer(satellite)
-          const sentinelUrl = sentinelTileUrlTemplate()
-          if (!sentinelUrl) { fallBackToOsmFinal(); return }
-          const sentinel = createOfflineTileLayer(L, sentinelUrl, { maxZoom: 20, maxNativeZoom: 16 }, null, false)
-          let sentinelErrors = 0
-          sentinel.on('tileerror', () => {
-            sentinelErrors += 1
-            if (sentinelErrors >= 3) fallBackToOsmFinal()
-          })
-          sentinel.addTo(map)
-          if (mapLayersRef.current) mapLayersRef.current.sentinel = sentinel
-          // Still "satellite" from the farmer's perspective — mapType
-          // deliberately unchanged.
+          try {
+            map.removeLayer(satellite)
+            const sentinelUrl = sentinelTileUrlTemplate()
+            if (!sentinelUrl) { fallBackToOsmFinal(); return }
+            const sentinel = createOfflineTileLayer(L, sentinelUrl, { maxZoom: 20, maxNativeZoom: 16 }, null, false)
+            let sentinelErrors = 0
+            sentinel.on('tileerror', () => {
+              sentinelErrors += 1
+              if (sentinelErrors >= 3) fallBackToOsmFinal()
+            })
+            sentinel.addTo(map)
+            if (mapLayersRef.current) mapLayersRef.current.sentinel = sentinel
+            // Still "satellite" from the farmer's perspective — mapType
+            // deliberately unchanged.
+          } catch (e) {
+            console.error('[plot-map] fallBackToSentinel failed:', e)
+          }
         }
         satellite.on('tileerror', () => {
+          if (cancelled) return
           tileErrors += 1
           if (tileErrors > 4) fallBackToSentinel()
         })
@@ -185,25 +194,30 @@ function PlotMap({ polygon, lat, lng, risk }: { polygon: any; lat: number | null
         // of real ground — only treat it as real evidence of "no imagery past
         // this zoom" once seen more than once at the same zoom level.
         satellite.on('tileplaceholder', () => {
-          const current = map.getZoom()
-          if (placeholderCountAtZoomRef.current.zoom !== current) {
-            placeholderCountAtZoomRef.current = { zoom: current, count: 0 }
-          }
-          placeholderCountAtZoomRef.current.count += 1
-          if (placeholderCountAtZoomRef.current.count >= 2 && current < satelliteZoomCeilingRef.current) {
-            const ceiling = Math.max(current - 1, 1)
-            satelliteZoomCeilingRef.current = ceiling
-            map.setMaxZoom(ceiling)
-            if (map.getZoom() > ceiling) map.setZoom(ceiling)
-            // A first reduction just means the initial fitBounds/zoom landed
-            // tighter than this location's real ceiling — normal. A SECOND
-            // reduction means pulling back once still didn't find real
-            // imagery: strong evidence there's no usable Esri coverage here
-            // at all, which no further clamp can fix. Switch to Sentinel-2
-            // automatically instead of leaving the polygon floating over an
-            // empty map with no explanation.
-            ceilingReductionsRef.current += 1
-            if (ceilingReductionsRef.current >= 2) fallBackToSentinel()
+          if (cancelled) return
+          try {
+            const current = map.getZoom()
+            if (placeholderCountAtZoomRef.current.zoom !== current) {
+              placeholderCountAtZoomRef.current = { zoom: current, count: 0 }
+            }
+            placeholderCountAtZoomRef.current.count += 1
+            if (placeholderCountAtZoomRef.current.count >= 2 && current < satelliteZoomCeilingRef.current) {
+              const ceiling = Math.max(current - 1, 1)
+              satelliteZoomCeilingRef.current = ceiling
+              map.setMaxZoom(ceiling)
+              if (map.getZoom() > ceiling) map.setZoom(ceiling)
+              // A first reduction just means the initial fitBounds/zoom landed
+              // tighter than this location's real ceiling — normal. A SECOND
+              // reduction means pulling back once still didn't find real
+              // imagery: strong evidence there's no usable Esri coverage here
+              // at all, which no further clamp can fix. Switch to Sentinel-2
+              // automatically instead of leaving the polygon floating over an
+              // empty map with no explanation.
+              ceilingReductionsRef.current += 1
+              if (ceilingReductionsRef.current >= 2) fallBackToSentinel()
+            }
+          } catch (e) {
+            console.error('[plot-map] tileplaceholder handling failed:', e)
           }
         })
         satellite.addTo(map)
