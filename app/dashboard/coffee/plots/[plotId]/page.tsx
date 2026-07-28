@@ -618,6 +618,26 @@ export default function EUDRPlotDetailPage() {
   const risk = getRisk(eudr)
   const hasPolygon = !!plot?.gps_polygon
   const hasPoint = plot?.gps_latitude != null && plot?.gps_longitude != null
+  // The re-map flow below was mounting PlotBoundaryMapper with no
+  // initialCenter, so it always fell back to the component's own default —
+  // a generic point in the middle of Kenya, not this plot. Zooming in from
+  // there hits Esri's real "no imagery this close" ceiling for whatever
+  // that arbitrary spot happens to be, showing a wall of placeholder tiles
+  // that has nothing to do with the actual farm. We already have this
+  // plot's own coordinates loaded on this page — use them. Point takes
+  // priority over the polygon centroid since it's exactly what was saved,
+  // rather than an average that can drift off-center for an irregular
+  // plot shape; the polygon centroid is still a much better starting point
+  // than the Kenya-wide default when only a polygon was saved.
+  const remapPolygonLatLngs = hasPoint ? [] : extractPolygonLatLngs(plot?.gps_polygon)
+  const remapInitialCenter: [number, number] | undefined = hasPoint
+    ? [plot!.gps_latitude as number, plot!.gps_longitude as number]
+    : remapPolygonLatLngs.length > 0
+      ? [
+          remapPolygonLatLngs.reduce((s, p) => s + p[0], 0) / remapPolygonLatLngs.length,
+          remapPolygonLatLngs.reduce((s, p) => s + p[1], 0) / remapPolygonLatLngs.length,
+        ]
+      : undefined
   const isSmallPlot = (plot?.area_hectares ?? 999) <= 4
   const hasSufficientGps = hasPolygon || (hasPoint && isSmallPlot)
   const bannerConfig = {
@@ -676,6 +696,7 @@ export default function EUDRPlotDetailPage() {
                 <PlotBoundaryMapper
                   onComplete={handleBoundaryComplete}
                   plotId={plotId}
+                  initialCenter={remapInitialCenter}
                 />
               </div>
               {savingBoundary && (

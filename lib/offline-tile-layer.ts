@@ -104,6 +104,17 @@ const NO_IMAGERY_SAMPLE = 24 // tile is downscaled to this NxN grid before sampl
 const NO_IMAGERY_VARIANCE_THRESHOLD = 60
 const NO_IMAGERY_QUANTIZE_LEVELS = 8 // per channel — 8x8x8 palette
 const NO_IMAGERY_MAX_DISTINCT_COLORS = 6 // ≤ this many distinct quantized colours ⇒ likely a placeholder graphic
+// Share of ALL sampled pixels that fall into just the top-2 quantized colour
+// buckets. A vector-drawn placeholder graphic — whether the flat-fill
+// variant or the checkerboard/gridded variant some regions serve instead —
+// is composed of a small, hard-edged palette, so its two most common
+// buckets cover almost every pixel. Real aerial photography essentially
+// never does this, even over a visually "flat" field (bare soil, still
+// water, uniform crop canopy): sensor noise, lighting gradients and
+// compression artifacts keep spreading samples across more than two
+// buckets. See the comment on `flagged` below for why this exists
+// alongside, not instead of, the flatColor/fewColors pair.
+const NO_IMAGERY_DOMINANCE_THRESHOLD = 0.92
 
 function detectLikelyNoImageryFromBitmap(bitmap: ImageBitmap): boolean {
   try {
@@ -116,7 +127,12 @@ function detectLikelyNoImageryFromBitmap(bitmap: ImageBitmap): boolean {
     const { data } = ctx.getImageData(0, 0, NO_IMAGERY_SAMPLE, NO_IMAGERY_SAMPLE)
 
     let sum = 0, sumSq = 0, n = 0
-    const distinct = new Set<number>()
+    // Counts per quantized colour, not just a Set, so we can also measure
+    // dominance (see NO_IMAGERY_DOMINANCE_THRESHOLD above) — a plain
+    // distinct-count can't tell a checkerboard's two ~50/50 buckets apart
+    // from a real tile that happens to have exactly as many distinct
+    // quantized colours but spread roughly evenly across all of them.
+    const colorCounts = new Map<number, number>()
     const step = 256 / NO_IMAGERY_QUANTIZE_LEVELS
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i], g = data[i + 1], b = data[i + 2]
@@ -124,28 +140,51 @@ function detectLikelyNoImageryFromBitmap(bitmap: ImageBitmap): boolean {
       sum += gray; sumSq += gray * gray; n++
 
       const qr = Math.floor(r / step), qg = Math.floor(g / step), qb = Math.floor(b / step)
-      distinct.add((qr << 16) | (qg << 8) | qb)
+      const key = (qr << 16) | (qg << 8) | qb
+      colorCounts.set(key, (colorCounts.get(key) ?? 0) + 1)
     }
     const mean = sum / n
     const variance = sumSq / n - mean * mean
     const flatColor = variance < NO_IMAGERY_VARIANCE_THRESHOLD
-    const fewColors = distinct.size <= NO_IMAGERY_MAX_DISTINCT_COLORS
-    // Both signals must agree. A real but visually flat field (bare soil, a
-    // still pond, a uniform crop canopy) can trip ONE of these alone often
-    // enough that OR-ing them made genuine farmland imagery misfire as a
-    // placeholder within seconds of rendering correctly — the tile itself
-    // never changes, but the async detection result arrives a beat after
-    // the tile is already on screen, so the map appears to "revert" once
-    // enough false positives accumulate and trigger the zoom-ceiling
-    // clamp / Sentinel fallback below. Requiring both to agree matches
-    // what the placeholder graphic actually looks like (flat fill AND a
-    // tiny palette) and is what the comment block above already documented
-    // as the intended behaviour.
-    const flagged = flatColor && fewColors
+    const fewColors = colorCounts.size <= NO_IMAGERY_MAX_DISTINCT_COLORS
+
+    // Top two buckets' share of every sampled pixel.
+    let top1 = 0, top2 = 0
+    for (const count of colorCounts.values()) {
+      if (count > top1) { top2 = top1; top1 = count }
+      else if (count > top2) { top2 = count }
+    }
+    const dominantPalette = (top1 + top2) / n >= NO_IMAGERY_DOMINANCE_THRESHOLD
+
+    // flatColor && fewColors catches the solid-fill placeholder variant and
+    // is deliberately an AND, not an OR — a real but visually flat field
+    // (bare soil, a still pond, a uniform crop canopy) can trip ONE of
+    // those alone often enough that OR-ing them made genuine farmland
+    // imagery misfire as a placeholder within seconds of rendering
+    // correctly — the tile itself never changes, but the async detection
+    // result arrives a beat after the tile is already on screen, so the
+    // map appears to "revert" once enough false positives accumulate and
+    // trigger the zoom-ceiling clamp / Sentinel fallback below.
+    //
+    // dominantPalette is OR'd in alongside that pair specifically to catch
+    // the checkerboard/gridded placeholder variant, which flatColor alone
+    // cannot: alternating light/dark squares produce real variance (so
+    // flatColor is false) despite the tile still being a placeholder with
+    // only a handful of colours. Dominance is a stricter, more targeted
+    // signal than fewColors on its own — two colours covering ~92%+ of
+    // every sample is true for both placeholder variants and essentially
+    // never true for a real photograph — so it doesn't reopen the
+    // false-positive door the AND above exists to close.
+    const flagged = (flatColor && fewColors) || dominantPalette
 
     if (typeof window !== 'undefined' && (window as any).__FI_DEBUG_TILES__) {
       // eslint-disable-next-line no-console
-      console.debug('[tile-variance]', variance.toFixed(1), 'colors:', distinct.size, flagged ? '→ flagged as placeholder' : '')
+      console.debug(
+        '[tile-variance]', variance.toFixed(1),
+        'colors:', colorCounts.size,
+        'dominance:', ((top1 + top2) / n).toFixed(2),
+        flagged ? '→ flagged as placeholder' : ''
+      )
     }
     return flagged
   } catch {

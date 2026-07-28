@@ -623,6 +623,19 @@ export default function EUDRPlotDetailPage() {
   const risk = getRisk(eudr)
   const hasPolygon = !!plot?.gps_polygon
   const hasPoint = plot?.gps_latitude != null && plot?.gps_longitude != null
+  // See the matching comment in plots/[plotId]/page.tsx (this file is a
+  // near-duplicate of that one) — the re-map flow below was mounting
+  // PlotBoundaryMapper with no initialCenter, so it defaulted to a generic
+  // point in the middle of Kenya instead of this plot's own location.
+  const remapPolygonLatLngs = hasPoint ? [] : extractPolygonLatLngs(plot?.gps_polygon)
+  const remapInitialCenter: [number, number] | undefined = hasPoint
+    ? [plot!.gps_latitude as number, plot!.gps_longitude as number]
+    : remapPolygonLatLngs.length > 0
+      ? [
+          remapPolygonLatLngs.reduce((s, p) => s + p[0], 0) / remapPolygonLatLngs.length,
+          remapPolygonLatLngs.reduce((s, p) => s + p[1], 0) / remapPolygonLatLngs.length,
+        ]
+      : undefined
   const isSmallPlot = (plot?.area_hectares ?? 999) <= 4
   const hasSufficientGps = hasPolygon || (hasPoint && isSmallPlot)
   const bannerConfig = {
@@ -698,6 +711,7 @@ export default function EUDRPlotDetailPage() {
                 <PlotBoundaryMapper
                   onComplete={handleBoundaryComplete}
                   plotId={plotId}
+                  initialCenter={remapInitialCenter}
                 />
               </div>
               {savingBoundary && (

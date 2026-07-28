@@ -250,6 +250,24 @@ export default function PlotBoundaryMapper({
   const [locating, setLocating] = useState(false)
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null)
   const [gpsError, setGpsError] = useState<string | null>(null)
+  // A softer, non-alarming counterpart to gpsError — used only for the
+  // silent auto-locate on mount, and only when `plotId` is present (i.e.
+  // this is a re-map of an existing plot, not a brand-new one). The auto
+  // locate's own error callback deliberately swallows failures when
+  // `silent: true` so a brand-new plot doesn't greet the farmer with a red
+  // error banner before they've done anything — but for a re-map, staying
+  // silent left the officer with no idea why the map wasn't centering on
+  // their live position (see the recording that prompted this: it just
+  // looked broken). This surfaces that same "nothing happened" state as an
+  // explanatory note instead of nothing at all.
+  const [gpsHint, setGpsHint] = useState<string | null>(null)
+  // Toggles the whole widget (map + mode buttons + banners) into a
+  // fixed, full-viewport overlay — same map instance, just more room to
+  // work with corner-tapping, walk mode, and reading the live area banner
+  // on a bigger window. Leaflet re-measures its container via the existing
+  // ResizeObserver below, so no extra invalidateSize() plumbing is needed
+  // here — toggling this class change is enough to trigger it.
+  const [isExpanded, setIsExpanded] = useState(false)
   // Walk mode records a vertex per GPS fix, so weak accuracy doesn't just
   // look bad on a badge — it directly corrupts the polygon (a plot walked at
   // ±100m can come out wildly mis-shaped, or wrong enough to fail an EUDR
@@ -640,6 +658,19 @@ export default function PlotBoundaryMapper({
     }
   }, [mapLoaded])
 
+  // ── Fullscreen overlay: Escape to exit, lock background scroll ─────────────
+  useEffect(() => {
+    if (!isExpanded) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsExpanded(false) }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [isExpanded])
+
   // ── Toggle map type ─────────────────────────────────────────────────────────
 
   function toggleMapType() {
@@ -700,7 +731,21 @@ export default function PlotBoundaryMapper({
     const _map = map ?? mapRef.current
     if (!_map) return
     if (!navigator.geolocation) { setGpsError('GPS not available on this device'); return }
-    setLocating(true); setGpsError(null)
+    setLocating(true); setGpsError(null); setGpsHint(null)
+    // A silent, on-mount failure during a RE-map (plotId present) has
+    // somewhere sensible to land — the map is already centered on this
+    // plot's own last-saved location (see initialCenter, populated by the
+    // parent page from the plot's stored coordinates) — so it gets a calm
+    // explanatory note rather than either a red error banner or, worse,
+    // true silence with the officer left guessing why nothing happened.
+    // A silent failure on a brand-new plot has nothing to fall back to
+    // explain, so it stays exactly as silent as the original design
+    // intended — the farmer hasn't done anything yet, there's nothing to
+    // apologize for, and manual corner-tapping / walk mode are unaffected.
+    const softFailure = (msg: string) => {
+      if (opts?.silent && plotId) setGpsHint(msg)
+      else if (!opts?.silent) setGpsError(msg)
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng, accuracy } = pos.coords
@@ -723,19 +768,20 @@ export default function PlotBoundaryMapper({
         if (!userAlreadyMapping && trustworthy) {
           _map.setView([lat, lng], zoomForAccuracy(accuracy))
           // A relocate means whatever placeholder evidence we'd gathered
-          // belonged to the OLD position (the Kenya-midpoint default
-          // center, most likely) — it says nothing about real coverage
-          // here, so un-cap and let fresh evidence accumulate for this spot.
+          // belonged to the OLD position (the plot's saved location or the
+          // Kenya-midpoint default, most likely) — it says nothing about
+          // real coverage here, so un-cap and let fresh evidence accumulate
+          // for this spot.
           satelliteZoomCeilingRef.current = ESRI_NOMINAL_MAX_ZOOM
           placeholderCountAtZoomRef.current = { zoom: -1, count: 0 }
           ceilingReductionsRef.current = 0
           _map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
           setAtImageryCeiling(false)
-        } else if (!userAlreadyMapping && !trustworthy && !opts?.silent) {
-          // Only surface this as an error for an explicit "locate me" tap —
-          // the silent auto-locate on mount should fail quietly and just
-          // leave the farmer on the default view.
-          setGpsError('GPS fix looks unreliable right now (outside Kenya) — map position unchanged')
+          setGpsHint(null)
+        } else if (!userAlreadyMapping && !trustworthy) {
+          softFailure(plotId
+            ? "GPS fix looks unreliable right now (outside Kenya) — showing this plot's saved location instead."
+            : 'GPS fix looks unreliable right now (outside Kenya) — map position unchanged')
         }
         setLocating(false)
         // Reverse geocode
@@ -747,14 +793,15 @@ export default function PlotBoundaryMapper({
           }).catch(() => {})
       },
       (err) => {
-        setGpsError(err.code === 1 ? 'Location permission denied — enable in browser settings'
+        const reason = err.code === 1 ? 'Location permission denied — enable in browser settings'
           : err.code === 2 ? 'GPS signal weak — move to open area'
-          : 'GPS timed out — try again')
+          : 'GPS timed out — try again'
+        softFailure(plotId ? `${reason}. Showing this plot's saved location instead.` : reason)
         setLocating(false)
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
-  }, [onLocationDetected])
+  }, [onLocationDetected, plotId])
 
   // ── Render polygon / polyline on map ────────────────────────────────────────
 
@@ -1052,17 +1099,40 @@ export default function PlotBoundaryMapper({
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className={`flex flex-col ${className}`} style={{ userSelect: 'none' }}>
+    <div
+      className={isExpanded ? 'fixed inset-0 z-[3000] bg-slate-950 flex flex-col overflow-y-auto p-3 sm:p-4' : `flex flex-col ${className}`}
+      style={{ userSelect: 'none' }}
+    >
+      {/* Fullscreen header — only rendered when expanded. The map's own
+          expand/collapse button (in the left button cluster below) also
+          exits, but a clearly-labelled bar at the very top makes it obvious
+          this is a temporary overlay and not just navigated to a new page. */}
+      {isExpanded && (
+        <div className="flex items-center justify-between mb-3 shrink-0">
+          <p className="text-sm font-semibold text-slate-300">Plot boundary map</p>
+          <button
+            type="button"
+            onClick={() => setIsExpanded(false)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Exit fullscreen
+          </button>
+        </div>
+      )}
 
       {/* ── Map area ─────────────────────────────────────────────────────────── */}
-      <div className="relative rounded-xl overflow-hidden" style={{ background: '#0f172a' }}>
+      <div className={`relative rounded-xl overflow-hidden ${isExpanded ? 'shrink-0' : ''}`} style={{ background: '#0f172a' }}>
 
-        {/* Leaflet mount point — responsive height: 460px on desktop, 60vh on short mobile screens */}
+        {/* Leaflet mount point — responsive height: 460px on desktop, 60vh on
+            short mobile screens normally; given most of the viewport height
+            when expanded, so the bigger window is actually put to use rather
+            than just padding the same 460px map with empty space. */}
         <div
           ref={mapContainerRef}
           style={{
-            height: 'min(460px, 60vh)',
-            minHeight: 280,
+            height: isExpanded ? 'calc(100vh - 220px)' : 'min(460px, 60vh)',
+            minHeight: isExpanded ? 320 : 280,
             width: '100%',
           }}
         />
@@ -1132,6 +1202,23 @@ export default function PlotBoundaryMapper({
                   }
                 </svg>
               </button>
+
+              {/* Expand / collapse — same map instance, just given the full
+                  viewport to work with. Not shown while mid-walk (stopWalk's
+                  Cancel/Stop&Save bar assumes the compact layout) to keep
+                  that flow's button positions predictable. */}
+              {mode !== 'walking' && (
+                <button
+                  type="button" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsExpanded(v => !v) }}
+                  className="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center hover:bg-gray-100 active:scale-95 border border-gray-200 transition-all select-none"
+                  title={isExpanded ? 'Exit fullscreen' : 'Expand to fullscreen'}
+                >
+                  {isExpanded
+                    ? <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 9L4 4m0 0v4m0-4h4m7 5l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4m7-5l5 5m0 0v-4m0 4h-4"/></svg>
+                    : <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                  }
+                </button>
+              )}
             </div>
 
             {/* ── Live area banner (shows whenever >= 3 points) ──────── */}
@@ -1315,11 +1402,25 @@ export default function PlotBoundaryMapper({
       {/* ── Below-map area ─────────────────────────────────────────────────── */}
       <div className="mt-3 space-y-2">
 
-        {/* Error banner */}
+        {/* Error banner — explicit "locate me" taps, and any GPS failure once the farmer has started mapping */}
         {gpsError && (
           <div className="flex items-start gap-2 p-3 bg-red-900/20 border border-red-500/30 rounded-xl text-xs text-red-300">
             <svg className="h-4 w-4 mt-0.5 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
             <span>{gpsError}</span>
+          </div>
+        )}
+
+        {/* Location hint — soft, non-alarming counterpart to the error banner
+            above, only ever shown for the automatic on-mount locate attempt
+            on a re-map of a known plot (see softFailure in autoLocate).
+            Dismissable since it's informational, not blocking. */}
+        {!gpsError && gpsHint && (
+          <div className="flex items-start gap-2 p-3 bg-slate-800/60 border border-slate-600/50 rounded-xl text-xs text-slate-300">
+            <svg className="h-4 w-4 mt-0.5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span className="flex-1">{gpsHint}</span>
+            <button type="button" onClick={() => setGpsHint(null)} className="shrink-0 text-slate-500 hover:text-slate-300">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
           </div>
         )}
 

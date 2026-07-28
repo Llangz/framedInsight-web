@@ -24,6 +24,23 @@ interface EditPlotClientProps {
   plot: CoffeePlot
 }
 
+// gps_polygon may be stored as a bare Polygon/MultiPolygon geometry OR as a
+// full GeoJSON Feature wrapping one (the boundary mapper saves Features) —
+// same normalization as app/dashboard/coffee/plots/[plotId]/page.tsx.
+function extractGeometry(polygon: any): { type: string; coordinates: any } | null {
+  if (!polygon) return null
+  if (polygon.type === 'Feature' && polygon.geometry) return polygon.geometry
+  if (polygon.type === 'Polygon' || polygon.type === 'MultiPolygon' || polygon.type === 'Point') return polygon
+  if (Array.isArray(polygon.coordinates)) return { type: 'Polygon', coordinates: polygon.coordinates }
+  return null
+}
+
+function extractPolygonLatLngs(polygon: any): [number, number][] {
+  const geom = extractGeometry(polygon)
+  const coords = geom?.type === 'MultiPolygon' ? geom.coordinates?.[0]?.[0] : geom?.coordinates?.[0]
+  return (coords || []).map((c: number[]) => [c[1], c[0]])
+}
+
 const FIELD = "w-full px-4 py-2.5 bg-[#0A0C10] border border-[#2A2D35] rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none text-white placeholder-[#4B5563]"
 const LABEL = "block text-sm font-semibold text-[#9CA3AF] mb-1.5"
 
@@ -36,6 +53,19 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
   const [showMapper, setShowMapper] = useState(false)
   const [boundary, setBoundary] = useState<BoundaryResult | null>(null)
   const hasExistingGps = !!(plot.gps_polygon || (plot.gps_latitude && plot.gps_longitude))
+  // See the matching comment in plots/[plotId]/page.tsx — without this,
+  // PlotBoundaryMapper's remap flow below defaulted to a generic point in
+  // the middle of Kenya instead of this plot's own saved location.
+  const hasKnownPoint = plot.gps_latitude != null && plot.gps_longitude != null
+  const remapPolygonLatLngs = hasKnownPoint ? [] : extractPolygonLatLngs(plot.gps_polygon)
+  const remapInitialCenter: [number, number] | undefined = hasKnownPoint
+    ? [plot.gps_latitude as number, plot.gps_longitude as number]
+    : remapPolygonLatLngs.length > 0
+      ? [
+          remapPolygonLatLngs.reduce((s, p) => s + p[0], 0) / remapPolygonLatLngs.length,
+          remapPolygonLatLngs.reduce((s, p) => s + p[1], 0) / remapPolygonLatLngs.length,
+        ]
+      : undefined
 
   const [formData, setFormData] = useState({
     plot_name: plot.plot_name || '',
@@ -270,6 +300,7 @@ export default function EditPlotClient({ plot }: EditPlotClientProps) {
                 <PlotBoundaryMapper
                   onComplete={(result) => { setBoundary(result); setShowMapper(false) }}
                   plotId={plot.id}
+                  initialCenter={remapInitialCenter}
                 />
               </div>
             )}
