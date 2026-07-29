@@ -230,6 +230,7 @@ export default function PlotBoundaryMapper({
   const polygonLayerRef = useRef<any>(null)      // filled polygon / polyline
   const cornerMarkersRef = useRef<any[]>([])     // numbered pin layers
   const liveMarkerRef = useRef<any>(null)        // pulsing GPS dot
+  const accuracyCircleRef = useRef<any>(null)    // radius-accurate ring around the live GPS dot
   const walkPolylineRef = useRef<any>(null)      // blue trail in walk mode
   const watchIdRef = useRef<number | null>(null)
   const mapClickHandlerRef = useRef<any>(null)
@@ -725,6 +726,47 @@ export default function PlotBoundaryMapper({
   function zoomIn() { mapRef.current?.zoomIn() }
   function zoomOut() { mapRef.current?.zoomOut() }
 
+  // ── Live GPS marker + accuracy circle ──────────────────────────────────────
+  // A dot alone tells the farmer "here's roughly where the GPS thinks you
+  // are" but hides how much to trust it — 5m accuracy and 80m accuracy look
+  // identical as a single point. Pairing the dot with a real L.circle sized
+  // to `accuracy` (in metres, same units Leaflet expects for a circle radius
+  // in the default non-Canvas renderer) makes that trust level visible at a
+  // glance, same as Google Maps' blue "you are here" halo — a wide translucent
+  // ring is an honest signal to double-check a corner placed near its edge,
+  // where a tight one means it's safe to trust closely.
+  const showLiveFix = useCallback((lat: number, lng: number, accuracyM: number) => {
+    const L = leafletRef.current; const map = mapRef.current
+    if (!L || !map) return
+    if (liveMarkerRef.current) {
+      liveMarkerRef.current.setLatLng([lat, lng])
+    } else {
+      liveMarkerRef.current = L.marker([lat, lng], { icon: makeLiveGpsIcon(L), zIndexOffset: 1000 }).addTo(map)
+    }
+    // Guard against a NaN/zero/negative radius (some browsers report 0 or
+    // omit accuracy entirely on a low-quality fix) — L.circle throws on a
+    // non-finite radius, and a 0m ring would render as an invisible dot,
+    // implying false precision. Floor it at a small, clearly-a-fix radius.
+    const radius = Number.isFinite(accuracyM) && accuracyM > 0 ? accuracyM : 5
+    if (accuracyCircleRef.current) {
+      accuracyCircleRef.current.setLatLng([lat, lng])
+      accuracyCircleRef.current.setRadius(radius)
+    } else {
+      accuracyCircleRef.current = L.circle([lat, lng], {
+        radius,
+        color: '#2563eb', weight: 1.5, opacity: 0.5,
+        fillColor: '#2563eb', fillOpacity: 0.12,
+        interactive: false,
+      }).addTo(map)
+    }
+  }, [])
+
+  const clearLiveFix = useCallback(() => {
+    const map = mapRef.current
+    if (liveMarkerRef.current) { try { map?.removeLayer(liveMarkerRef.current) } catch {} ; liveMarkerRef.current = null }
+    if (accuracyCircleRef.current) { try { map?.removeLayer(accuracyCircleRef.current) } catch {} ; accuracyCircleRef.current = null }
+  }, [])
+
   // ── GPS locate ──────────────────────────────────────────────────────────────
 
   const autoLocate = useCallback((map?: any, L?: any, opts?: { silent?: boolean }) => {
@@ -767,6 +809,7 @@ export default function PlotBoundaryMapper({
         const trustworthy = isWithinKenya(lat, lng)
         if (!userAlreadyMapping && trustworthy) {
           _map.setView([lat, lng], zoomForAccuracy(accuracy))
+          showLiveFix(lat, lng, accuracy)
           // A relocate means whatever placeholder evidence we'd gathered
           // belonged to the OLD position (the plot's saved location or the
           // Kenya-midpoint default, most likely) — it says nothing about
@@ -801,7 +844,7 @@ export default function PlotBoundaryMapper({
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
-  }, [onLocationDetected, plotId])
+  }, [onLocationDetected, plotId, showLiveFix])
 
   // ── Render polygon / polyline on map ────────────────────────────────────────
 
@@ -911,7 +954,7 @@ export default function PlotBoundaryMapper({
     // Stop any walk
     if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null }
     if (walkPolylineRef.current) { map.removeLayer(walkPolylineRef.current); walkPolylineRef.current = null }
-    if (liveMarkerRef.current) { map.removeLayer(liveMarkerRef.current); liveMarkerRef.current = null }
+    clearLiveFix()
 
     setMode('done')
     setSnapActive(false)
@@ -930,7 +973,7 @@ export default function PlotBoundaryMapper({
       const bounds = L.latLngBounds(pts.map(p => [p.lat, p.lng]))
       map.fitBounds(bounds, { padding: [50, 50] })
     }
-  }, [onComplete])
+  }, [onComplete, clearLiveFix])
 
   // ── Start draw mode ─────────────────────────────────────────────────────────
 
@@ -976,9 +1019,8 @@ export default function PlotBoundaryMapper({
         if (lastPt && distM(lastPt, { lat, lng }) < 1.5) return // filter GPS noise
         const pt = { lat, lng }; lastPt = pt
 
-        // Live GPS dot
-        if (liveMarkerRef.current) { liveMarkerRef.current.setLatLng([lat, lng]) }
-        else { liveMarkerRef.current = L.marker([lat, lng], { icon: makeLiveGpsIcon(L), zIndexOffset: 1000 }).addTo(map) }
+        // Live GPS dot + accuracy ring
+        showLiveFix(lat, lng, accuracy)
 
         map.panTo([lat, lng], { animate: true, duration: 0.5 })
         walkPolylineRef.current?.addLatLng([lat, lng])
@@ -1023,7 +1065,7 @@ export default function PlotBoundaryMapper({
     if (mapClickHandlerRef.current) map.off('click', mapClickHandlerRef.current)
     if (polygonLayerRef.current) { map.removeLayer(polygonLayerRef.current); polygonLayerRef.current = null }
     if (walkPolylineRef.current) { map.removeLayer(walkPolylineRef.current); walkPolylineRef.current = null }
-    if (liveMarkerRef.current) { map.removeLayer(liveMarkerRef.current); liveMarkerRef.current = null }
+    clearLiveFix()
     cornerMarkersRef.current.forEach(m => { try { map.removeLayer(m) } catch {} })
     cornerMarkersRef.current = []
     map.getContainer().style.cursor = ''
