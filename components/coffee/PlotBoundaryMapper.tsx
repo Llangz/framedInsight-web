@@ -133,6 +133,24 @@ function isWithinKenya(lat: number, lng: number): boolean {
          lng >= KENYA_BOUNDS.west && lng <= KENYA_BOUNDS.east
 }
 
+// ── Location search: direct coordinate paste ───────────────────────────────
+// A cooperative officer often already has a lat/lng from a prior visit or a
+// separate GPS app — recognizing "lat, lng" input lets that go straight to
+// the map with no geocoding round-trip (and no dependence on Nominatim
+// having good coverage for a small rural place name). Accepts optional
+// whitespace and either a comma or a slash as the separator (Google Maps'
+// own share format uses a comma; some field tools export space-separated).
+const COORD_PAIR_RE = /^\s*(-?\d{1,3}(?:\.\d+)?)\s*[,/]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/
+
+function parseCoordPair(input: string): { lat: number; lng: number } | null {
+  const m = input.match(COORD_PAIR_RE)
+  if (!m) return null
+  const lat = Number(m[1]); const lng = Number(m[2])
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
+  return { lat, lng }
+}
+
 // A real on-device GPS fix is typically accurate to single-digit-to-low-
 // double-digit metres; IP/network-based positioning is usually 100s of
 // metres to a few kilometres. Forcing the map to zoom 18 regardless of
@@ -231,6 +249,7 @@ export default function PlotBoundaryMapper({
   const cornerMarkersRef = useRef<any[]>([])     // numbered pin layers
   const liveMarkerRef = useRef<any>(null)        // pulsing GPS dot
   const accuracyCircleRef = useRef<any>(null)    // radius-accurate ring around the live GPS dot
+  const searchMarkerRef = useRef<any>(null)      // plain pin dropped by the location search box — NOT a GPS fix
   const walkPolylineRef = useRef<any>(null)      // blue trail in walk mode
   const watchIdRef = useRef<number | null>(null)
   const mapClickHandlerRef = useRef<any>(null)
@@ -262,6 +281,23 @@ export default function PlotBoundaryMapper({
   // looked broken). This surfaces that same "nothing happened" state as an
   // explanatory note instead of nothing at all.
   const [gpsHint, setGpsHint] = useState<string | null>(null)
+
+  // ── Manual location search ─────────────────────────────────────────────
+  // Complements GPS, doesn't replace it: this only ever gets the map to the
+  // right general area (a village, a road, a pasted lat/lng from another
+  // app) — corner placement past that still needs the farmer to tap the
+  // satellite image or walk the boundary with real GPS. Most useful for a
+  // cooperative officer pre-scouting from a desktop with no GPS radio, or
+  // recentring fast when the on-device fix is degraded (tree canopy) but
+  // the farmer can name their trading centre.
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<{ display_name: string; lat: string; lon: string }[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchReqIdRef = useRef(0) // guards against a slow, stale response overwriting a newer one
+
   // Toggles the whole widget (map + mode buttons + banners) into a
   // fixed, full-viewport overlay — same map instance, just more room to
   // work with corner-tapping, walk mode, and reading the live area banner
@@ -384,6 +420,21 @@ export default function PlotBoundaryMapper({
         const map = L.map(mapContainerRef.current, {
           center: initialCenter,
           zoom: 17,
+          // Fixed for the life of this map instance — deliberately NEVER
+          // touched again after this. Earlier versions called
+          // map.setMaxZoom() from the Esri "no imagery past this zoom"
+          // handler below, which caps the MAP itself, not just the Esri
+          // layer. That cap then silently outlived the layer that earned
+          // it: switching to the Sentinel-2 fallback (which has its own,
+          // higher, usable zoom via maxNativeZoom) or back to Esri after a
+          // pan never raised it again, so farmers got permanently stuck
+          // zoomed out for the rest of the session — "refuses to zoom in
+          // beyond a certain level" even after zooming out and back in.
+          // 20 matches the deepest zoom any provider here can usefully
+          // reach (Esri's real native ceiling, or Sentinel-2/OSM stretched)
+          // — see ESRI_NOMINAL_MAX_ZOOM and the tileplaceholder handler,
+          // which now clamp the ESRI LAYER's own maxNativeZoom instead.
+          maxZoom: 20,
           zoomControl: false,        // we render our own zoom buttons in React
           doubleClickZoom: false,    // disabled permanently — users use our buttons
           scrollWheelZoom: true,
@@ -532,9 +583,20 @@ export default function PlotBoundaryMapper({
             if (placeholderCountAtZoomRef.current.count >= 2 && current < satelliteZoomCeilingRef.current) {
               const ceiling = Math.max(current - 1, 1)
               satelliteZoomCeilingRef.current = ceiling
-              map.setMaxZoom(ceiling)
-              if (map.getZoom() > ceiling) map.setZoom(ceiling)
-              setAtImageryCeiling(map.getZoom() >= ceiling)
+              // Clamp the ESRI LAYER's own maxNativeZoom, never the map's.
+              // This stops Esri from being asked for (and rendering) more
+              // "Map data not yet available" placeholder tiles past the
+              // ceiling — Leaflet instead stretches the last real tile it
+              // has, which is honest and still useful for boundary tracing.
+              // The map itself keeps its fixed maxZoom (20, see the init
+              // effect) so the farmer is never blocked from zooming in
+              // further, and so a later fallback to Sentinel-2 or a switch
+              // back to Esri elsewhere never inherits a stale, too-low cap.
+              esriSat.options.maxNativeZoom = ceiling
+              esriLabels.options.maxNativeZoom = ceiling
+              esriSat.redraw()
+              esriLabels.redraw()
+              setAtImageryCeiling(current >= ceiling)
 
               // First reduction: could just mean the farmer (or the initial
               // zoom-17 default) started in tighter than this location's real
@@ -613,6 +675,7 @@ export default function PlotBoundaryMapper({
     return () => {
       destroyedRef.current = true
       if (slowTileTimerRef.current) { clearTimeout(slowTileTimerRef.current); slowTileTimerRef.current = null }
+      if (searchDebounceRef.current) { clearTimeout(searchDebounceRef.current); searchDebounceRef.current = null }
       if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null }
       if (mapRef.current) { try { mapRef.current.remove() } catch {} ; mapRef.current = null }
     }
@@ -683,11 +746,10 @@ export default function PlotBoundaryMapper({
       if (sentinelLayerRef.current) map.removeLayer(sentinelLayerRef.current)
       if (osmLayerRef.current) osmLayerRef.current.addTo(map)
       setMapType('street')
-      // OSM's coverage is effectively uniform worldwide at the zooms this
-      // app uses, unlike Esri's — lift the satellite-specific cap while
-      // street view is active so switching to street is also the "escape
-      // hatch" for zoom, not just for missing imagery.
-      map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
+      // The map's own maxZoom is a fixed 20, set once at creation and never
+      // touched per-provider (see the init effect) — there's no map-level
+      // cap left to lift here. OSM's layer-level maxZoom (19) governs
+      // itself, uniformly, everywhere.
       setAtImageryCeiling(false)
     } else {
       if (osmLayerRef.current) map.removeLayer(osmLayerRef.current)
@@ -697,10 +759,19 @@ export default function PlotBoundaryMapper({
       // Give a manually-requested retry a fresh chance before any future
       // auto-fallback (see the 'tileplaceholder' listener above) fires again.
       ceilingReductionsRef.current = 0
-      // Re-apply whatever ceiling we last discovered for this location.
-      map.setMaxZoom(satelliteZoomCeilingRef.current)
-      if (map.getZoom() > satelliteZoomCeilingRef.current) map.setZoom(satelliteZoomCeilingRef.current)
-      setAtImageryCeiling(map.getZoom() >= satelliteZoomCeilingRef.current)
+      placeholderCountAtZoomRef.current = { zoom: -1, count: 0 }
+      satelliteZoomCeilingRef.current = ESRI_NOMINAL_MAX_ZOOM
+      // Reset the Esri LAYER's own maxNativeZoom, not the map's — the
+      // map's zoom capability was never touched and stays at a fixed 20.
+      if (esriLayerRef.current) {
+        esriLayerRef.current.options.maxNativeZoom = ESRI_NOMINAL_MAX_ZOOM
+        esriLayerRef.current.redraw()
+      }
+      if (labelsLayerRef.current) {
+        labelsLayerRef.current.options.maxNativeZoom = ESRI_NOMINAL_MAX_ZOOM
+        labelsLayerRef.current.redraw()
+      }
+      setAtImageryCeiling(false)
     }
   }
 
@@ -808,19 +879,34 @@ export default function PlotBoundaryMapper({
         // right now, and manual corner-tapping / walking are unaffected.
         const trustworthy = isWithinKenya(lat, lng)
         if (!userAlreadyMapping && trustworthy) {
-          _map.setView([lat, lng], zoomForAccuracy(accuracy))
-          showLiveFix(lat, lng, accuracy)
           // A relocate means whatever placeholder evidence we'd gathered
           // belonged to the OLD position (the plot's saved location or the
           // Kenya-midpoint default, most likely) — it says nothing about
           // real coverage here, so un-cap and let fresh evidence accumulate
-          // for this spot.
+          // for this spot. This MUST run before setView below: setView's
+          // requested zoom is clamped against whatever the map/layer state
+          // is at the moment it's called, so resetting after would let a
+          // stale, previously-discovered low ceiling silently truncate the
+          // GPS-accuracy-based zoom we're about to ask for — the map would
+          // recenter on the right coordinates but land zoomed out far
+          // further than intended, reading as "inaccurate" even though the
+          // fix itself was fine.
           satelliteZoomCeilingRef.current = ESRI_NOMINAL_MAX_ZOOM
           placeholderCountAtZoomRef.current = { zoom: -1, count: 0 }
           ceilingReductionsRef.current = 0
-          _map.setMaxZoom(ESRI_NOMINAL_MAX_ZOOM)
+          if (esriLayerRef.current) {
+            esriLayerRef.current.options.maxNativeZoom = ESRI_NOMINAL_MAX_ZOOM
+            esriLayerRef.current.redraw()
+          }
+          if (labelsLayerRef.current) {
+            labelsLayerRef.current.options.maxNativeZoom = ESRI_NOMINAL_MAX_ZOOM
+            labelsLayerRef.current.redraw()
+          }
           setAtImageryCeiling(false)
           setGpsHint(null)
+
+          _map.setView([lat, lng], zoomForAccuracy(accuracy))
+          showLiveFix(lat, lng, accuracy)
         } else if (!userAlreadyMapping && !trustworthy) {
           softFailure(plotId
             ? "GPS fix looks unreliable right now (outside Kenya) — showing this plot's saved location instead."
@@ -842,9 +928,110 @@ export default function PlotBoundaryMapper({
         softFailure(plotId ? `${reason}. Showing this plot's saved location instead.` : reason)
         setLocating(false)
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
   }, [onLocationDetected, plotId, showLiveFix])
+
+  // ── Manual location search: navigate + geocode ─────────────────────────
+
+  const clearSearchMarker = useCallback(() => {
+    const map = mapRef.current
+    if (searchMarkerRef.current) { try { map?.removeLayer(searchMarkerRef.current) } catch {} ; searchMarkerRef.current = null }
+  }, [])
+
+  // Shared by both the coordinate-paste fast path and a picked geocoder
+  // result. Deliberately does NOT touch liveMarkerRef/accuracyCircleRef —
+  // those represent a real, live device GPS fix, and reusing them here
+  // would make a manually-searched place look like a pulsing "you are
+  // here" position, which it isn't. Drops a plain, static pin instead, and
+  // clears it on the next search or the next real GPS locate so a stale
+  // searched pin never lingers looking like it's still relevant.
+  const goToSearchedLocation = useCallback((lat: number, lng: number, label?: string) => {
+    const map = mapRef.current; const L = leafletRef.current
+    if (!map || !L) return
+
+    // Same reasoning as the trustworthy branch of autoLocate: reset the
+    // Esri layer's own discovered ceiling BEFORE moving the view, since
+    // whatever ceiling evidence we'd gathered belongs to the OLD position.
+    satelliteZoomCeilingRef.current = ESRI_NOMINAL_MAX_ZOOM
+    placeholderCountAtZoomRef.current = { zoom: -1, count: 0 }
+    ceilingReductionsRef.current = 0
+    if (esriLayerRef.current) {
+      esriLayerRef.current.options.maxNativeZoom = ESRI_NOMINAL_MAX_ZOOM
+      esriLayerRef.current.redraw()
+    }
+    if (labelsLayerRef.current) {
+      labelsLayerRef.current.options.maxNativeZoom = ESRI_NOMINAL_MAX_ZOOM
+      labelsLayerRef.current.redraw()
+    }
+    setAtImageryCeiling(false)
+
+    map.setView([lat, lng], 17)
+
+    clearSearchMarker()
+    searchMarkerRef.current = L.marker([lat, lng], {
+      icon: L.divIcon({
+        html: `<div style="width:16px;height:16px;border-radius:50% 50% 50% 0;background:#f59e0b;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4);transform:rotate(-45deg);"></div>`,
+        className: '', iconSize: [16, 16], iconAnchor: [8, 16],
+      }),
+      zIndexOffset: 900,
+    }).addTo(map)
+    if (label) searchMarkerRef.current.bindTooltip(label, { permanent: false, direction: 'top' })
+
+    setSearchOpen(false)
+    setSearchResults([])
+  }, [clearSearchMarker])
+
+  // Debounced (350ms) Nominatim place search, scoped to Kenya. Guarded
+  // against out-of-order responses with a request counter — a slow first
+  // keystroke's response landing after a faster later one would otherwise
+  // flash stale results over what the farmer is currently seeing.
+  const runLocationSearch = useCallback((query: string) => {
+    setSearchQuery(query)
+    setSearchError(null)
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+
+    const trimmed = query.trim()
+    if (!trimmed) { setSearchResults([]); setSearching(false); return }
+
+    // Fast path: a pasted "lat, lng" jumps straight there, no network call,
+    // no dependence on Nominatim having coverage for a small rural place.
+    const coords = parseCoordPair(trimmed)
+    if (coords) {
+      setSearchResults([])
+      if (!isWithinKenya(coords.lat, coords.lng)) {
+        setSearchError('That coordinate looks like it’s outside Kenya — double-check it before using it.')
+      } else {
+        setSearchError(null)
+        goToSearchedLocation(coords.lat, coords.lng, `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`)
+      }
+      return
+    }
+
+    searchDebounceRef.current = setTimeout(() => {
+      const reqId = ++searchReqIdRef.current
+      setSearching(true)
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=ke&limit=6&q=${encodeURIComponent(trimmed)}`)
+        .then(r => r.json())
+        .then((results: { display_name: string; lat: string; lon: string }[]) => {
+          if (reqId !== searchReqIdRef.current) return // superseded by a newer keystroke
+          setSearchResults(Array.isArray(results) ? results : [])
+          if (!results || results.length === 0) setSearchError('No matches found in Kenya — try a nearby town or trading centre.')
+        })
+        .catch(() => {
+          if (reqId !== searchReqIdRef.current) return
+          setSearchError('Search failed — check your connection and try again.')
+        })
+        .finally(() => {
+          if (reqId === searchReqIdRef.current) setSearching(false)
+        })
+    }, 350)
+  }, [goToSearchedLocation])
+
+  // Clear a stale searched-location pin as soon as a real GPS fix lands —
+  // otherwise a leftover amber pin from an earlier search sits on the map
+  // implying relevance it no longer has.
+  useEffect(() => { if (locating) clearSearchMarker() }, [locating, clearSearchMarker])
 
   // ── Render polygon / polyline on map ────────────────────────────────────────
 
@@ -1066,6 +1253,7 @@ export default function PlotBoundaryMapper({
     if (polygonLayerRef.current) { map.removeLayer(polygonLayerRef.current); polygonLayerRef.current = null }
     if (walkPolylineRef.current) { map.removeLayer(walkPolylineRef.current); walkPolylineRef.current = null }
     clearLiveFix()
+    clearSearchMarker()
     cornerMarkersRef.current.forEach(m => { try { map.removeLayer(m) } catch {} })
     cornerMarkersRef.current = []
     map.getContainer().style.cursor = ''
@@ -1200,15 +1388,17 @@ export default function PlotBoundaryMapper({
             {/* ── Left column: zoom + locate ─────────────────────────── */}
             <div className="absolute left-3 top-3 z-[1000] flex flex-col gap-1.5">
 
-              {/* Zoom in — disabled once we've hit the sharpest imagery this
-                  location actually has (see applyZoomCeiling). A farmer
-                  tapping this at the ceiling gets a greyed-out button and a
-                  tooltip instead of the map silently blanking out. */}
+              {/* Zoom in — always enabled, up to the map's fixed maxZoom
+                  (20). Past the point where Esri has real imagery for this
+                  spot, the last real tile is simply stretched instead of
+                  requesting more (see the tileplaceholder handler) — still
+                  useful for placing a corner precisely, so farmers tracing
+                  a tiny plot are never blocked from zooming in, only told
+                  the imagery itself won't get any sharper from here. */}
               <button
                 type="button" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); zoomIn() }}
-                disabled={atImageryCeiling}
-                className="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-xl font-bold text-gray-700 hover:bg-gray-100 active:scale-95 border border-gray-200 transition-all select-none disabled:opacity-40 disabled:hover:bg-white disabled:active:scale-100"
-                title={atImageryCeiling ? 'Sharpest satellite imagery available for this spot' : 'Zoom in'}
+                className="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-xl font-bold text-gray-700 hover:bg-gray-100 active:scale-95 border border-gray-200 transition-all select-none"
+                title={atImageryCeiling ? 'Sharpest satellite imagery available here — zooming further just stretches this image' : 'Zoom in'}
               >+</button>
 
               {/* Zoom out */}
@@ -1229,6 +1419,21 @@ export default function PlotBoundaryMapper({
                   ? <svg className="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                   : <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="3" strokeWidth="2"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
                 }
+              </button>
+
+              {/* Search location — jump to a place name or a pasted lat/lng.
+                  Complements GPS, doesn't replace it: gets the map to the
+                  right general area, corner placement still needs a tap or
+                  a walked GPS trail once zoomed in. */}
+              <button
+                type="button" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setSearchOpen(v => !v) }}
+                className={`w-10 h-10 rounded-lg shadow-lg flex items-center justify-center active:scale-95 border transition-all select-none ${searchOpen ? 'bg-emerald-600 border-emerald-500' : 'bg-white border-gray-200 hover:bg-gray-100'}`}
+                title="Search for a location"
+              >
+                <svg className={`h-4 w-4 ${searchOpen ? 'text-white' : 'text-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <circle cx="11" cy="11" r="7" strokeWidth="2" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35" />
+                </svg>
               </button>
 
               {/* Map type toggle */}
@@ -1262,6 +1467,63 @@ export default function PlotBoundaryMapper({
                 </button>
               )}
             </div>
+
+            {/* ── Location search overlay ─────────────────────────────────
+                Accepts either a Kenya place name (debounced Nominatim
+                search) or a pasted "lat, lng" (jumps immediately, no
+                network call — see parseCoordPair). Positioned clear of the
+                left button column so it never overlaps the zoom/locate
+                controls at narrow widths. */}
+            {searchOpen && (
+              <div className="absolute left-16 right-3 top-3 z-[1000] sm:left-16 sm:right-auto sm:w-80">
+                <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
+                    <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <circle cx="11" cy="11" r="7" strokeWidth="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35" />
+                    </svg>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => runLocationSearch(e.target.value)}
+                      placeholder="Search a place, or paste lat, lng"
+                      className="flex-1 text-sm text-gray-800 placeholder:text-gray-400 outline-none"
+                    />
+                    {searching && (
+                      <svg className="animate-spin h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    )}
+                    <button
+                      type="button" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setSearchOpen(false); setSearchQuery(''); setSearchResults([]); setSearchError(null) }}
+                      className="text-gray-400 hover:text-gray-600 shrink-0"
+                      title="Close"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+
+                  {searchError && (
+                    <div className="px-3 py-2 text-xs text-amber-700 bg-amber-50">{searchError}</div>
+                  )}
+
+                  {searchResults.length > 0 && (
+                    <ul className="max-h-56 overflow-y-auto divide-y divide-gray-100">
+                      {searchResults.map((r, i) => (
+                        <li key={i}>
+                          <button
+                            type="button"
+                            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); goToSearchedLocation(Number(r.lat), Number(r.lon), r.display_name) }}
+                            className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 leading-snug"
+                          >
+                            {r.display_name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* ── Live area banner (shows whenever >= 3 points) ──────── */}
             {hasPolygon && (
@@ -1334,7 +1596,7 @@ export default function PlotBoundaryMapper({
                 still shows roads/paths even where satellite has no detail. */}
             {atImageryCeiling && mapType === 'satellite' && (
               <div className="absolute bottom-3 left-3 z-[1000] bg-black/70 text-white text-xs px-2.5 py-1.5 rounded-md max-w-[200px] leading-snug">
-                Sharpest satellite imagery available here — try street map for more detail
+                Sharpest satellite imagery available here — you can still zoom in to place corners precisely, or try street map for more detail
               </div>
             )}
 
